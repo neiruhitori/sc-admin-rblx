@@ -300,7 +300,13 @@ end)
 -- CLIENT-SIDE COMMAND EXECUTOR
 -- ============================================
 local CommandExecutor = {}
-CommandExecutor.PlayerStatuses = {}
+CommandExecutor.PlayerStatuses = {
+	fly = false,
+	god = false,
+	invis = false,
+	antiafk = false
+}
+CommandExecutor.InvisibleParts = {} -- Store original parts for restoring
 
 function CommandExecutor:GetTargetPlayer(targetName)
 	if not targetName or targetName == "" then
@@ -326,22 +332,22 @@ function CommandExecutor:GetTargetPlayer(targetName)
 	return nil
 end
 
-function CommandExecutor:Execute(commandText)
+function CommandExecutor:Execute(commandText, targetPlayer)
 	local command, args = AdminConfig:ParseCommand(commandText)
 	
 	if command == "" then return false end
 	
-	local targetName = args[1]
-	local targetPlayer = self:GetTargetPlayer(targetName)
-	
 	-- Commands that work locally
 	if command == "fly" then
-		FlyController:StartFlying()
-		return true, "Flying enabled"
-		
-	elseif command == "unfly" then
-		FlyController:StopFlying()
-		return true, "Flying disabled"
+		if FlyController.Flying then
+			FlyController:StopFlying()
+			self.PlayerStatuses.fly = false
+			return true, "Flying disabled"
+		else
+			FlyController:StartFlying()
+			self.PlayerStatuses.fly = true
+			return true, "Flying enabled"
+		end
 		
 	elseif command == "speed" then
 		local speed = tonumber(args[1]) or 50
@@ -359,46 +365,77 @@ function CommandExecutor:Execute(commandText)
 		
 	elseif command == "god" then
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
-			player.Character.Humanoid.MaxHealth = math.huge
-			player.Character.Humanoid.Health = math.huge
-			self.PlayerStatuses["god"] = true
-			return true, "God mode enabled"
-		end
-		
-	elseif command == "ungod" then
-		if player.Character and player.Character:FindFirstChild("Humanoid") then
-			player.Character.Humanoid.MaxHealth = 100
-			player.Character.Humanoid.Health = 100
-			self.PlayerStatuses["god"] = false
-			return true, "God mode disabled"
+			if self.PlayerStatuses.god then
+				-- Turn off god mode
+				player.Character.Humanoid.MaxHealth = 100
+				player.Character.Humanoid.Health = 100
+				self.PlayerStatuses.god = false
+				return true, "God mode disabled"
+			else
+				-- Turn on god mode
+				player.Character.Humanoid.MaxHealth = math.huge
+				player.Character.Humanoid.Health = math.huge
+				self.PlayerStatuses.god = true
+				return true, "God mode enabled"
+			end
 		end
 		
 	elseif command == "invis" or command == "invisible" then
 		if player.Character then
-			for _, part in ipairs(player.Character:GetDescendants()) do
-				if part:IsA("BasePart") or part:IsA("Decal") then
-					part.Transparency = 1
+			if self.PlayerStatuses.invis then
+				-- Turn off invisible - restore visibility
+				for _, part in ipairs(player.Character:GetDescendants()) do
+					if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+						part.Transparency = 0
+					end
+					if part:IsA("Decal") then
+						part.Transparency = 0
+					end
 				end
-				if part:IsA("Accessory") then
-					part.Handle.Transparency = 1
+				-- Restore face
+				if player.Character.Head:FindFirstChild("face") then
+					player.Character.Head.face.Transparency = 0
 				end
+				self.PlayerStatuses.invis = false
+				return true, "Invisible mode disabled"
+			else
+				-- Turn on invisible - better method
+				for _, part in ipairs(player.Character:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.Transparency = 1
+					end
+					if part:IsA("Decal") or part:IsA("Texture") then
+						part.Transparency = 1
+					end
+				end
+				-- Remove/hide accessories (helps with visibility to others)
+				for _, accessory in ipairs(player.Character:GetChildren()) do
+					if accessory:IsA("Accessory") then
+						accessory:Destroy()
+					end
+				end
+				self.PlayerStatuses.invis = true
+				return true, "Invisible mode enabled (Note: Client-side only)"
 			end
-			return true, "Invisible mode enabled"
 		end
 		
-	elseif command == "vis" or command == "visible" then
-		if player.Character then
-			for _, part in ipairs(player.Character:GetDescendants()) do
-				if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-					part.Transparency = 0
-				end
-				if part:IsA("Accessory") then
-					part.Handle.Transparency = 0
-				end
-			end
-			player.Character.Head.face.Transparency = 0
-			return true, "Visible mode enabled"
+	elseif command == "goto" or command == "tp" then
+		-- Teleport to target player
+		if not targetPlayer or targetPlayer == player then
+			return false, "Please select a target player first!"
 		end
+		
+		if targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+			if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+				player.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+				return true, "Teleported to " .. targetPlayer.Name
+			end
+		end
+		return false, "Target player not found or no character"
+		
+	elseif command == "bring" then
+		-- Note: Bring doesn't work in client-side, but we can show message
+		return false, "Bring command requires server-side (not available in client-only script)"
 		
 	elseif command == "reset" then
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
@@ -407,6 +444,10 @@ function CommandExecutor:Execute(commandText)
 			player.Character.Humanoid.MaxHealth = 100
 			player.Character.Humanoid.Health = 100
 			FlyController:StopFlying()
+			-- Reset all statuses
+			self.PlayerStatuses.fly = false
+			self.PlayerStatuses.god = false
+			self.PlayerStatuses.invis = false
 			return true, "Character reset to normal"
 		end
 		
@@ -418,6 +459,7 @@ function CommandExecutor:Execute(commandText)
 	
 	elseif command == "antiafk" then
 		local status = AntiAFK:Toggle()
+		self.PlayerStatuses.antiafk = status
 		if status then
 			return true, "Anti-AFK enabled"
 		else
@@ -446,6 +488,7 @@ end
 local AdminGUI = {}
 AdminGUI.IsOpen = false
 AdminGUI.SelectedPlayer = nil
+AdminGUI.ToggleButtons = {} -- Store toggle button references
 
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "AdminGUI"
@@ -594,7 +637,7 @@ dropdownArrow.Parent = playerDropdown
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
 refreshButton.Size = UDim2.new(0, 80, 0, 35)
-refreshButton.Position = UDim2.new(1, -90, 0, 5)
+refreshButton.Position = UDim2.new(1, -180, 0, 5)
 refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
 refreshButton.BorderSizePixel = 0
 refreshButton.Text = "🔄 Refresh"
@@ -606,6 +649,23 @@ refreshButton.Parent = playerSelectorFrame
 local refreshCorner = Instance.new("UICorner")
 refreshCorner.CornerRadius = UDim.new(0, 6)
 refreshCorner.Parent = refreshButton
+
+-- Reset button (next to refresh)
+local resetButton = Instance.new("TextButton")
+resetButton.Name = "ResetButton"
+resetButton.Size = UDim2.new(0, 80, 0, 35)
+resetButton.Position = UDim2.new(1, -90, 0, 5)
+resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+resetButton.BorderSizePixel = 0
+resetButton.Text = "♻️ Reset"
+resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetButton.TextSize = 12
+resetButton.Font = Enum.Font.GothamBold
+resetButton.Parent = playerSelectorFrame
+
+local resetCorner = Instance.new("UICorner")
+resetCorner.CornerRadius = UDim.new(0, 6)
+resetCorner.Parent = resetButton
 
 -- Player List Dropdown
 local playerListFrame = Instance.new("ScrollingFrame")
@@ -706,7 +766,7 @@ local function createCategory(name, order)
 end
 
 -- Helper: Create Command Button
-local function createCommandButton(parent, text, icon, command, order)
+local function createCommandButton(parent, text, icon, command, order, isToggle)
 	local button = Instance.new("TextButton")
 	button.Name = command
 	button.BackgroundColor3 = AdminConfig.Theme.Primary
@@ -721,7 +781,8 @@ local function createCommandButton(parent, text, icon, command, order)
 	buttonCorner.Parent = button
 	
 	local buttonLabel = Instance.new("TextLabel")
-	buttonLabel.Size = UDim2.new(1, -10, 1, 0)
+	buttonLabel.Name = "Label"
+	buttonLabel.Size = UDim2.new(1, -60, 1, 0)
 	buttonLabel.Position = UDim2.new(0, 10, 0, 0)
 	buttonLabel.BackgroundTransparency = 1
 	buttonLabel.Text = icon .. " " .. text
@@ -731,26 +792,43 @@ local function createCommandButton(parent, text, icon, command, order)
 	buttonLabel.TextXAlignment = Enum.TextXAlignment.Left
 	buttonLabel.Parent = button
 	
+	-- Add status indicator for toggle buttons
+	if isToggle then
+		local statusLabel = Instance.new("TextLabel")
+		statusLabel.Name = "Status"
+		statusLabel.Size = UDim2.new(0, 50, 1, 0)
+		statusLabel.Position = UDim2.new(1, -55, 0, 0)
+		statusLabel.BackgroundTransparency = 1
+		statusLabel.Text = "OFF"
+		statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+		statusLabel.TextSize = 11
+		statusLabel.Font = Enum.Font.GothamBold
+		statusLabel.Parent = button
+		
+		-- Store reference
+		AdminGUI.ToggleButtons[command] = {button = button, status = statusLabel}
+	end
+	
 	return button
 end
 
 -- Create Categories
 local characterButtons = createCategory("⚡ Character Mods", 1)
-createCommandButton(characterButtons, "Speed", "🏃", "speed", 1)
-createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2)
-createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3)
-createCommandButton(characterButtons, "Ungod", "❌", "ungod", 4)
-createCommandButton(characterButtons, "Invisible", "👻", "invis", 5)
-createCommandButton(characterButtons, "Visible", "👁️", "vis", 6)
+createCommandButton(characterButtons, "Speed", "🏃", "speed", 1, false)
+createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2, false)
+createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3, true)
+createCommandButton(characterButtons, "Invisible", "👻", "invis", 4, true)
 
 local flyButtons = createCategory("✈️ Flying", 2)
-createCommandButton(flyButtons, "Enable Fly", "🚀", "fly", 1)
-createCommandButton(flyButtons, "Disable Fly", "🪂", "unfly", 2)
+createCommandButton(flyButtons, "Fly Mode", "🚀", "fly", 1, true)
 
-local otherButtons = createCategory("🔧 Other", 3)
-createCommandButton(otherButtons, "Reset Character", "♻️", "reset", 1)
-createCommandButton(otherButtons, "Respawn", "🔄", "respawn", 2)
-createCommandButton(otherButtons, "Anti-AFK", "⏰", "antiafk", 3)
+local teleportButtons = createCategory("🌐 Teleport", 3)
+createCommandButton(teleportButtons, "Go To Player", "📍", "goto", 1, false)
+createCommandButton(teleportButtons, "Bring Player", "🎯", "bring", 2, false)
+
+local otherButtons = createCategory("🔧 Other", 4)
+createCommandButton(otherButtons, "Respawn", "🔄", "respawn", 1, false)
+createCommandButton(otherButtons, "Anti-AFK", "⏰", "antiafk", 2, true)
 
 -- Notification Frame
 local notificationFrame = Instance.new("Frame")
@@ -1019,12 +1097,51 @@ function AdminGUI:ExecuteCommand(command, requiresInput)
 		end
 	end
 	
-	local success, message = CommandExecutor:Execute(commandText)
+	-- Get target player from GUI selection
+	local targetPlayer = nil
+	if self.SelectedPlayer then
+		for _, plr in ipairs(Players:GetPlayers()) do
+			if plr.Name == self.SelectedPlayer then
+				targetPlayer = plr
+				break
+			end
+		end
+	end
+	
+	local success, message = CommandExecutor:Execute(commandText, targetPlayer)
 	
 	if success then
 		self:ShowNotification(message, "success")
+		-- Update toggle button status
+		self:UpdateToggleStatus(command)
 	else
 		self:ShowNotification(message or "Command failed", "error")
+	end
+end
+
+-- Update toggle button visual status
+function AdminGUI:UpdateToggleStatus(command)
+	local toggleData = self.ToggleButtons[command]
+	if not toggleData then return end
+	
+	local isActive = CommandExecutor.PlayerStatuses[command]
+	local statusLabel = toggleData.status
+	
+	if isActive then
+		statusLabel.Text = "ON"
+		statusLabel.TextColor3 = AdminConfig.Theme.Success
+		toggleData.button.BackgroundColor3 = Color3.fromRGB(25, 60, 25) -- Dark green
+	else
+		statusLabel.Text = "OFF"
+		statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+		toggleData.button.BackgroundColor3 = AdminConfig.Theme.Primary
+	end
+end
+
+-- Refresh all toggle statuses
+function AdminGUI:RefreshAllToggles()
+	for command, _ in pairs(self.ToggleButtons) do
+		self:UpdateToggleStatus(command)
 	end
 end
 
@@ -1114,7 +1231,13 @@ end)
 
 refreshButton.MouseButton1Click:Connect(function()
 	AdminGUI:UpdatePlayerList()
+	AdminGUI:RefreshAllToggles() -- Refresh toggle statuses too
 	AdminGUI:ShowNotification("Player list refreshed!", "success")
+end)
+
+-- Reset button
+resetButton.MouseButton1Click:Connect(function()
+	AdminGUI:ExecuteCommand("reset", false)
 end)
 
 local function connectCommandButton(buttonName, command, requiresInput)
@@ -1128,18 +1251,27 @@ local function connectCommandButton(buttonName, command, requiresInput)
 						AdminGUI:ExecuteCommand(command, requiresInput)
 					end)
 					
+					-- Hover effect (but maintain toggle color if active)
 					button.MouseEnter:Connect(function()
-						TweenService:Create(
-							button,
-							TweenInfo.new(0.2),
-							{BackgroundColor3 = AdminConfig.Theme.Accent}
-						):Play()
+						local isToggleActive = CommandExecutor.PlayerStatuses[command]
+						if not isToggleActive then
+							TweenService:Create(
+								button,
+								TweenInfo.new(0.2),
+								{BackgroundColor3 = AdminConfig.Theme.Accent}
+							):Play()
+						end
 					end)
 					button.MouseLeave:Connect(function()
+						local isToggleActive = CommandExecutor.PlayerStatuses[command]
+						local targetColor = AdminConfig.Theme.Primary
+						if isToggleActive then
+							targetColor = Color3.fromRGB(25, 60, 25) -- Dark green for active
+						end
 						TweenService:Create(
 							button,
 							TweenInfo.new(0.2),
-							{BackgroundColor3 = AdminConfig.Theme.Primary}
+							{BackgroundColor3 = targetColor}
 						):Play()
 					end)
 					break
@@ -1152,12 +1284,10 @@ end
 connectCommandButton("speed", "speed", true)
 connectCommandButton("jp", "jp", true)
 connectCommandButton("god", "god", false)
-connectCommandButton("ungod", "ungod", false)
 connectCommandButton("invis", "invis", false)
-connectCommandButton("vis", "vis", false)
 connectCommandButton("fly", "fly", false)
-connectCommandButton("unfly", "unfly", false)
-connectCommandButton("reset", "reset", false)
+connectCommandButton("goto", "goto", false)
+connectCommandButton("bring", "bring", false)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
 
@@ -1193,6 +1323,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 AdminGUI:UpdatePlayerList()
+AdminGUI:RefreshAllToggles() -- Initialize toggle statuses
 
 -- ============================================
 -- INITIALIZATION
@@ -1212,14 +1343,16 @@ print("\n📌 How to use:")
 print("   • Click the ⚙️ floating button to open admin panel")
 print("   • Or type commands in chat with prefix: " .. AdminConfig.Prefix)
 print("\n🔧 Available commands (client-side only):")
-print("   ;fly - Enable flying")
-print("   ;unfly - Disable flying")
+print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
 print("   ;jp [number] - Set jump power")
-print("   ;god - Enable god mode")
-print("   ;ungod - Disable god mode")
-print("   ;invis - Enable invisible")
-print("   ;vis - Disable invisible")
+print("   ;god - Toggle god mode")
+print("   ;invis - Toggle invisible")
+print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")
 print("   ;antiafk - Toggle anti-AFK")
+print("\n💡 UI Features:")
+print("   • Toggle buttons show ON/OFF status")
+print("   • Select target player for goto command")
+print("   • Reset button (top right) for quick reset")
