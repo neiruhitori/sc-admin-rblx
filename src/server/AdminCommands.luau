@@ -27,7 +27,7 @@ local function getPlayerStatus(playerName: string)
 	return AdminCommands.PlayerStatus[playerName]
 end
 
--- Helper function to enable god mode with proper protection
+-- Helper function to enable god mode with MAXIMUM protection (true invincibility)
 local function enableGodMode(player: Player)
 	local character = player.Character
 	if not character then return end
@@ -43,54 +43,65 @@ local function enableGodMode(player: Player)
 	end
 	AdminCommands.GodModeConnections[player.UserId] = {}
 	
+	-- DISABLE all damage-related states PERMANENTLY
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+	
 	-- Set health to huge
 	humanoid.MaxHealth = math.huge
 	humanoid.Health = math.huge
 	
-	-- Connect to HealthChanged to constantly restore health
-	local healthConn = humanoid.HealthChanged:Connect(function(health)
-		if health < humanoid.MaxHealth then
-			humanoid.Health = math.huge
+	-- Monitor health property changes directly
+	local healthPropConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+		if getPlayerStatus(player.Name).GodMode then
+			if humanoid.Health ~= math.huge then
+				humanoid.Health = math.huge
+			end
 		end
 	end)
-	table.insert(AdminCommands.GodModeConnections[player.UserId], healthConn)
+	table.insert(AdminCommands.GodModeConnections[player.UserId], healthPropConn)
 	
-	-- Connect to Died to prevent death
+	-- Prevent death event
 	local diedConn = humanoid.Died:Connect(function()
 		if getPlayerStatus(player.Name).GodMode then
-			task.wait()
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			humanoid.Health = math.huge
+			task.spawn(function()
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+				humanoid.Health = math.huge
+			end)
 		end
 	end)
 	table.insert(AdminCommands.GodModeConnections[player.UserId], diedConn)
 	
-	-- Prevent humanoid from entering dead state
+	-- Block ANY state change to Dead/FallingDown/Ragdoll
 	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
 		if getPlayerStatus(player.Name).GodMode then
-			-- Prevent death state
-			if newState == Enum.HumanoidStateType.Dead then
-				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-				humanoid.Health = math.huge
-			end
-			-- Keep health at max during any state change (prevents fly/fall damage)
-			if humanoid.Health < math.huge then
-				humanoid.Health = math.huge
+			if newState == Enum.HumanoidStateType.Dead or 
+			   newState == Enum.HumanoidStateType.FallingDown or
+			   newState == Enum.HumanoidStateType.Ragdoll then
+				task.spawn(function()
+					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+					humanoid.Health = math.huge
+				end)
 			end
 		end
 	end)
 	table.insert(AdminCommands.GodModeConnections[player.UserId], stateConn)
 	
-	-- Additional heartbeat protection for aggressive health restoration
-	-- This prevents instant death from fall damage or state changes
+	-- Server-side heartbeat protection
 	local RunService = game:GetService("RunService")
 	local heartbeatConn = RunService.Heartbeat:Connect(function()
 		if getPlayerStatus(player.Name).GodMode then
 			local char = player.Character
 			if char then
 				local hum = char:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health < math.huge then
-					hum.Health = math.huge
+				if hum then
+					if hum.Health ~= math.huge then
+						hum.Health = math.huge
+					end
+					if hum.MaxHealth ~= math.huge then
+						hum.MaxHealth = math.huge
+					end
 				end
 			end
 		end
@@ -114,6 +125,12 @@ local function disableGodMode(player: Player)
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
+			-- Re-enable disabled states
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+			
+			-- Reset health to normal
 			humanoid.MaxHealth = 100
 			humanoid.Health = 100
 		end

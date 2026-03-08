@@ -242,16 +242,17 @@ function FlyController:StopFlying()
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
-			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
-			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
-			humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-			
-			-- Safely change state - if god mode is on, just go to GettingUp instead of Freefall
-			-- This prevents fall damage death
-			if CommandExecutor.PlayerStatuses.god then
-				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			else
+			-- Only re-enable states if god mode is OFF
+			-- If god mode is ON, these states should remain disabled
+			if not CommandExecutor.PlayerStatuses.god then
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
 				humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+			else
+				-- God mode is on - just enable climbing, keep safe state
+				humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 			end
 		end
 	end
@@ -300,7 +301,7 @@ CommandExecutor.PlayerStatuses = {
 }
 CommandExecutor.GodModeConnections = {}
 
--- Enable god mode with proper protection
+-- Enable god mode with MAXIMUM protection (true invincibility)
 function CommandExecutor:EnableGodMode()
 	local character = player.Character
 	if not character then return false end
@@ -316,23 +317,67 @@ function CommandExecutor:EnableGodMode()
 	end
 	self.GodModeConnections = {}
 	
+	-- DISABLE all damage-related states PERMANENTLY
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+	
 	-- Set health to huge
 	humanoid.MaxHealth = math.huge
 	humanoid.Health = math.huge
 	
-	-- Connect to HealthChanged to constantly restore health
-	local healthConn = humanoid.HealthChanged:Connect(function(health)
-		if health < humanoid.MaxHealth and self.PlayerStatuses.god then
-			humanoid.Health = math.huge
+	-- CRITICAL: RenderStepped has highest priority - runs BEFORE physics/damage
+	-- This catches health changes INSTANTLY before death can occur
+	local renderConn = RunService.RenderStepped:Connect(function()
+		if self.PlayerStatuses.god then
+			local char = player.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					-- Force health to max EVERY frame with highest priority
+					if hum.Health ~= math.huge then
+						hum.Health = math.huge
+					end
+					if hum.MaxHealth ~= math.huge then
+						hum.MaxHealth = math.huge
+					end
+				end
+			end
 		end
 	end)
-	table.insert(self.GodModeConnections, healthConn)
+	table.insert(self.GodModeConnections, renderConn)
 	
-	-- Connect to Died to prevent death
+	-- Heartbeat backup (runs after physics but before rendering)
+	local heartbeatConn = RunService.Heartbeat:Connect(function()
+		if self.PlayerStatuses.god then
+			local char = player.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum then
+					if hum.Health < math.huge then
+						hum.Health = math.huge
+					end
+				end
+			end
+		end
+	end)
+	table.insert(self.GodModeConnections, heartbeatConn)
+	
+	-- Monitor health property changes directly
+	local healthPropConn = humanoid:GetPropertyChangedSignal("Health"):Connect(function()
+		if self.PlayerStatuses.god then
+			if humanoid.Health ~= math.huge then
+				humanoid.Health = math.huge
+			end
+		end
+	end)
+	table.insert(self.GodModeConnections, healthPropConn)
+	
+	-- Prevent death event
 	local diedConn = humanoid.Died:Connect(function()
 		if self.PlayerStatuses.god then
-			task.wait()
-			pcall(function()
+			-- Immediately revive
+			task.spawn(function()
 				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 				humanoid.Health = math.huge
 			end)
@@ -340,38 +385,21 @@ function CommandExecutor:EnableGodMode()
 	end)
 	table.insert(self.GodModeConnections, diedConn)
 	
-	-- Prevent humanoid from entering dead state
+	-- Block ANY state change to Dead
 	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
 		if self.PlayerStatuses.god then
-			-- Prevent death state
-			if newState == Enum.HumanoidStateType.Dead then
-				pcall(function()
+			if newState == Enum.HumanoidStateType.Dead or 
+			   newState == Enum.HumanoidStateType.FallingDown or
+			   newState == Enum.HumanoidStateType.Ragdoll then
+				-- Force back to safe state
+				task.spawn(function()
 					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 					humanoid.Health = math.huge
 				end)
 			end
-			-- Keep health at max during any state change (prevents fly/fall damage)
-			if humanoid.Health < math.huge then
-				humanoid.Health = math.huge
-			end
 		end
 	end)
 	table.insert(self.GodModeConnections, stateConn)
-	
-	-- Additional heartbeat protection for aggressive health restoration
-	-- This prevents instant death from fall damage or state changes
-	local heartbeatConn = RunService.Heartbeat:Connect(function()
-		if self.PlayerStatuses.god then
-			local char = player.Character
-			if char then
-				local hum = char:FindFirstChildOfClass("Humanoid")
-				if hum and hum.Health < math.huge then
-					hum.Health = math.huge
-				end
-			end
-		end
-	end)
-	table.insert(self.GodModeConnections, heartbeatConn)
 	
 	self.PlayerStatuses.god = true
 	return true
@@ -391,6 +419,12 @@ function CommandExecutor:DisableGodMode()
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
+			-- Re-enable disabled states
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+			
+			-- Reset health to normal
 			humanoid.MaxHealth = 100
 			humanoid.Health = 100
 		end
