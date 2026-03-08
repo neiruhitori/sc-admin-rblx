@@ -1,11 +1,22 @@
 --[[
 	===============================================
 	   ADMIN SCRIPT LOADER - CLIENT SIDE ONLY
-	   By: Mount Skuy Admin System
+	   By: TwoHand Comunity
+	   Discord: https://discord.gg/xHrJaSgy
 	   
-	   Cara pakai:
-	   1. Upload file ini ke GitHub (raw link)
-	   2. Di executor, jalankan:
+	   🔓 PUBLIC ACCESS - No admin check required!
+	   Anyone who executes this script gets full access.
+	   
+	   📝 LOGO SETUP (Optional):
+	   1. Upload logo.png to imgur.com
+	   2. Click on image → Right click → "Copy image address"
+	   3. Find line with: local LOGO_URL = 
+	   4. Replace URL with your imgur link
+	      Example: "https://i.imgur.com/XXXXX.png"
+	   
+	   🚀 HOW TO USE:
+	   1. Upload this file to GitHub (get raw link)
+	   2. In executor, run:
 	      loadstring(game:HttpGet("YOUR_GITHUB_RAW_URL"))()
 	===============================================
 ]]
@@ -17,16 +28,10 @@ print("🚀 Loading Admin Script...")
 -- ============================================
 local AdminConfig = {}
 
--- GANTI USERNAME KAMU DI SINI!
-AdminConfig.Admins = {
-	"Danielle_0021", -- Ganti dengan username Roblox kamu
-	[8987066648] = true, -- Contoh: [123456789] = true
-	-- Atau tambahkan lebih banyak admin:
-	-- "Username2",
-}
-
+-- Command prefix
 AdminConfig.Prefix = ";"
 
+-- UI Theme colors
 AdminConfig.Theme = {
 	Primary = Color3.fromRGB(45, 45, 45),
 	Secondary = Color3.fromRGB(35, 35, 35),
@@ -36,20 +41,7 @@ AdminConfig.Theme = {
 	Error = Color3.fromRGB(255, 0, 0),
 }
 
-function AdminConfig:IsAdmin(player)
-	for _, adminName in ipairs(self.Admins) do
-		if typeof(adminName) == "string" and player.Name == adminName then
-			return true
-		end
-	end
-	
-	if self.Admins[player.UserId] then
-		return true
-	end
-	
-	return false
-end
-
+-- Parse command function
 function AdminConfig:ParseCommand(input)
 	if not input:sub(1, #self.Prefix) == self.Prefix then
 		return "", {}
@@ -471,13 +463,15 @@ local iconCorner = Instance.new("UICorner")
 iconCorner.CornerRadius = UDim.new(0, 30)
 iconCorner.Parent = floatingIcon
 
-local iconLabel = Instance.new("TextLabel")
-iconLabel.Size = UDim2.new(1, 0, 1, 0)
-iconLabel.BackgroundTransparency = 1
-iconLabel.Text = "⚙️"
-iconLabel.TextSize = 32
-iconLabel.Font = Enum.Font.GothamBold
-iconLabel.Parent = floatingIcon
+-- Logo Image (SETUP: Upload logo.png to imgur.com, copy direct link, replace URL below)
+local LOGO_URL = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- REPLACE with https://i.imgur.com/XXXXX.png
+local iconImage = Instance.new("ImageLabel")
+iconImage.Size = UDim2.new(0.8, 0, 0.8, 0)
+iconImage.Position = UDim2.new(0.1, 0, 0.1, 0)
+iconImage.BackgroundTransparency = 1
+iconImage.Image = LOGO_URL
+iconImage.ScaleType = Enum.ScaleType.Fit
+iconImage.Parent = floatingIcon
 
 -- Main Frame
 local mainFrame = Instance.new("Frame")
@@ -513,15 +507,32 @@ titleFix.BorderSizePixel = 0
 titleFix.Parent = titleBar
 
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -120, 1, 0)
+titleLabel.Size = UDim2.new(1, -160, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "⚙️ Admin Panel (Client-Side)"
+titleLabel.Text = "⚙️ TwoHand Comunity - Admin Panel"
 titleLabel.TextColor3 = AdminConfig.Theme.Text
-titleLabel.TextSize = 20
+titleLabel.TextSize = 18
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = titleBar
+
+-- Discord Button
+local discordButton = Instance.new("TextButton")
+discordButton.Name = "DiscordButton"
+discordButton.Size = UDim2.new(0, 40, 0, 40)
+discordButton.Position = UDim2.new(1, -100, 0.5, -20)
+discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordButton.BorderSizePixel = 0
+discordButton.Text = "💬"
+discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordButton.TextSize = 20
+discordButton.Font = Enum.Font.GothamBold
+discordButton.Parent = titleBar
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 8)
+discordCorner.Parent = discordButton
 
 local closeButton = Instance.new("TextButton")
 closeButton.Name = "CloseButton"
@@ -539,11 +550,44 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeButton
 
+-- Watermark
+local watermark = Instance.new("Frame")
+watermark.Name = "Watermark"
+watermark.Size = UDim2.new(1, -30, 0, 30)
+watermark.Position = UDim2.new(0, 15, 0, 55)
+watermark.BackgroundColor3 = AdminConfig.Theme.Secondary
+watermark.BorderSizePixel = 0
+watermark.Parent = mainFrame
+
+local watermarkCorner = Instance.new("UICorner")
+watermarkCorner.CornerRadius = UDim.new(0, 6)
+watermarkCorner.Parent = watermark
+
+local watermarkLogo = Instance.new("ImageLabel")
+watermarkLogo.Size = UDim2.new(0, 24, 0, 24)
+watermarkLogo.Position = UDim2.new(0, 5, 0.5, -12)
+watermarkLogo.BackgroundTransparency = 1
+watermarkLogo.Image = LOGO_URL
+watermarkLogo.ScaleType = Enum.ScaleType.Fit
+watermarkLogo.Parent = watermark
+
+local watermarkText = Instance.new("TextLabel")
+watermarkText.Size = UDim2.new(1, -35, 1, 0)
+watermarkText.Position = UDim2.new(0, 35, 0, 0)
+watermarkText.BackgroundTransparency = 1
+watermarkText.Text = "Made by TwoHand Comunity | discord.gg/xHrJaSgy"
+watermarkText.TextColor3 = AdminConfig.Theme.Text
+watermarkText.TextSize = 12
+watermarkText.Font = Enum.Font.Gotham
+watermarkText.TextXAlignment = Enum.TextXAlignment.Left
+watermarkText.TextTransparency = 0.3
+watermarkText.Parent = watermark
+
 -- Player Selector
 local playerSelectorFrame = Instance.new("Frame")
 playerSelectorFrame.Name = "PlayerSelector"
 playerSelectorFrame.Size = UDim2.new(1, -30, 0, 45)
-playerSelectorFrame.Position = UDim2.new(0, 15, 0, 60)
+playerSelectorFrame.Position = UDim2.new(0, 15, 0, 90)
 playerSelectorFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerSelectorFrame.BorderSizePixel = 0
 playerSelectorFrame.Parent = mainFrame
@@ -631,7 +675,7 @@ resetCorner.Parent = resetButton
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(0, 0, 0, 0)
-playerListFrame.Position = UDim2.new(0, 115, 0, 110)
+playerListFrame.Position = UDim2.new(0, 115, 0, 140)
 playerListFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListFrame.BorderSizePixel = 0
 playerListFrame.Visible = false
@@ -654,8 +698,8 @@ listLayout.Parent = playerListFrame
 -- Commands Container
 local commandsContainer = Instance.new("ScrollingFrame")
 commandsContainer.Name = "CommandsContainer"
-commandsContainer.Size = UDim2.new(1, -30, 1, -125)
-commandsContainer.Position = UDim2.new(0, 15, 0, 115)
+commandsContainer.Size = UDim2.new(1, -30, 1, -155)
+commandsContainer.Position = UDim2.new(0, 15, 0, 145)
 commandsContainer.BackgroundTransparency = 1
 commandsContainer.BorderSizePixel = 0
 commandsContainer.ScrollBarThickness = 6
@@ -1133,29 +1177,35 @@ dialogInput.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
-floatingIcon.MouseButton1Click:Connect(function()
-	AdminGUI:TogglePanel()
-end)
-
 local iconDragging = false
 local iconDragStart
 local iconStartPos
-local dragOffset -- Offset from click point to icon position
+local dragOffset
+local hasDragged = false
 
 floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
-		iconDragStart = input.Position
+		hasDragged = false
+		
+		-- Use GetMouseLocation for accurate screen coordinates
+		local mousePos = UserInputService:GetMouseLocation()
+		iconDragStart = mousePos
 		iconStartPos = floatingIcon.AbsolutePosition
-		-- Calculate offset from mouse to icon top-left corner
+		
+		-- Calculate offset from cursor to icon top-left
 		dragOffset = Vector2.new(
-			iconStartPos.X - iconDragStart.X,
-			iconStartPos.Y - iconDragStart.Y
+			iconStartPos.X - mousePos.X,
+			iconStartPos.Y - mousePos.Y
 		)
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				iconDragging = false
+				-- If no significant drag occurred, toggle panel
+				if not hasDragged then
+					AdminGUI:TogglePanel()
+				end
 			end
 		end)
 	end
@@ -1163,12 +1213,20 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local mousePos = UserInputService:GetMouseLocation()
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		-- Apply offset so icon follows cursor at click point
-		local newX = input.Position.X + dragOffset.X
-		local newY = input.Position.Y + dragOffset.Y
+		-- Check if moved significantly (more than 5 pixels)
+		local dragDistance = (mousePos - iconDragStart).Magnitude
+		if dragDistance > 5 then
+			hasDragged = true
+		end
 		
+		-- Apply offset to keep cursor at same relative position
+		local newX = mousePos.X + dragOffset.X
+		local newY = mousePos.Y + dragOffset.Y
+		
+		-- Clamp to screen bounds
 		newX = math.clamp(newX, 0, viewport.X - 60)
 		newY = math.clamp(newY, 0, viewport.Y - 60)
 		
@@ -1178,6 +1236,17 @@ end)
 
 closeButton.MouseButton1Click:Connect(function()
 	AdminGUI:TogglePanel()
+end)
+
+discordButton.MouseButton1Click:Connect(function()
+	local discordLink = "https://discord.gg/xHrJaSgy"
+	if setclipboard then
+		setclipboard(discordLink)
+		AdminGUI:ShowNotification("Discord link copied to clipboard!", "success")
+	else
+		AdminGUI:ShowNotification("Discord: discord.gg/xHrJaSgy", "info")
+	end
+	print("TwoHand Comunity Discord: " .. discordLink)
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
@@ -1298,14 +1367,8 @@ AdminGUI:RefreshAllToggles() -- Initialize toggle statuses
 -- ============================================
 print("✅ Admin Script Loaded Successfully!")
 print("👤 Username: " .. player.Name)
-
-if AdminConfig:IsAdmin(player) then
-	print("✅ You are an ADMIN!")
-	AdminGUI:ShowNotification("Admin Script Loaded!\nYou are an admin.", "success")
-else
-	print("⚠️ You are NOT an admin!")
-	AdminGUI:ShowNotification("Admin Script Loaded!\nBut you are not in the admin list.", "error")
-end
+print("🔓 Access: PUBLIC (No admin check for executor version)")
+AdminGUI:ShowNotification("TwoHand Comunity Admin Script Loaded!\nAll features unlocked!", "success")
 
 print("\n📌 How to use:")
 print("   • Click the ⚙️ floating button to open admin panel")

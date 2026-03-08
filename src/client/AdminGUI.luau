@@ -1,6 +1,13 @@
 --[[
 	Admin GUI Client
 	Modern button-based admin panel with draggable icon
+	By: TwoHand Comunity
+	Discord: https://discord.gg/xHrJaSgy
+	
+	LOGO SETUP FOR ROBLOX STUDIO:
+	1. Upload logo.png to Roblox as an image asset
+	2. Get the Asset ID (rbxassetid://NUMBERS)
+	3. Replace LOGO_ASSET_ID below with your asset ID
 ]]
 
 local Players = game:GetService("Players")
@@ -17,9 +24,12 @@ local AdminRemote = require(ReplicatedStorage.Shared.AdminRemote)
 local AdminGUI = {}
 AdminGUI.IsOpen = false
 AdminGUI.SelectedPlayer = nil
-AdminGUI.CurrentTab = "Admin" -- Track current tab
-AdminGUI.StatusRefreshRate = 2 -- Refresh status every 2 seconds
-AdminGUI.ButtonStatuses = {} -- Track button status indicators
+AdminGUI.CurrentTab = "Admin"
+AdminGUI.StatusRefreshRate = 2
+AdminGUI.ButtonStatuses = {}
+
+-- Logo Asset ID (upload logo.png to Roblox and replace this)
+local LOGO_ASSET_ID = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- REPLACE with rbxassetid://YOUR_ASSET_ID
 
 -- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -43,14 +53,14 @@ local iconCorner = Instance.new("UICorner")
 iconCorner.CornerRadius = UDim.new(0, 30)
 iconCorner.Parent = floatingIcon
 
--- Icon emoji/text
-local iconLabel = Instance.new("TextLabel")
-iconLabel.Size = UDim2.new(1, 0, 1, 0)
-iconLabel.BackgroundTransparency = 1
-iconLabel.Text = "⚙️"
-iconLabel.TextSize = 32
-iconLabel.Font = Enum.Font.GothamBold
-iconLabel.Parent = floatingIcon
+-- Logo Image
+local iconImage = Instance.new("ImageLabel")
+iconImage.Size = UDim2.new(0.8, 0, 0.8, 0)
+iconImage.Position = UDim2.new(0.1, 0, 0.1, 0)
+iconImage.BackgroundTransparency = 1
+iconImage.Image = LOGO_ASSET_ID
+iconImage.ScaleType = Enum.ScaleType.Fit
+iconImage.Parent = floatingIcon
 
 -- Icon shadow
 local iconShadow = Instance.new("ImageLabel")
@@ -59,7 +69,7 @@ iconShadow.BackgroundTransparency = 1
 iconShadow.Position = UDim2.new(0, -5, 0, -5)
 iconShadow.Size = UDim2.new(1, 10, 1, 10)
 iconShadow.ZIndex = 0
-iconShadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+iconShadow.Image = "rbxasset://75900181113050"
 iconShadow.ImageColor3 = Color3.new(0, 0, 0)
 iconShadow.ImageTransparency = 0.7
 iconShadow.Parent = floatingIcon
@@ -100,15 +110,32 @@ titleFix.Parent = titleBar
 
 -- Title text
 local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -120, 1, 0)
+titleLabel.Size = UDim2.new(1, -160, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "⚙️ Admin Panel"
+titleLabel.Text = "⚙️ TwoHand Comunity - Admin Panel"
 titleLabel.TextColor3 = AdminConfig.Theme.Text
-titleLabel.TextSize = 20
+titleLabel.TextSize = 18
 titleLabel.Font = Enum.Font.GothamBold
 titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = titleBar
+
+-- Discord Button
+local discordButton = Instance.new("TextButton")
+discordButton.Name = "DiscordButton"
+discordButton.Size = UDim2.new(0, 40, 0, 40)
+discordButton.Position = UDim2.new(1, -100, 0.5, -20)
+discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordButton.BorderSizePixel = 0
+discordButton.Text = "💬"
+discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordButton.TextSize = 20
+discordButton.Font = Enum.Font.GothamBold
+discordButton.Parent = titleBar
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 8)
+discordCorner.Parent = discordButton
 
 -- Close button
 local closeButton = Instance.new("TextButton")
@@ -127,11 +154,44 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0, 8)
 closeCorner.Parent = closeButton
 
+-- ==================== WATERMARK ====================
+local watermark = Instance.new("Frame")
+watermark.Name = "Watermark"
+watermark.Size = UDim2.new(1, -30, 0, 30)
+watermark.Position = UDim2.new(0, 15, 0, 55)
+watermark.BackgroundColor3 = AdminConfig.Theme.Secondary
+watermark.BorderSizePixel = 0
+watermark.Parent = mainFrame
+
+local watermarkCorner = Instance.new("UICorner")
+watermarkCorner.CornerRadius = UDim.new(0, 6)
+watermarkCorner.Parent = watermark
+
+local watermarkLogo = Instance.new("ImageLabel")
+watermarkLogo.Size = UDim2.new(0, 24, 0, 24)
+watermarkLogo.Position = UDim2.new(0, 5, 0.5, -12)
+watermarkLogo.BackgroundTransparency = 1
+watermarkLogo.Image = LOGO_ASSET_ID
+watermarkLogo.ScaleType = Enum.ScaleType.Fit
+watermarkLogo.Parent = watermark
+
+local watermarkText = Instance.new("TextLabel")
+watermarkText.Size = UDim2.new(1, -35, 1, 0)
+watermarkText.Position = UDim2.new(0, 35, 0, 0)
+watermarkText.BackgroundTransparency = 1
+watermarkText.Text = "Made by TwoHand Comunity | discord.gg/xHrJaSgy"
+watermarkText.TextColor3 = AdminConfig.Theme.Text
+watermarkText.TextSize = 12
+watermarkText.Font = Enum.Font.Gotham
+watermarkText.TextXAlignment = Enum.TextXAlignment.Left
+watermarkText.TextTransparency = 0.3
+watermarkText.Parent = watermark
+
 -- ==================== PLAYER SELECTOR ====================
 local playerSelectorFrame = Instance.new("Frame")
 playerSelectorFrame.Name = "PlayerSelector"
 playerSelectorFrame.Size = UDim2.new(1, -30, 0, 45)
-playerSelectorFrame.Position = UDim2.new(0, 15, 0, 60)
+playerSelectorFrame.Position = UDim2.new(0, 15, 0, 90)
 playerSelectorFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerSelectorFrame.BorderSizePixel = 0
 playerSelectorFrame.Parent = mainFrame
@@ -224,7 +284,7 @@ refreshCorner.Parent = refreshButton
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(0, 0, 0, 0)
-playerListFrame.Position = UDim2.new(0, 115, 0, 160)
+playerListFrame.Position = UDim2.new(0, 115, 0, 140)
 playerListFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListFrame.BorderSizePixel = 0
 playerListFrame.Visible = false
@@ -246,8 +306,8 @@ listLayout.Parent = playerListFrame
 -- ==================== COMMANDS CONTAINER ====================
 local commandsContainer = Instance.new("ScrollingFrame")
 commandsContainer.Name = "CommandsContainer"
-commandsContainer.Size = UDim2.new(1, -30, 1, -125)
-commandsContainer.Position = UDim2.new(0, 15, 0, 115)
+commandsContainer.Size = UDim2.new(1, -30, 1, -155)
+commandsContainer.Position = UDim2.new(0, 15, 0, 145)
 commandsContainer.BackgroundTransparency = 1
 commandsContainer.BorderSizePixel = 0
 commandsContainer.ScrollBarThickness = 6
@@ -726,31 +786,36 @@ end)
 
 -- ==================== EVENT CONNECTIONS ====================
 
--- Floating icon click
-floatingIcon.MouseButton1Click:Connect(function()
-	AdminGUI:TogglePanel()
-end)
-
--- Floating icon drag
+-- Floating icon drag and click
 local iconDragging = false
 local iconDragStart
 local iconStartPos
 local dragOffset
+local hasDragged = false
 
 floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
-		iconDragStart = input.Position
+		hasDragged = false
+		
+		-- Use GetMouseLocation for accurate screen coordinates
+		local mousePos = UserInputService:GetMouseLocation()
+		iconDragStart = mousePos
 		iconStartPos = floatingIcon.AbsolutePosition
-		-- Calculate offset from cursor to icon corner
+		
+		-- Calculate offset from cursor to icon top-left
 		dragOffset = Vector2.new(
-			iconStartPos.X - iconDragStart.X,
-			iconStartPos.Y - iconDragStart.Y
+			iconStartPos.X - mousePos.X,
+			iconStartPos.Y - mousePos.Y
 		)
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				iconDragging = false
+				-- If no significant drag occurred, toggle panel
+				if not hasDragged then
+					AdminGUI:TogglePanel()
+				end
 			end
 		end)
 	end
@@ -758,10 +823,18 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local mousePos = UserInputService:GetMouseLocation()
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		local newX = input.Position.X + dragOffset.X
-		local newY = input.Position.Y + dragOffset.Y
+		-- Check if moved significantly (more than 5 pixels)
+		local dragDistance = (mousePos - iconDragStart).Magnitude
+		if dragDistance > 5 then
+			hasDragged = true
+		end
+		
+		-- Apply offset to keep cursor at same relative position
+		local newX = mousePos.X + dragOffset.X
+		local newY = mousePos.Y + dragOffset.Y
 		
 		-- Clamp to screen bounds
 		newX = math.clamp(newX, 0, viewport.X - 60)
@@ -774,6 +847,18 @@ end)
 -- Close button
 closeButton.MouseButton1Click:Connect(function()
 	AdminGUI:TogglePanel()
+end)
+
+-- Discord button
+discordButton.MouseButton1Click:Connect(function()
+	local discordLink = "https://discord.gg/xHrJaSgy"
+	if setclipboard then
+		setclipboard(discordLink)
+		AdminGUI:ShowNotification("Discord link copied to clipboard!", "success")
+	else
+		AdminGUI:ShowNotification("Discord: discord.gg/xHrJaSgy", "info")
+	end
+	print("TwoHand Comunity Discord: " .. discordLink)
 end)
 
 -- Player dropdown
@@ -888,6 +973,7 @@ local function addButtonHover(button: TextButton, hoverColor: Color3?)
 end
 
 addButtonHover(closeButton)
+addButtonHover(discordButton)
 addButtonHover(refreshButton)
 addButtonHover(resetButton)
 addButtonHover(floatingIcon)
