@@ -69,6 +69,20 @@ local Config = {
 		AutoEquipBestRod = true,
 	},
 	
+	-- Auto Weather Settings
+	AutoWeather = {
+		Enabled = false,
+		SelectedWeathers = {
+			Cloudy = false,
+			Wind = false,
+			Snow = false,
+			Storm = false,
+			Radiant = false,
+		},
+		MaxSlots = 3,
+		CheckInterval = 5, -- Check every 5 seconds
+	},
+	
 	-- Delays (in seconds)
 	Delays = {
 		TalonDelay = 0.1,
@@ -120,6 +134,209 @@ end
 
 -- Auto-enable Anti-AFK
 AntiAFK:Enable()
+
+-- ============================================
+-- WEATHER CONTROLLER
+-- ============================================
+local WeatherController = {}
+WeatherController.Active = false
+WeatherController.Connection = nil
+WeatherController.Stats = {
+	WeathersBought = 0,
+	PointsSpent = 0,
+}
+
+-- Find Weather Machine GUI
+function WeatherController:FindWeatherMachine()
+	local playerGui = player:WaitForChild("PlayerGui")
+	
+	-- Try common GUI names for weather machine
+	local weatherGuis = {"WeatherMachine", "WeatherGui", "Weather", "WeatherShop"}
+	for _, guiName in ipairs(weatherGuis) do
+		local gui = playerGui:FindFirstChild(guiName)
+		if gui then
+			return gui
+		end
+	end
+	
+	return nil
+end
+
+-- Get available weather slots (0-3)
+function WeatherController:GetAvailableSlots()
+	local weatherGui = self:FindWeatherMachine()
+	if not weatherGui then return 0 end
+	
+	-- Try to find slot info from GUI
+	local slotLabel = weatherGui:FindFirstChild("AvailableSlots", true) or 
+	                  weatherGui:FindFirstChild("Slots", true)
+	
+	if slotLabel and slotLabel.Text then
+		local current, max = slotLabel.Text:match("(%d+)/(%d+)")
+		if current and max then
+			return tonumber(max) - tonumber(current)
+		end
+	end
+	
+	-- Default to max slots if can't detect
+	return Config.AutoWeather.MaxSlots
+end
+
+-- Get current points
+function WeatherController:GetPoints()
+	local playerGui = player:WaitForChild("PlayerGui")
+	
+	-- Try to find points/currency label
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		local pointsLabel = gui:FindFirstChild("Points", true) or 
+		                    gui:FindFirstChild("Currency", true) or
+		                    gui:FindFirstChild("Money", true)
+		
+		if pointsLabel and pointsLabel.Text then
+			local points = pointsLabel.Text:match("%d+")
+			if points then
+				return tonumber(points) or 0
+			end
+		end
+	end
+	
+	return 0
+end
+
+-- Buy a specific weather
+function WeatherController:BuyWeather(weatherName)
+	local success = false
+	
+	-- Method 1: Try to find weather button in GUI
+	local weatherGui = self:FindWeatherMachine()
+	if weatherGui then
+		local weatherButton = weatherGui:FindFirstChild(weatherName, true)
+		if weatherButton and weatherButton:IsA("GuiButton") then
+			pcall(function()
+				firesignal(weatherButton.MouseButton1Click)
+				success = true
+			end)
+		end
+	end
+	
+	-- Method 2: Try RemoteEvent/RemoteFunction
+	if not success then
+		local remotes = {"BuyWeather", "PurchaseWeather", "WeatherPurchase", "SetWeather"}
+		for _, remoteName in ipairs(remotes) do
+			local remote = ReplicatedStorage:FindFirstChild(remoteName, true)
+			if remote then
+				if remote:IsA("RemoteEvent") then
+					pcall(function()
+						remote:FireServer(weatherName)
+						success = true
+					end)
+				elseif remote:IsA("RemoteFunction") then
+					pcall(function()
+						remote:InvokeServer(weatherName)
+						success = true
+					end)
+				end
+				if success then break end
+			end
+		end
+	end
+	
+	-- Method 3: Try workspace interaction
+	if not success then
+		local weatherMachine = workspace:FindFirstChild("WeatherMachine", true)
+		if weatherMachine then
+			-- Try ProximityPrompt
+			local prompt = weatherMachine:FindFirstChildOfClass("ProximityPrompt", true)
+			if prompt and fireproximityprompt then
+				pcall(function()
+					fireproximityprompt(prompt)
+					success = true
+				end)
+			end
+			
+			-- Try ClickDetector
+			local detector = weatherMachine:FindFirstChildOfClass("ClickDetector", true)
+			if detector and fireclickdetector then
+				pcall(function()
+					fireclickdetector(detector)
+					success = true
+				end)
+			end
+		end
+	end
+	
+	if success then
+		self.Stats.WeathersBought = self.Stats.WeathersBought + 1
+		print("☁️ Bought weather:", weatherName)
+	end
+	
+	return success
+end
+
+-- Get list of selected weathers
+function WeatherController:GetSelectedWeathers()
+	local selected = {}
+	for weather, enabled in pairs(Config.AutoWeather.SelectedWeathers) do
+		if enabled then
+			table.insert(selected, weather)
+		end
+	end
+	return selected
+end
+
+-- Start auto weather buying
+function WeatherController:Start()
+	if self.Active then return end
+	
+	self.Active = true
+	Config.AutoWeather.Enabled = true
+	print("☁️ Auto Weather Started!")
+	
+	task.spawn(function()
+		while Config.AutoWeather.Enabled and self.Active do
+			task.wait(Config.AutoWeather.CheckInterval)
+			
+			-- Get selected weathers
+			local selectedWeathers = self:GetSelectedWeathers()
+			if #selectedWeathers == 0 then
+				print("⚠️ No weathers selected for auto-buy")
+				task.wait(5)
+				continue
+			end
+			
+			-- Check points
+			local points = self:GetPoints()
+			if points <= 0 then
+				print("❌ No points available, stopping auto weather")
+				self:Stop()
+				break
+			end
+			
+			-- Check available slots
+			local availableSlots = self:GetAvailableSlots()
+			if availableSlots > 0 then
+				-- Buy random selected weather
+				local randomWeather = selectedWeathers[math.random(1, #selectedWeathers)]
+				local success = self:BuyWeather(randomWeather)
+				
+				if success then
+					if GUI.Elements.WeathersBoughtLabel then
+						GUI.Elements.WeathersBoughtLabel.Text = "☁️ Weathers Bought: " .. self.Stats.WeathersBought
+					end
+					task.wait(1) -- Small delay after purchase
+				end
+			end
+		end
+	end)
+end
+
+-- Stop auto weather
+function WeatherController:Stop()
+	self.Active = false
+	Config.AutoWeather.Enabled = false
+	
+	print("🛑 Auto Weather Stopped!")
+end
 
 -- ============================================
 -- FISHING CONTROLLER
@@ -1182,6 +1399,117 @@ createToggle(automationContent, "🛡️ Anti AFK", true, function(enabled)
 end)
 
 createInfoLabel(automationContent, "ℹ️ Auto Sell will teleport you to merchant periodically")
+
+-- Weather Section
+local weatherTitle = Instance.new("TextLabel")
+weatherTitle.Size = UDim2.new(1, -20, 0, 30)
+weatherTitle.BackgroundTransparency = 1
+weatherTitle.Text = "☁️ Auto Weather"
+weatherTitle.TextColor3 = Config.Theme.Accent
+weatherTitle.TextSize = 16
+weatherTitle.Font = Enum.Font.GothamBold
+weatherTitle.TextXAlignment = Enum.TextXAlignment.Left
+weatherTitle.Parent = automationContent
+
+createToggle(automationContent, "🌤️ Enable Auto Buy Weather", false, function(enabled)
+	if enabled then
+		-- Check if any weather is selected
+		local hasSelection = false
+		for _, selected in pairs(Config.AutoWeather.SelectedWeathers) do
+			if selected then
+				hasSelection = true
+				break
+			end
+		end
+		
+		if not hasSelection then
+			print("⚠️ Please select at least one weather to buy!")
+			return
+		end
+		
+		WeatherController:Start()
+	else
+		WeatherController:Stop()
+	end
+end)
+
+-- Weather selection checkboxes
+local weatherList = {"Cloudy", "Wind", "Snow", "Storm", "Radiant"}
+local weatherIcons = {
+	Cloudy = "☁️",
+	Wind = "💨",
+	Snow = "❄️",
+	Storm = "⛈️",
+	Radiant = "✨",
+}
+
+for _, weatherName in ipairs(weatherList) do
+	local container = Instance.new("Frame")
+	container.Size = UDim2.new(1, 0, 0, 35)
+	container.BackgroundColor3 = Config.Theme.Secondary
+	container.BorderSizePixel = 0
+	container.Parent = automationContent
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 6)
+	corner.Parent = container
+	
+	local checkbox = Instance.new("TextButton")
+	checkbox.Size = UDim2.new(0, 25, 0, 25)
+	checkbox.Position = UDim2.new(0, 10, 0.5, -12.5)
+	checkbox.BackgroundColor3 = Config.Theme.Primary
+	checkbox.BorderSizePixel = 0
+	checkbox.Text = ""
+	checkbox.Parent = container
+	
+	local checkCorner = Instance.new("UICorner")
+	checkCorner.CornerRadius = UDim.new(0, 4)
+	checkCorner.Parent = checkbox
+	
+	local checkmark = Instance.new("TextLabel")
+	checkmark.Size = UDim2.new(1, 0, 1, 0)
+	checkmark.BackgroundTransparency = 1
+	checkmark.Text = ""
+	checkmark.TextColor3 = Config.Theme.Success
+	checkmark.TextSize = 18
+	checkmark.Font = Enum.Font.GothamBold
+	checkmark.Parent = checkbox
+	
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -50, 1, 0)
+	label.Position = UDim2.new(0, 45, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = weatherIcons[weatherName] .. " " .. weatherName
+	label.TextColor3 = Config.Theme.Text
+	label.TextSize = 14
+	label.Font = Enum.Font.Gotham
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.Parent = container
+	
+	checkbox.MouseButton1Click:Connect(function()
+		Config.AutoWeather.SelectedWeathers[weatherName] = not Config.AutoWeather.SelectedWeathers[weatherName]
+		checkmark.Text = Config.AutoWeather.SelectedWeathers[weatherName] and "✓" or ""
+		
+		TweenService:Create(checkbox, TweenInfo.new(0.2), {
+			BackgroundColor3 = Config.AutoWeather.SelectedWeathers[weatherName] and Config.Theme.Success or Config.Theme.Primary
+		}):Play()
+	end)
+end
+
+-- Weather stats
+local weatherStatsLabel = Instance.new("TextLabel")
+weatherStatsLabel.Size = UDim2.new(1, -20, 0, 25)
+weatherStatsLabel.BackgroundTransparency = 1
+weatherStatsLabel.Text = "☁️ Weathers Bought: 0"
+weatherStatsLabel.TextColor3 = Config.Theme.TextDark
+weatherStatsLabel.TextSize = 12
+weatherStatsLabel.Font = Enum.Font.Gotham
+weatherStatsLabel.TextXAlignment = Enum.TextXAlignment.Left
+weatherStatsLabel.Parent = automationContent
+
+GUI.Elements.WeathersBoughtLabel = weatherStatsLabel
+
+createInfoLabel(automationContent, "ℹ️ Max 3 weather slots. Auto re-buy when time expires")
 
 -- Settings Tab Content
 createSlider(settingsContent, "Cast Delay", 0.1, 5, 0.5, "s", function(value)
