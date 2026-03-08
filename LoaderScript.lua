@@ -291,6 +291,85 @@ CommandExecutor.PlayerStatuses = {
 	god = false,
 	antiafk = false
 }
+CommandExecutor.GodModeConnections = {}
+
+-- Enable god mode with proper protection
+function CommandExecutor:EnableGodMode()
+	local character = player.Character
+	if not character then return false end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return false end
+	
+	-- Clean up existing connections
+	if self.GodModeConnections then
+		for _, conn in ipairs(self.GodModeConnections) do
+			pcall(function() conn:Disconnect() end)
+		end
+	end
+	self.GodModeConnections = {}
+	
+	-- Set health to huge
+	humanoid.MaxHealth = math.huge
+	humanoid.Health = math.huge
+	
+	-- Connect to HealthChanged to constantly restore health
+	local healthConn = humanoid.HealthChanged:Connect(function(health)
+		if health < humanoid.MaxHealth and self.PlayerStatuses.god then
+			humanoid.Health = math.huge
+		end
+	end)
+	table.insert(self.GodModeConnections, healthConn)
+	
+	-- Connect to Died to prevent death
+	local diedConn = humanoid.Died:Connect(function()
+		if self.PlayerStatuses.god then
+			task.wait()
+			pcall(function()
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+				humanoid.Health = math.huge
+			end)
+		end
+	end)
+	table.insert(self.GodModeConnections, diedConn)
+	
+	-- Prevent humanoid from entering dead state
+	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState == Enum.HumanoidStateType.Dead and self.PlayerStatuses.god then
+			pcall(function()
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+				humanoid.Health = math.huge
+			end)
+		end
+	end)
+	table.insert(self.GodModeConnections, stateConn)
+	
+	self.PlayerStatuses.god = true
+	return true
+end
+
+-- Disable god mode
+function CommandExecutor:DisableGodMode()
+	-- Disconnect all god mode connections
+	if self.GodModeConnections then
+		for _, conn in ipairs(self.GodModeConnections) do
+			pcall(function() conn:Disconnect() end)
+		end
+		self.GodModeConnections = {}
+	end
+	
+	local character = player.Character
+	if character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.MaxHealth = 100
+			humanoid.Health = 100
+		end
+	end
+	
+	self.PlayerStatuses.god = false
+	return true
+end
 
 function CommandExecutor:GetTargetPlayer(targetName)
 	if not targetName or targetName == "" then
@@ -363,16 +442,12 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
 			if self.PlayerStatuses.god then
 				-- Turn off god mode
-				player.Character.Humanoid.MaxHealth = 100
-				player.Character.Humanoid.Health = 100
-				self.PlayerStatuses.god = false
+				self:DisableGodMode()
 				return true, "God mode disabled"
 			else
 				-- Turn on god mode
-				player.Character.Humanoid.MaxHealth = math.huge
-				player.Character.Humanoid.Health = math.huge
-				self.PlayerStatuses.god = true
-				return true, "God mode enabled"
+				self:EnableGodMode()
+				return true, "God mode enabled (true invincibility)"
 			end
 		end
 		
@@ -403,6 +478,8 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 			humanoid.MaxHealth = 100
 			humanoid.Health = 100
 			FlyController:StopFlying()
+			-- Disable god mode properly
+			self:DisableGodMode()
 			-- Reset all statuses
 			self.PlayerStatuses.fly = false
 			self.PlayerStatuses.god = false
@@ -1356,6 +1433,18 @@ AdminGUI:UpdatePlayerList()
 AdminGUI:RefreshAllToggles() -- Initialize toggle statuses
 
 -- ============================================
+-- CHARACTER RESPAWN HANDLER
+-- ============================================
+-- Reapply god mode when character respawns
+player.CharacterAdded:Connect(function(character)
+	task.wait(0.1) -- Wait for character to fully load
+	if CommandExecutor.PlayerStatuses.god then
+		CommandExecutor:EnableGodMode()
+		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
+	end
+end)
+
+-- ============================================
 -- INITIALIZATION
 -- ============================================
 print("✅ Admin Script Loaded Successfully!")
@@ -1370,7 +1459,7 @@ print("\n🔧 Available commands (client-side only):")
 print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
 print("   ;jp [number] - Set jump power")
-print("   ;god - Toggle god mode")
+print("   ;god - Toggle god mode (true invincibility)")
 print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")

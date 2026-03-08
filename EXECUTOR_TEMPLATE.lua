@@ -49,7 +49,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/Lo
     ✈️ Fly (WASD + Space + Shift)
     🏃 Speed boost
     🦘 Jump power
-    🛡️ God mode
+    🛡️ God mode (true invincibility)
     👻 Invisible
     ⏰ Anti-AFK
     

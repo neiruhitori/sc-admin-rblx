@@ -12,6 +12,7 @@ local AdminRemote = require(ReplicatedStorage.Shared.AdminRemote)
 local AdminCommands = {}
 AdminCommands.Commands = {}
 AdminCommands.PlayerStatus = {} -- Track player status (god, fly, invis, etc)
+AdminCommands.GodModeConnections = {} -- Track connections for god mode
 
 -- Helper function to get or create player status
 local function getPlayerStatus(playerName: string)
@@ -24,6 +25,78 @@ local function getPlayerStatus(playerName: string)
 		}
 	end
 	return AdminCommands.PlayerStatus[playerName]
+end
+
+-- Helper function to enable god mode with proper protection
+local function enableGodMode(player: Player)
+	local character = player.Character
+	if not character then return end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	
+	-- Clean up existing connections
+	if AdminCommands.GodModeConnections[player.UserId] then
+		for _, conn in ipairs(AdminCommands.GodModeConnections[player.UserId]) do
+			conn:Disconnect()
+		end
+	end
+	AdminCommands.GodModeConnections[player.UserId] = {}
+	
+	-- Set health to huge
+	humanoid.MaxHealth = math.huge
+	humanoid.Health = math.huge
+	
+	-- Connect to HealthChanged to constantly restore health
+	local healthConn = humanoid.HealthChanged:Connect(function(health)
+		if health < humanoid.MaxHealth then
+			humanoid.Health = math.huge
+		end
+	end)
+	table.insert(AdminCommands.GodModeConnections[player.UserId], healthConn)
+	
+	-- Connect to Died to prevent death
+	local diedConn = humanoid.Died:Connect(function()
+		if getPlayerStatus(player.Name).GodMode then
+			task.wait()
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			humanoid.Health = math.huge
+		end
+	end)
+	table.insert(AdminCommands.GodModeConnections[player.UserId], diedConn)
+	
+	-- Prevent humanoid from entering dead state
+	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
+		if newState == Enum.HumanoidStateType.Dead and getPlayerStatus(player.Name).GodMode then
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			humanoid.Health = math.huge
+		end
+	end)
+	table.insert(AdminCommands.GodModeConnections[player.UserId], stateConn)
+	
+	getPlayerStatus(player.Name).GodMode = true
+end
+
+-- Helper function to disable god mode
+local function disableGodMode(player: Player)
+	-- Disconnect all god mode connections
+	if AdminCommands.GodModeConnections[player.UserId] then
+		for _, conn in ipairs(AdminCommands.GodModeConnections[player.UserId]) do
+			conn:Disconnect()
+		end
+		AdminCommands.GodModeConnections[player.UserId] = nil
+	end
+	
+	local character = player.Character
+	if character then
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.MaxHealth = 100
+			humanoid.Health = 100
+		end
+	end
+	
+	getPlayerStatus(player.Name).GodMode = false
 end
 
 -- Helper function untuk find player by name
@@ -217,15 +290,11 @@ AdminCommands.Commands.god = function(executor: Player, args: {string})
 		end
 	end
 	
-	local character = target.Character
-	if character then
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.MaxHealth = math.huge
-			humanoid.Health = math.huge
-			getPlayerStatus(target.Name).GodMode = true
-			notify(executor, "God mode enabled for " .. target.Name, "success")
-		end
+	if target.Character then
+		enableGodMode(target)
+		notify(executor, "God mode enabled for " .. target.Name .. " (true invincibility)", "success")
+	else
+		notify(executor, "Character not found!", "error")
 	end
 end
 
@@ -240,16 +309,8 @@ AdminCommands.Commands.ungod = function(executor: Player, args: {string})
 		end
 	end
 	
-	local character = target.Character
-	if character then
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			humanoid.MaxHealth = 100
-			humanoid.Health = 100
-			getPlayerStatus(target.Name).GodMode = false
-			notify(executor, "God mode disabled for " .. target.Name, "success")
-		end
-	end
+	disableGodMode(target)
+	notify(executor, "God mode disabled for " .. target.Name, "success")
 end
 
 -- Respawn command
@@ -503,6 +564,9 @@ AdminCommands.Commands.reset = function(executor: Player, args: {string})
 	status.Invisible = false
 	status.Frozen = false
 	
+	-- Disable god mode properly
+	disableGodMode(target)
+	
 	notify(executor, "Reset " .. target.Name .. " to normal", "success")
 end
 
@@ -597,6 +661,38 @@ function AdminCommands:Initialize()
 		
 		return getPlayerStatus(targetName)
 	end
+	
+	-- Handle player character respawn (reapply god mode if it was active)
+	Players.PlayerAdded:Connect(function(player)
+		player.CharacterAdded:Connect(function(character)
+			if getPlayerStatus(player.Name).GodMode then
+				-- Wait for humanoid to load
+				task.wait(0.1)
+				enableGodMode(player)
+			end
+		end)
+	end)
+	
+	-- Handle existing players
+	for _, player in ipairs(Players:GetPlayers()) do
+		player.CharacterAdded:Connect(function(character)
+			if getPlayerStatus(player.Name).GodMode then
+				task.wait(0.1)
+				enableGodMode(player)
+			end
+		end)
+	end
+	
+	-- Cleanup on player leaving
+	Players.PlayerRemoving:Connect(function(player)
+		if AdminCommands.GodModeConnections[player.UserId] then
+			for _, conn in ipairs(AdminCommands.GodModeConnections[player.UserId]) do
+				conn:Disconnect()
+			end
+			AdminCommands.GodModeConnections[player.UserId] = nil
+		end
+		AdminCommands.PlayerStatus[player.Name] = nil
+	end)
 	
 	print("Admin Commands System initialized!")
 end
