@@ -348,7 +348,14 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 	elseif command == "jp" or command == "jumppower" then
 		local jp = tonumber(args[1]) or 50
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
-			player.Character.Humanoid.JumpPower = jp
+			local humanoid = player.Character.Humanoid
+			-- Support both old (JumpPower) and new (JumpHeight) systems
+			if humanoid.UseJumpPower then
+				humanoid.JumpPower = jp
+			else
+				-- Convert JumpPower to JumpHeight (approximate: JumpHeight = JumpPower / 4)
+				humanoid.JumpHeight = jp / 4
+			end
 			return true, "Jump power set to " .. jp
 		end
 		
@@ -385,10 +392,16 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		
 	elseif command == "reset" then
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
-			player.Character.Humanoid.WalkSpeed = 16
-			player.Character.Humanoid.JumpPower = 50
-			player.Character.Humanoid.MaxHealth = 100
-			player.Character.Humanoid.Health = 100
+			local humanoid = player.Character.Humanoid
+			humanoid.WalkSpeed = 16
+			-- Reset jump to default based on system type
+			if humanoid.UseJumpPower then
+				humanoid.JumpPower = 50
+			else
+				humanoid.JumpHeight = 7.2
+			end
+			humanoid.MaxHealth = 100
+			humanoid.Health = 100
 			FlyController:StopFlying()
 			-- Reset all statuses
 			self.PlayerStatuses.fly = false
@@ -1194,7 +1207,7 @@ floatingIcon.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if iconDragging and input == dragInput then
+	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
 		local delta = input.Position - dragStart
 		
 		-- Check if moved significantly (more than 3 pixels)
