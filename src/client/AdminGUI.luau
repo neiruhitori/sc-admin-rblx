@@ -791,12 +791,19 @@ local iconDragging = false
 local iconDragStart
 local iconStartPos
 local dragOffset
-local hasDragged = false
+local isDragging = false
+
+-- Click handler (only triggers if not dragging)
+floatingIcon.MouseButton1Click:Connect(function()
+	if not isDragging then
+		AdminGUI:TogglePanel()
+	end
+end)
 
 floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
-		hasDragged = false
+		isDragging = false
 		
 		-- Use GetMouseLocation for accurate screen coordinates
 		local mousePos = UserInputService:GetMouseLocation()
@@ -812,10 +819,9 @@ floatingIcon.InputBegan:Connect(function(input)
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				iconDragging = false
-				-- If no significant drag occurred, toggle panel
-				if not hasDragged then
-					AdminGUI:TogglePanel()
-				end
+				-- Reset drag flag after short delay to allow click event
+				task.wait(0.1)
+				isDragging = false
 			end
 		end)
 	end
@@ -826,10 +832,10 @@ UserInputService.InputChanged:Connect(function(input)
 		local mousePos = UserInputService:GetMouseLocation()
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		-- Check if moved significantly (more than 5 pixels)
+		-- Check if moved significantly (more than 3 pixels)
 		local dragDistance = (mousePos - iconDragStart).Magnitude
-		if dragDistance > 5 then
-			hasDragged = true
+		if dragDistance > 3 then
+			isDragging = true -- Mark as dragging to prevent click
 		end
 		
 		-- Apply offset to keep cursor at same relative position
