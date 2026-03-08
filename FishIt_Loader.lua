@@ -131,14 +131,21 @@ FishingController.LastCast = 0
 FishingController.FishCaught = 0
 FishingController.PerfectCatches = 0
 FishingController.LastSellTime = 0
+FishingController.CastConnection = nil
+FishingController.BiteDetector = nil
 
 -- Find the fishing rod in player's inventory/character
 function FishingController:FindRod()
+	local character = getCharacter()
+	
 	-- Check character first
 	if character then
 		for _, item in pairs(character:GetChildren()) do
-			if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
-				return item
+			if item:IsA("Tool") then
+				local name = item.Name:lower()
+				if name:find("rod") or name:find("fishing") or name:find("pole") then
+					return item
+				end
 			end
 		end
 	end
@@ -147,8 +154,11 @@ function FishingController:FindRod()
 	local backpack = player:FindFirstChild("Backpack")
 	if backpack then
 		for _, item in pairs(backpack:GetChildren()) do
-			if item:IsA("Tool") and (item.Name:lower():find("rod") or item.Name:lower():find("fishing")) then
-				return item
+			if item:IsA("Tool") then
+				local name = item.Name:lower()
+				if name:find("rod") or name:find("fishing") or name:find("pole") then
+					return item
+				end
 			end
 		end
 	end
@@ -190,57 +200,114 @@ function FishingController:Cast()
 		return false
 	end
 	
-	-- Simulate mouse click to cast
 	local tool = self.CurrentRod
-	if tool and tool:FindFirstChild("events") then
+	local casted = false
+	
+	-- Method 1: Try RemoteEvents in tool
+	if tool:FindFirstChild("events") then
 		local events = tool.events
 		if events:FindFirstChild("cast") then
-			events.cast:FireServer(100) -- 100 = max power
+			pcall(function()
+				events.cast:FireServer(100)
+			end)
+			casted = true
+		elseif events:FindFirstChild("Cast") then
+			pcall(function()
+				events.Cast:FireServer(100)
+			end)
+			casted = true
 		end
 	end
 	
-	-- Alternative method: Activate the tool
-	if tool then
-		tool:Activate()
+	-- Method 2: Try RemoteEvent in ReplicatedStorage
+	local repStorage = game:GetService("ReplicatedStorage")
+	for _, remote in pairs(repStorage:GetDescendants()) do
+		if remote:IsA("RemoteEvent") then
+			local name = remote.Name:lower()
+			if name:find("cast") or name:find("fish") then
+				pcall(function()
+					remote:FireServer()
+				end)
+				casted = true
+				break
+			end
+		end
 	end
 	
-	self.LastCast = now
-	self.IsFishing = true
-	return true
+	-- Method 3: Tool Activation
+	if tool then
+		pcall(function()
+			tool:Activate()
+		end)
+		casted = true
+	end
+	
+	if casted then
+		self.LastCast = now
+		self.IsFishing = true
+		print("🎣 Cast successful!")
+	end
+	
+	return casted
 end
 
 -- Detect fish bite and catch it
 function FishingController:CheckForBite()
 	if not self.CurrentRod then return false end
 	
-	-- Look for fishing bobber/float in workspace
-	local bobber = workspace:FindFirstChild("FishingBobber") or workspace:FindFirstChild("Bobber")
-	if not bobber then
-		-- Check inside the rod
-		if self.CurrentRod:FindFirstChild("Bobber") then
-			bobber = self.CurrentRod.Bobber
-		end
-	end
-	
-	if bobber then
-		-- Check if fish is biting (usually particle effects or value changes)
-		local isBiting = false
-		
-		-- Method 1: Check for particle effects
-		for _, child in pairs(bobber:GetDescendants()) do
-			if child:IsA("ParticleEmitter") and child.Enabled then
-				isBiting = true
+	-- Method 1: Look for bobber in workspace
+	local bobber = nil
+	for _, obj in pairs(workspace:GetDescendants()) do
+		local name = obj.Name:lower()
+		if name:find("bob") or name:find("float") or name:find("hook") or name:find("bait") then
+			if obj:IsA("Part") or obj:IsA("Model") then
+				bobber = obj
 				break
 			end
 		end
-		
-		-- Method 2: Check for ProximityPrompt
-		local proximityPrompt = bobber:FindFirstChildOfClass("ProximityPrompt")
-		if proximityPrompt and proximityPrompt.Enabled then
-			isBiting = true
+	end
+	
+	-- Method 2: Check GUI prompts
+	local playerGui = player:WaitForChild("PlayerGui")
+	for _, gui in pairs(playerGui:GetDescendants()) do
+		if gui:IsA("TextLabel") or gui:IsA("TextButton") then
+			local text = gui.Text:lower()
+			if text:find("reel") or text:find("catch") or text:find("!") then
+				if gui.Visible then
+					print("🐟 Fish detected via GUI!")
+					return self:CatchFish()
+				end
+			end
+		end
+	end
+	
+	-- Method 3: Check bobber for bite indicators
+	if bobber then
+		-- Check for particle effects
+		for _, child in pairs(bobber:GetDescendants()) do
+			if child:IsA("ParticleEmitter") and child.Enabled then
+				print("🐟 Fish detected via particles!")
+				return self:CatchFish()
+			end
+			
+			-- Check for sound
+			if child:IsA("Sound") and child.Playing then
+				print("🐟 Fish detected via sound!")
+				return self:CatchFish()
+			end
 		end
 		
-		if isBiting then
+		-- Check for ProximityPrompt
+		local proximityPrompt = bobber:FindFirstChildOfClass("ProximityPrompt", true)
+		if proximityPrompt and proximityPrompt.Enabled then
+			print("🐟 Fish detected via proximity!")
+			return self:CatchFish()
+		end
+		
+		-- Check for ClickDetector
+		local clickDetector = bobber:FindFirstChildOfClass("ClickDetector", true)
+		if clickDetector then
+			print("🐟 Fish detected via click detector!")
 			return self:CatchFish()
 		end
 	end
@@ -252,46 +319,95 @@ end
 function FishingController:CatchFish()
 	if not self.CurrentRod then return false end
 	
-	-- Method 1: Fire reel event
+	-- Apply perfect timing delay
+	if Config.AutoFish.PerfectCatch then
+		task.wait(Config.Delays.TalonDelay)
+	end
+	
 	local tool = self.CurrentRod
+	local caught = false
+	
+	-- Method 1: Fire reel RemoteEvent
 	if tool:FindFirstChild("events") then
 		local events = tool.events
 		if events:FindFirstChild("reel") then
-			-- If perfect catch is enabled, wait for perfect timing
-			if Config.AutoFish.PerfectCatch then
-				task.wait(Config.Delays.TalonDelay) -- Precise timing
-			end
-			events.reel:FireServer()
-			self.FishCaught = self.FishCaught + 1
-			if Config.AutoFish.PerfectCatch then
-				self.PerfectCatches = self.PerfectCatches + 1
-			end
-			return true
+			pcall(function()
+				events.reel:FireServer()
+			end)
+			caught = true
+		elseif events:FindFirstChild("Reel") then
+			pcall(function()
+				events.Reel:FireServer()
+			end)
+			caught = true
+		elseif events:FindFirstChild("catch") then
+			pcall(function()
+				events.catch:FireServer()
+			end)
+			caught = true
 		end
 	end
 	
-	-- Method 2: Use ProximityPrompt
-	local bobber = workspace:FindFirstChild("FishingBobber") or workspace:FindFirstChild("Bobber")
-	if bobber then
-		local proximityPrompt = bobber:FindFirstChildOfClass("ProximityPrompt")
-		if proximityPrompt then
-			if Config.AutoFish.PerfectCatch then
-				task.wait(Config.Delays.TalonDelay)
+	-- Method 2: Try RemoteEvents in ReplicatedStorage
+	local repStorage = game:GetService("ReplicatedStorage")
+	for _, remote in pairs(repStorage:GetDescendants()) do
+		if remote:IsA("RemoteEvent") then
+			local name = remote.Name:lower()
+			if name:find("reel") or name:find("catch") or name:find("fish") then
+				pcall(function()
+					remote:FireServer()
+				end)
+				caught = true
+				break
 			end
-			fireproximityprompt(proximityPrompt)
-			self.FishCaught = self.FishCaught + 1
-			return true
 		end
 	end
 	
-	-- Method 3: Deactivate tool
+	-- Method 3: Fire ProximityPrompt
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ProximityPrompt") and obj.Enabled then
+			pcall(function()
+				fireproximityprompt(obj)
+			end)
+			caught = true
+			break
+		end
+	end
+	
+	-- Method 4: Click ClickDetector
+	for _, obj in pairs(workspace:GetDescendants()) do
+		if obj:IsA("ClickDetector") then
+			local parent = obj.Parent
+			if parent then
+				pcall(function()
+					fireclickdetector(obj)
+				end)
+				caught = true
+				break
+			end
+		end
+	end
+	
+	-- Method 5: Deactivate/Activate tool
 	if tool then
-		tool:Deactivate()
-		self.FishCaught = self.FishCaught + 1
-		return true
+		pcall(function()
+			tool:Deactivate()
+			task.wait(0.05)
+			tool:Activate()
+		end)
+		caught = true
 	end
 	
-	return false
+	if caught then
+		self.FishCaught = self.FishCaught + 1
+		if Config.AutoFish.PerfectCatch then
+			self.PerfectCatches = self.PerfectCatches + 1
+		end
+		self.IsFishing = false
+		print("✅ Fish caught! Total: " .. self.FishCaught)
+	end
+	
+	return caught
 end
 
 -- Auto sell caught fish
@@ -357,42 +473,72 @@ function FishingController:SellFish()
 end
 
 -- Main auto fishing loop
+-- Main auto fishing loop
 function FishingController:StartAutoFish()
 	Config.AutoFish.Enabled = true
 	print("🎣 Auto Fishing Started!")
 	
 	task.spawn(function()
 		while Config.AutoFish.Enabled do
+			local character = getCharacter()
+			
 			-- Equip rod if needed
-			if not self.CurrentRod or self.CurrentRod.Parent ~= character then
-				self:EquipRod()
-				task.wait(0.5)
+			if not self.CurrentRod or (character and self.CurrentRod.Parent ~= character) then
+				if self:EquipRod() then
+					print("🎣 Rod equipped")
+					task.wait(0.5)
+				else
+					print("⚠️ No fishing rod found!")
+					task.wait(3)
+					continue
+				end
 			end
 			
 			-- Cast if not fishing
 			if not self.IsFishing then
-				self:Cast()
+				local success = self:Cast()
+				if success then
+					task.wait(0.3) -- Wait for cast animation
+				else
+					task.wait(1)
+					continue
+				end
 			end
 			
-			-- Check for bite
+			-- Check for bite with appropriate timing
 			if Config.AutoFish.InstantCatch then
-				task.wait(0.1)
-				self:CheckForBite()
+				-- Instant mode: check frequently
+				for i = 1, 20 do
+					if not Config.AutoFish.Enabled then break end
+					if self:CheckForBite() then
+						break
+					end
+					task.wait(0.1)
+				end
 			else
-				-- Wait for natural bite
-				task.wait(1)
-				self:CheckForBite()
+				-- Normal mode: wait for natural bite
+				for i = 1, 10 do
+					if not Config.AutoFish.Enabled then break end
+					if self:CheckForBite() then
+						break
+					end
+					task.wait(0.5)
+				end
 			end
+			
+			-- Reset fishing state
+			self.IsFishing = false
 			
 			-- Auto sell periodically
 			if Config.AutoFish.AutoSell then
 				local now = tick()
 				if now - self.LastSellTime >= Config.Delays.SellDelay then
+					print("💰 Auto selling...")
 					self:SellFish()
 				end
 			end
 			
-			self.IsFishing = false
+			-- Wait before next cast
 			task.wait(Config.Delays.CastDelay)
 		end
 	end)
