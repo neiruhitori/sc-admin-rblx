@@ -15,11 +15,27 @@
 loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/LoaderScript.lua"))()
 
 --[[
+    ⚠️ PENTING - PERBEDAAN URL:
+    
+    ❌ SALAH (Bikin Crash/Force Close):
+    https://github.com/neiruhitori/sc-admin-rblx/blob/main/LoaderScript.lua
+    ^ URL ini adalah halaman HTML GitHub, BUKAN file Lua!
+    
+    ✅ BENAR:
+    https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/main/LoaderScript.lua
+    ^ Ini URL raw file, langsung konten Lua
+    
+    CARA DAPAT RAW URL:
+    1. Buka file di GitHub
+    2. Klik tombol "Raw" (pojok kanan atas)
+    3. Copy URL dari browser
+    
     CONTOH URL YANG BENAR:
     https://raw.githubusercontent.com/JohnDoe/my-admin-script/main/LoaderScript.lua
     
     PASTIKAN:
-    ✅ Harus "raw.githubusercontent.com"
+    ✅ Harus "raw.githubusercontent.com" (BUKAN "github.com")
+    ✅ TIDAK ADA "/blob/" di URL
     ✅ Ganti USERNAME dengan username GitHub kamu
     ✅ Ganti REPO dengan nama repository kamu
     ✅ File harus bernama LoaderScript.lua (atau sesuaikan nama file)

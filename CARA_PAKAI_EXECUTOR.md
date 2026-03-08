@@ -17,10 +17,13 @@
    - Drag and drop file `LoaderScript.lua` atau klik "choose your files"
    - Klik "Commit changes"
 
-3. **Dapatkan Raw URL**
+3. **Dapatkan Raw URL** ⚠️ PENTING!
    - Buka file `LoaderScript.lua` di GitHub
    - Klik tombol "Raw" (pojok kanan atas)
-   - Copy URL dari browser (contoh: `https://raw.githubusercontent.com/username/repo/main/LoaderScript.lua`)
+   - Copy URL dari browser
+   - **PASTIKAN URL-nya `raw.githubusercontent.com`, BUKAN `github.com`!**
+   - ❌ Salah: `https://github.com/user/repo/blob/main/LoaderScript.lua`
+   - ✅ Benar: `https://raw.githubusercontent.com/user/repo/main/LoaderScript.lua`
 
 ### 2. Edit Username Admin
 
@@ -122,6 +125,33 @@ Script ini **CLIENT-SIDE ONLY**, artinya:
 **Kenapa?** Karena ini client-side script, tidak ada server-side backend. Jadi hanya mempengaruhi client kamu saja.
 
 ## 🔧 Tips & Troubleshooting
+
+### ⚠️ Roblox Force Close / Crash?
+
+**Masalah #1: URL Salah (Paling Sering!)**
+
+Kamu pakai URL biasa GitHub yang punya `/blob/` di dalamnya:
+```
+❌ https://github.com/user/repo/blob/main/LoaderScript.lua
+```
+
+Harus pakai **RAW URL**:
+```
+✅ https://raw.githubusercontent.com/user/repo/main/LoaderScript.lua
+```
+
+**Kenapa crash?** 
+- URL biasa = halaman HTML GitHub
+- Roblox coba load HTML sebagai Lua = ERROR = CRASH!
+- RAW URL = file Lua mentah = LANCAR ✅
+
+**Cara fix:**
+1. Buka file di GitHub
+2. Klik tombol **"Raw"** 
+3. Copy URL yang baru (harus ada `raw.githubusercontent.com`)
+4. Execute lagi
+
+---
 
 ### Script Tidak Jalan?
 

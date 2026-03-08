@@ -14,7 +14,9 @@ AdminConfig.Admins = {
 ### 2️⃣ Upload ke GitHub
 1. Buat repository public di GitHub
 2. Upload file `LoaderScript.lua`
-3. Klik file > Klik "Raw" > Copy URL
+3. Klik file > Klik tombol **"Raw"** > Copy URL
+
+⚠️ **PENTING:** Harus klik tombol "Raw" di GitHub! Jangan copy URL dari address bar biasa.
 
 ### 3️⃣ Execute di Game
 Di executor, paste:
@@ -22,14 +24,20 @@ Di executor, paste:
 loadstring(game:HttpGet("YOUR_RAW_URL_HERE"))()
 ```
 
-## 📌 Contoh URL yang Benar
+## 📌 Contoh URL yang Benar vs Salah
+
+❌ **SALAH** (Bikin Force Close/Crash):
 ```
-https://raw.githubusercontent.com/username/repo/main/LoaderScript.lua
+https://github.com/neiruhitori/sc-admin-rblx/blob/main/LoaderScript.lua
 ```
-**Harus: **
-- ✅ `raw.githubusercontent.com` (bukan github.com biasa)
-- ✅ Repository public
-- ✅ Path file benar
+**Kenapa salah?** Ada `/blob/` dan domain `github.com` = halaman HTML, bukan file Lua!
+
+✅ **BENAR:**
+```
+https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/main/LoaderScript.lua
+```
+**Kenapa benar?** Tidak ada `/blob/` dan domain `raw.githubusercontent.com` = file Lua mentah!
+**Kenapa benar?** Tidak ada `/blob/` dan domain `raw.githubusercontent.com` = file Lua mentah!
 
 ## 🎮 Setelah Execute
 
