@@ -283,18 +283,42 @@ function WeatherController:BuyWeather(weatherName)
 					print("🔘 Found button in", gui.Name, ":", weatherButton.Name, "Type:", weatherButton.ClassName)
 					
 					if weatherButton:IsA("GuiButton") or weatherButton:IsA("TextButton") or weatherButton:IsA("ImageButton") then
-						local clicked = pcall(function()
-							if firesignal then
-								firesignal(weatherButton.MouseButton1Click)
-							else
-								-- Fallback: try activating directly
-								weatherButton.Activated:Fire()
-							end
-							success = true
-						end)
+						-- Try multiple click methods for maximum compatibility
+						local clickAttempts = 0
 						
-						if clicked and success then
-							print("✅ Clicked weather button!")
+						-- Method 1: firesignal MouseButton1Click
+						if firesignal then
+							pcall(function()
+								firesignal(weatherButton.MouseButton1Click)
+								clickAttempts = clickAttempts + 1
+								print("   🖱️ Fired MouseButton1Click signal")
+							end)
+							task.wait(0.2)
+						end
+						
+						-- Method 2: firesignal MouseButton1Down + MouseButton1Up
+						if firesignal then
+							pcall(function()
+								firesignal(weatherButton.MouseButton1Down)
+								task.wait(0.05)
+								firesignal(weatherButton.MouseButton1Up)
+								clickAttempts = clickAttempts + 1
+								print("   🖱️ Fired MouseButton1Down/Up signals")
+							end)
+							task.wait(0.2)
+						end
+						
+						-- Method 3: firesignal Activated
+						pcall(function()
+							firesignal(weatherButton.Activated)
+							clickAttempts = clickAttempts + 1
+							print("   🖱️ Fired Activated signal")
+						end)
+						task.wait(0.2)
+						
+						if clickAttempts > 0 then
+							print("✅ Clicked weather button!", clickAttempts, "methods tried")
+							success = true
 							break
 						end
 					end
@@ -431,6 +455,26 @@ function WeatherController:BuyWeather(weatherName)
 	if success then
 		self.Stats.WeathersBought = self.Stats.WeathersBought + 1
 		print("☁️✅ Successfully bought weather:", weatherName)
+		print("   💡 Total purchases:", self.Stats.WeathersBought)
+		print("   ⏱️ Waiting to verify purchase...")
+		
+		-- Wait a bit and check if weather appeared
+		task.wait(1)
+		
+		-- Try to detect if weather is active in workspace
+		local weatherFound = false
+		for _, obj in pairs(workspace:GetChildren()) do
+			local objName = obj.Name:lower()
+			if objName:find(weatherName:lower()) or objName:find("weather") then
+				weatherFound = true
+				print("   ✅ Weather effect detected in workspace:", obj.Name)
+				break
+			end
+		end
+		
+		if not weatherFound then
+			print("   ⚠️ Weather effect not detected yet (might take time to load)")
+		end
 	else
 		print("❌ Failed to buy weather:", weatherName)
 	end
@@ -447,6 +491,27 @@ function WeatherController:GetSelectedWeathers()
 		end
 	end
 	return selected
+end
+
+-- Update weather stats label safely
+function WeatherController:UpdateStatsLabel()
+	pcall(function()
+		local playerGui = player:WaitForChild("PlayerGui")
+		-- Find the script's GUI
+		for _, gui in pairs(playerGui:GetChildren()) do
+			if gui:IsA("ScreenGui") then
+				-- Look for the weather stats label
+				local label = gui:FindFirstChild("WeathersBought", true)
+				if label and label:IsA("TextLabel") then
+					label.Text = "☁️ Weathers Bought: " .. self.Stats.WeathersBought
+					print("📊 Updated weather stats:", self.Stats.WeathersBought)
+					return
+				end
+			end
+		end
+		-- If not found, just log it
+		print("⚠️ Weather stats label not found (GUI might not be loaded yet)")
+	end)
 end
 
 -- Debug: List all weather-related remotes in game
@@ -591,9 +656,7 @@ function WeatherController:Start()
 				
 				if success then
 					print("   ✅ Purchase successful!")
-					if GUI and GUI.Elements and GUI.Elements.WeathersBoughtLabel then
-						GUI.Elements.WeathersBoughtLabel.Text = "☁️ Weathers Bought: " .. self.Stats.WeathersBought
-					end
+					self:UpdateStatsLabel()
 					task.wait(2) -- Wait a bit after successful purchase
 				else
 					print("   ❌ Purchase failed - will retry next cycle")
@@ -1776,6 +1839,7 @@ end
 
 -- Weather stats
 local weatherStatsLabel = Instance.new("TextLabel")
+weatherStatsLabel.Name = "WeathersBought"
 weatherStatsLabel.Size = UDim2.new(1, -20, 0, 25)
 weatherStatsLabel.BackgroundTransparency = 1
 weatherStatsLabel.Text = "☁️ Weathers Bought: 0"
