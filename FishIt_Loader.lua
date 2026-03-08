@@ -16,6 +16,9 @@
 
 print("🎣 Loading Fish It Auto Farm Script...")
 
+-- Add error handler
+local success, errorMsg = pcall(function()
+
 -- ============================================
 -- SERVICES
 -- ============================================
@@ -27,8 +30,20 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+-- Helper function to get character safely
+local function getCharacter()
+	return player.Character
+end
+
+-- Helper function to get HumanoidRootPart safely
+local function getHRP()
+	local char = getCharacter()
+	if char then
+		return char:FindFirstChild("HumanoidRootPart")
+	end
+	return nil
+end
 
 -- ============================================
 -- CONFIG
@@ -144,11 +159,17 @@ end
 -- Equip the fishing rod
 function FishingController:EquipRod()
 	local rod = self:FindRod()
+	local character = getCharacter()
+	if not character then return false end
+	
 	if rod and rod.Parent ~= character then
-		character.Humanoid:EquipTool(rod)
-		task.wait(0.3)
-		self.CurrentRod = rod
-		return true
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid:EquipTool(rod)
+			task.wait(0.3)
+			self.CurrentRod = rod
+			return true
+		end
 	elseif rod and rod.Parent == character then
 		self.CurrentRod = rod
 		return true
@@ -280,6 +301,9 @@ function FishingController:SellFish()
 		return false
 	end
 	
+	local humanoidRootPart = getHRP()
+	if not humanoidRootPart then return false end
+	
 	-- Find the sell NPC or area
 	local sellPart = workspace:FindFirstChild("SellArea") or workspace:FindFirstChild("Merchant")
 	
@@ -387,6 +411,7 @@ local TeleportController = {}
 
 function TeleportController:TeleportTo(spotName)
 	local cframe = Config.FishingSpots[spotName]
+	local humanoidRootPart = getHRP()
 	if cframe and humanoidRootPart then
 		humanoidRootPart.CFrame = cframe
 		Config.SelectedSpot = spotName
@@ -396,6 +421,7 @@ function TeleportController:TeleportTo(spotName)
 end
 
 function TeleportController:AddCustomSpot(name)
+	local humanoidRootPart = getHRP()
 	if humanoidRootPart then
 		Config.FishingSpots[name] = humanoidRootPart.CFrame
 		return true
@@ -406,11 +432,13 @@ end
 -- ============================================
 -- GUI
 -- ============================================
+print("🔨 Creating GUI...")
 local GUI = {}
 GUI.IsOpen = false
 GUI.Elements = {}
 
 local playerGui = player:WaitForChild("PlayerGui")
+print("✅ PlayerGui loaded")
 
 -- Remove old GUI if exists
 if playerGui:FindFirstChild("FishItGUI") then
@@ -445,6 +473,8 @@ toggleIcon.Text = "🎣"
 toggleIcon.TextSize = 32
 toggleIcon.Font = Enum.Font.GothamBold
 toggleIcon.Parent = toggleButton
+
+print("✅ Floating button created")
 
 -- Main Frame
 local mainFrame = Instance.new("Frame")
@@ -877,11 +907,15 @@ local teleportTab = createTabButton("Teleport", "📍", 2)
 local automationTab = createTabButton("Automation", "⚙️", 3)
 local settingsTab = createTabButton("Settings", "🔧", 4)
 
+print("✅ Tab buttons created")
+
 -- Create Tab Contents
 local mainContent = createTabContent("Main")
 local teleportContent = createTabContent("Teleport")
 local automationContent = createTabContent("Automation")
 local settingsContent = createTabContent("Settings")
+
+print("✅ Tab contents created")
 
 -- Main Tab Content
 local statsFrame = Instance.new("Frame")
@@ -1098,3 +1132,10 @@ print("✅ Fish It Auto Farm Loaded Successfully!")
 print("🎣 Click the floating button to open the menu")
 print("💬 Join our Discord: discord.gg/xHrJaSgy")
 print("⚡ Made by TwoHand Comunity")
+
+end) -- End of pcall
+
+if not success then
+	warn("❌ ERROR LOADING SCRIPT: " .. tostring(errorMsg))
+	warn("Please report this error to discord.gg/xHrJaSgy")
+end
