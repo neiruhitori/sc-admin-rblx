@@ -165,7 +165,10 @@ end
 -- Get available weather slots (0-3)
 function WeatherController:GetAvailableSlots()
 	local weatherGui = self:FindWeatherMachine()
-	if not weatherGui then return 0 end
+	if not weatherGui then 
+		print("⚠️ Weather GUI not found, assuming slots available")
+		return 1 -- Always assume at least 1 slot available if can't detect
+	end
 	
 	-- Try to find slot info from GUI
 	local slotLabel = weatherGui:FindFirstChild("AvailableSlots", true) or 
@@ -174,33 +177,84 @@ function WeatherController:GetAvailableSlots()
 	if slotLabel and slotLabel.Text then
 		local current, max = slotLabel.Text:match("(%d+)/(%d+)")
 		if current and max then
-			return tonumber(max) - tonumber(current)
+			local available = tonumber(max) - tonumber(current)
+			print("📊 Detected slots:", current .. "/" .. max, "- Available:", available)
+			return available
 		end
 	end
 	
-	-- Default to max slots if can't detect
-	return Config.AutoWeather.MaxSlots
+	-- Count existing weather effects in workspace
+	local usedSlots = 0
+	for _, obj in pairs(workspace:GetChildren()) do
+		local name = obj.Name:lower()
+		if name:find("weather") or name:find("storm") or name:find("rain") or name:find("snow") then
+			usedSlots = usedSlots + 1
+		end
+	end
+	
+	local available = math.max(0, Config.AutoWeather.MaxSlots - usedSlots)
+	print("📊 Detected", usedSlots, "active weathers -", available, "slots available")
+	return available
 end
 
 -- Get current points
 function WeatherController:GetPoints()
-	local playerGui = player:WaitForChild("PlayerGui")
-	
-	-- Try to find points/currency label
-	for _, gui in ipairs(playerGui:GetChildren()) do
-		local pointsLabel = gui:FindFirstChild("Points", true) or 
-		                    gui:FindFirstChild("Currency", true) or
-		                    gui:FindFirstChild("Money", true)
-		
-		if pointsLabel and pointsLabel.Text then
-			local points = pointsLabel.Text:match("%d+")
-			if points then
-				return tonumber(points) or 0
+	-- Method 1: Try leaderstats (most common in Roblox games)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if leaderstats then
+		for _, stat in pairs(leaderstats:GetChildren()) do
+			local statName = stat.Name:lower()
+			if statName:find("point") or statName:find("coin") or statName:find("money") or 
+			   statName:find("cash") or statName:find("currency") then
+				local value = stat.Value or 0
+				print("💰 Found points in leaderstats:", stat.Name, "=", value)
+				return tonumber(value) or 0
 			end
 		end
 	end
 	
-	return 0
+	-- Method 2: Scan all GUI text labels
+	local playerGui = player:WaitForChild("PlayerGui")
+	for _, gui in ipairs(playerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") then
+			for _, obj in pairs(gui:GetDescendants()) do
+				-- Only check TextLabel and TextButton, skip ImageButton
+				if obj:IsA("TextLabel") or obj:IsA("TextButton") then
+					if obj.Text and obj.Text ~= "" then
+						local text = obj.Text
+						-- Look for patterns like "Points: 1000" or "💰 1000"
+						local points = text:match("Points?:?%s*(%d+)") or 
+						              text:match("Coins?:?%s*(%d+)") or
+						              text:match("Money:?%s*(%d+)") or
+						              text:match("💰%s*(%d+)") or
+						              text:match("Currency:?%s*(%d+)")
+						
+						if points then
+							local value = tonumber(points)
+							print("💰 Found points in GUI:", gui.Name, "-", text, "=", value)
+							return value
+						end
+					end
+				end
+			end
+		end
+	end
+	
+	-- Method 3: Check for Data folder (alternative stats)
+	local dataFolder = player:FindFirstChild("Data") or player:FindFirstChild("PlayerData")
+	if dataFolder then
+		for _, stat in pairs(dataFolder:GetChildren()) do
+			local statName = stat.Name:lower()
+			if statName:find("point") or statName:find("coin") or statName:find("money") then
+				local value = stat.Value or 0
+				print("💰 Found points in Data:", stat.Name, "=", value)
+				return tonumber(value) or 0
+			end
+		end
+	end
+	
+	print("⚠️ Could not detect points - assuming unlimited")
+	return 999999 -- Return high number so it doesn't stop auto-buy
 end
 
 -- Buy a specific weather
@@ -208,45 +262,47 @@ function WeatherController:BuyWeather(weatherName)
 	local success = false
 	print("🔍 Trying to buy weather:", weatherName)
 	
-	-- Method 1: Try to find and click weather button in GUI
-	local weatherGui = self:FindWeatherMachine()
-	if weatherGui then
-		print("📱 Found Weather GUI:", weatherGui.Name)
-		
-		-- Try different button name patterns
-		local buttonPatterns = {
-			weatherName,
-			weatherName:lower(),
-			weatherName:upper(),
-			weatherName .. "Button",
-			weatherName .. "Btn",
-		}
-		
-		for _, pattern in ipairs(buttonPatterns) do
-			local weatherButton = weatherGui:FindFirstChild(pattern, true)
-			if weatherButton then
-				print("🔘 Found button:", weatherButton.Name, "Type:", weatherButton.ClassName)
-				
-				if weatherButton:IsA("GuiButton") or weatherButton:IsA("TextButton") or weatherButton:IsA("ImageButton") then
-					local clicked = pcall(function()
-						if firesignal then
-							firesignal(weatherButton.MouseButton1Click)
-						else
-							-- Fallback: try activating directly
-							weatherButton.Activated:Fire()
-						end
-						success = true
-					end)
+	-- Method 1: Scan ALL GUIs for weather buttons (not just weather GUI)
+	local playerGui = player:WaitForChild("PlayerGui")
+	print("📱 Scanning all GUIs for weather buttons...")
+	
+	for _, gui in pairs(playerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") then
+			-- Try different button name patterns
+			local buttonPatterns = {
+				weatherName,
+				weatherName:lower(),
+				weatherName:upper(),
+				weatherName .. "Button",
+				weatherName .. "Btn",
+			}
+			
+			for _, pattern in ipairs(buttonPatterns) do
+				local weatherButton = gui:FindFirstChild(pattern, true)
+				if weatherButton then
+					print("🔘 Found button in", gui.Name, ":", weatherButton.Name, "Type:", weatherButton.ClassName)
 					
-					if clicked and success then
-						print("✅ Clicked weather button!")
-						break
+					if weatherButton:IsA("GuiButton") or weatherButton:IsA("TextButton") or weatherButton:IsA("ImageButton") then
+						local clicked = pcall(function()
+							if firesignal then
+								firesignal(weatherButton.MouseButton1Click)
+							else
+								-- Fallback: try activating directly
+								weatherButton.Activated:Fire()
+							end
+							success = true
+						end)
+						
+						if clicked and success then
+							print("✅ Clicked weather button!")
+							break
+						end
 					end
 				end
 			end
+			
+			if success then break end
 		end
-	else
-		print("❌ Weather GUI not found")
 	end
 	
 	-- Method 2: Scan ALL RemoteEvents/RemoteFunctions in game
@@ -447,7 +503,14 @@ function WeatherController:DebugWeatherMachine()
 			-- List all buttons in this GUI
 			for _, button in pairs(gui:GetDescendants()) do
 				if button:IsA("GuiButton") or button:IsA("TextButton") or button:IsA("ImageButton") then
-					print("    🔘 Button:", button.Name, "- Text:", button.Text or "N/A")
+					-- Safely get text property
+					local buttonText = "N/A"
+					pcall(function()
+						if button:IsA("TextButton") or button:IsA("TextLabel") then
+							buttonText = button.Text or "N/A"
+						end
+					end)
+					print("    🔘", button.ClassName, ":", button.Name, "- Text:", buttonText)
 				end
 			end
 		end
@@ -497,29 +560,45 @@ function WeatherController:Start()
 				continue
 			end
 			
-			-- Check points
+			print("\n🔄 Auto-buy cycle starting...")
+			print("   Selected weathers:", table.concat(selectedWeathers, ", "))
+			
+			-- Check points (but don't stop if can't detect)
 			local points = self:GetPoints()
-			if points <= 0 then
-				print("❌ No points available, stopping auto weather")
-				self:Stop()
-				break
+			print("   💰 Current points:", points)
+			
+			-- Only stop if points is explicitly 0 AND detected (not 999999)
+			if points == 0 then
+				print("⚠️ No points detected, but continuing anyway...")
 			end
 			
 			-- Check available slots
 			local availableSlots = self:GetAvailableSlots()
+			print("   📊 Available slots:", availableSlots)
+			
 			if availableSlots > 0 then
 				-- Buy random selected weather
 				local randomWeather = selectedWeathers[math.random(1, #selectedWeathers)]
+				print("   🎲 Attempting to buy:", randomWeather)
+				
 				local success = self:BuyWeather(randomWeather)
 				
 				if success then
+					print("   ✅ Purchase successful!")
 					if GUI.Elements.WeathersBoughtLabel then
 						GUI.Elements.WeathersBoughtLabel.Text = "☁️ Weathers Bought: " .. self.Stats.WeathersBought
 					end
-					task.wait(1) -- Small delay after purchase
+					task.wait(2) -- Wait a bit after successful purchase
+				else
+					print("   ❌ Purchase failed - will retry next cycle")
+					task.wait(1)
 				end
+			else
+				print("   ⏳ No slots available - waiting...")
 			end
 		end
+		
+		print("🛑 Auto weather loop ended")
 	end)
 end
 
