@@ -464,7 +464,7 @@ iconCorner.CornerRadius = UDim.new(0, 30)
 iconCorner.Parent = floatingIcon
 
 -- Logo Image (SETUP: Upload logo.png to imgur.com, copy direct link, replace URL below)
-local LOGO_URL = "rbxasset://textures/ui/GuiImagePlaceholder.png" -- REPLACE with https://i.imgur.com/XXXXX.png
+local LOGO_URL = "https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/refs/heads/main/logo.png" -- REPLACE with https://i.imgur.com/XXXXX.png
 local iconImage = Instance.new("ImageLabel")
 iconImage.Size = UDim2.new(0.8, 0, 0.8, 0)
 iconImage.Position = UDim2.new(0.1, 0, 0.1, 0)
