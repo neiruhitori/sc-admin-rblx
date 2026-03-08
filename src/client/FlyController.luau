@@ -13,6 +13,7 @@ local AdminRemote = require(ReplicatedStorage.Shared.AdminRemote)
 
 local FlyController = {}
 FlyController.Flying = false
+FlyController.DefaultSpeed = 50
 FlyController.Speed = 50
 FlyController.MaxSpeed = 200
 

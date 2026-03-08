@@ -120,6 +120,7 @@ local FlyController = {}
 FlyController.Flying = false
 FlyController.Speed = 50
 FlyController.MaxSpeed = 200
+FlyController.DefaultSpeed = 50
 
 local movementKeys = {
 	Forward = Enum.KeyCode.W,
@@ -344,8 +345,13 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		else
 			FlyController:StartFlying()
 			self.PlayerStatuses.fly = true
-			return true, "Flying enabled"
+			return true, "Flying enabled (Speed: " .. FlyController.Speed .. ")"
 		end
+		
+	elseif command == "flyspeed" or command == "fs" then
+		local speed = tonumber(args[1]) or 50
+		FlyController.Speed = math.clamp(speed, 10, FlyController.MaxSpeed)
+		return true, "Fly speed set to " .. FlyController.Speed
 		
 	elseif command == "speed" then
 		local speed = tonumber(args[1]) or 50
@@ -774,6 +780,7 @@ createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3, true)
 
 local flyButtons = createCategory("✈️ Flying", 2)
 createCommandButton(flyButtons, "Fly Mode", "🚀", "fly", 1, true)
+createCommandButton(flyButtons, "Fly Speed", "⚡", "flyspeed", 2, false)
 
 local teleportButtons = createCategory("🌐 Teleport", 3)
 createCommandButton(teleportButtons, "Go To Player", "📍", "goto", 1, false)
@@ -1046,6 +1053,10 @@ function AdminGUI:ExecuteCommand(command, requiresInput)
 			local jp = self:ShowInputDialog("Enter jump power value (default: 50)")
 			if not jp then return end
 			commandText = commandText .. " " .. jp
+		elseif command == "flyspeed" or command == "fs" then
+			local flyspeed = self:ShowInputDialog("Enter fly speed (default: 50, max: 200)")
+			if not flyspeed then return end
+			commandText = commandText .. " " .. flyspeed
 		end
 	end
 	
@@ -1129,12 +1140,18 @@ end)
 local iconDragging = false
 local iconDragStart
 local iconStartPos
+local dragOffset -- Offset from click point to icon position
 
 floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
 		iconDragStart = input.Position
-		iconStartPos = floatingIcon.AbsolutePosition -- Use AbsolutePosition instead
+		iconStartPos = floatingIcon.AbsolutePosition
+		-- Calculate offset from mouse to icon top-left corner
+		dragOffset = Vector2.new(
+			iconStartPos.X - iconDragStart.X,
+			iconStartPos.Y - iconDragStart.Y
+		)
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
@@ -1146,11 +1163,11 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - iconDragStart
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		local newX = iconStartPos.X + delta.X
-		local newY = iconStartPos.Y + delta.Y
+		-- Apply offset so icon follows cursor at click point
+		local newX = input.Position.X + dragOffset.X
+		local newY = input.Position.Y + dragOffset.Y
 		
 		newX = math.clamp(newX, 0, viewport.X - 60)
 		newY = math.clamp(newY, 0, viewport.Y - 60)
@@ -1237,6 +1254,7 @@ connectCommandButton("speed", "speed", true)
 connectCommandButton("jp", "jp", true)
 connectCommandButton("god", "god", false)
 connectCommandButton("fly", "fly", false)
+connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("goto", "goto", false)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)

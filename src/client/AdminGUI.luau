@@ -188,7 +188,7 @@ dropdownArrow.Parent = playerDropdown
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
 refreshButton.Size = UDim2.new(0, 80, 0, 35)
-refreshButton.Position = UDim2.new(1, -90, 0, 5)
+refreshButton.Position = UDim2.new(1, -180, 0, 5)
 refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
 refreshButton.BorderSizePixel = 0
 refreshButton.Text = "🔄 Refresh"
@@ -198,6 +198,25 @@ refreshButton.Font = Enum.Font.GothamBold
 refreshButton.Parent = playerSelectorFrame
 
 local refreshCorner = Instance.new("UICorner")
+refreshCorner.CornerRadius = UDim.new(0, 6)
+refreshCorner.Parent = refreshButton
+
+-- Reset button (next to refresh)
+local resetButton = Instance.new("TextButton")
+resetButton.Name = "ResetButton"
+resetButton.Size = UDim2.new(0, 80, 0, 35)
+resetButton.Position = UDim2.new(1, -90, 0, 5)
+resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+resetButton.BorderSizePixel = 0
+resetButton.Text = "♻️ Reset"
+resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetButton.TextSize = 12
+resetButton.Font = Enum.Font.GothamBold
+resetButton.Parent = playerSelectorFrame
+
+local resetCorner = Instance.new("UICorner")
+resetCorner.CornerRadius = UDim.new(0, 6)
+resetCorner.Parent = resetButton
 refreshCorner.CornerRadius = UDim.new(0, 6)
 refreshCorner.Parent = refreshButton
 
@@ -360,23 +379,20 @@ createCommandButton(playerControlButtons, "Unfreeze", "🔥", "unfreeze", 5)
 
 local teleportButtons = createCategory("🌐 Teleport", 2)
 createCommandButton(teleportButtons, "TP to Player", "📍", "tp", 1)
-createCommandButton(teleportButtons, "Bring Player", "🎯", "bring", 2)
+createCommandButton(teleportButtons, "Goto Player", "🎯", "goto", 2)
 
 local characterButtons = createCategory("⚡ Character Mods", 3)
 createCommandButton(characterButtons, "Speed", "🏃", "speed", 1)
 createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2)
-createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3)
-createCommandButton(characterButtons, "Ungod", "❌", "ungod", 4)
+createCommandButton(characterButtons, "God Mode [OFF]", "🛡️", "god", 3)
 
 local flyButtons = createCategory("✈️ Flying", 4)
-createCommandButton(flyButtons, "Enable Fly", "🚀", "fly", 1)
-createCommandButton(flyButtons, "Disable Fly", "🪂", "unfly", 2)
+createCommandButton(flyButtons, "Fly [OFF]", "🚀", "fly", 1)
+createCommandButton(flyButtons, "Fly Speed", "⚡", "flyspeed", 2)
 
-local resetButtons = createCategory("🔄 Reset", 5)
-createCommandButton(resetButtons, "Reset to Normal", "♻️", "reset", 1)
-
-local otherButtons = createCategory("📢 Other", 6)
+local otherButtons = createCategory("📢 Other", 5)
 createCommandButton(otherButtons, "Announce", "📣", "announce", 1)
+createCommandButton(otherButtons, "Anti-AFK [OFF]", "⏰", "antiafk", 2)
 
 -- ==================== NOTIFICATION FRAME ====================
 local notificationFrame = Instance.new("Frame")
@@ -555,7 +571,7 @@ function AdminGUI:ExecuteCommand(command: string, requiresPlayer: boolean, requi
 		commandText = commandText .. " " .. self.SelectedPlayer
 	end
 	
-	-- Check if command requires additional input (speed, jp, announce, etc.)
+	-- Check if command requires additional input (speed, jp, announce, flyspeed, etc.)
 	if requiresInput then
 		if command == "speed" then
 			local speed = self:ShowInputDialog("Enter speed value (default: 16)")
@@ -565,6 +581,10 @@ function AdminGUI:ExecuteCommand(command: string, requiresPlayer: boolean, requi
 			local jp = self:ShowInputDialog("Enter jump power value (default: 50)")
 			if not jp then return end
 			commandText = commandText .. " " .. jp
+		elseif command == "flyspeed" or command == "fs" then
+			local flyspeed = self:ShowInputDialog("Enter fly speed (default: 50, max: 200)")
+			if not flyspeed then return end
+			commandText = commandText .. " " .. flyspeed
 		elseif command == "announce" then
 			local msg = self:ShowInputDialog("Enter announcement message")
 			if not msg then return end
@@ -715,12 +735,18 @@ end)
 local iconDragging = false
 local iconDragStart
 local iconStartPos
+local dragOffset
 
 floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
 		iconDragStart = input.Position
-		iconStartPos = floatingIcon.AbsolutePosition -- Use AbsolutePosition to fix bug
+		iconStartPos = floatingIcon.AbsolutePosition
+		-- Calculate offset from cursor to icon corner
+		dragOffset = Vector2.new(
+			iconStartPos.X - iconDragStart.X,
+			iconStartPos.Y - iconDragStart.Y
+		)
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
@@ -732,11 +758,10 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local delta = input.Position - iconDragStart
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		local newX = iconStartPos.X + delta.X
-		local newY = iconStartPos.Y + delta.Y
+		local newX = input.Position.X + dragOffset.X
+		local newY = input.Position.Y + dragOffset.Y
 		
 		-- Clamp to screen bounds
 		newX = math.clamp(newX, 0, viewport.X - 60)
@@ -775,6 +800,11 @@ end)
 refreshButton.MouseButton1Click:Connect(function()
 	AdminGUI:UpdatePlayerList()
 	AdminGUI:ShowNotification("Player list refreshed!", "success")
+end)
+
+-- Reset button
+resetButton.MouseButton1Click:Connect(function()
+	AdminRemote.ExecuteCommand:FireServer(AdminConfig.Prefix .. "reset")
 end)
 
 -- Handle notifications from server
@@ -824,14 +854,13 @@ connectCommandButton("respawn", "respawn", false, false)
 connectCommandButton("freeze", "freeze", true, false)
 connectCommandButton("unfreeze", "unfreeze", true, false)
 connectCommandButton("tp", "tp", true, false)
-connectCommandButton("bring", "bring", true, false)
+connectCommandButton("goto", "goto", true, false)
 connectCommandButton("speed", "speed", false, true)
 connectCommandButton("jp", "jp", false, true)
 connectCommandButton("god", "god", false, false)
-connectCommandButton("ungod", "ungod", false, false)
 connectCommandButton("fly", "fly", false, false)
-connectCommandButton("unfly", "unfly", false, false)
-connectCommandButton("reset", "reset", false, false)
+connectCommandButton("flyspeed", "flyspeed", false, true)
+connectCommandButton("antiafk", "antiafk", false, false)
 connectCommandButton("announce", "announce", false, true)
 
 -- Hover effects for UI buttons
@@ -860,6 +889,7 @@ end
 
 addButtonHover(closeButton)
 addButtonHover(refreshButton)
+addButtonHover(resetButton)
 addButtonHover(floatingIcon)
 addButtonHover(dialogOK)
 addButtonHover(dialogCancel)
