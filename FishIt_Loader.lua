@@ -907,7 +907,7 @@ statsTitle.Parent = statsFrame
 
 local fishCaughtLabel = Instance.new("TextLabel")
 fishCaughtLabel.Size = UDim2.new(1, -20, 0, 25)
-fish CaughtLabel.Position = UDim2.new(0, 10, 0, 40)
+fishCaughtLabel.Position = UDim2.new(0, 10, 0, 40)
 fishCaughtLabel.BackgroundTransparency = 1
 fishCaughtLabel.Text = "🎣 Fish Caught: 0"
 fishCaughtLabel.TextColor3 = Config.Theme.Text
