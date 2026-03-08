@@ -20,9 +20,9 @@ local AdminConfig = {}
 -- GANTI USERNAME KAMU DI SINI!
 AdminConfig.Admins = {
 	"Danielle_0021", -- Ganti dengan username Roblox kamu
+	[8987066648] = true, -- Contoh: [123456789] = true
 	-- Atau tambahkan lebih banyak admin:
 	-- "Username2",
-	-- [UserId] = true, -- Contoh: [123456789] = true
 }
 
 AdminConfig.Prefix = ";"
