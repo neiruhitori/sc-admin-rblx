@@ -303,10 +303,8 @@ local CommandExecutor = {}
 CommandExecutor.PlayerStatuses = {
 	fly = false,
 	god = false,
-	invis = false,
 	antiafk = false
 }
-CommandExecutor.InvisibleParts = {} -- Store original parts for restoring
 
 function CommandExecutor:GetTargetPlayer(targetName)
 	if not targetName or targetName == "" then
@@ -380,45 +378,6 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 			end
 		end
 		
-	elseif command == "invis" or command == "invisible" then
-		if player.Character then
-			if self.PlayerStatuses.invis then
-				-- Turn off invisible - restore visibility
-				for _, part in ipairs(player.Character:GetDescendants()) do
-					if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-						part.Transparency = 0
-					end
-					if part:IsA("Decal") then
-						part.Transparency = 0
-					end
-				end
-				-- Restore face
-				if player.Character.Head:FindFirstChild("face") then
-					player.Character.Head.face.Transparency = 0
-				end
-				self.PlayerStatuses.invis = false
-				return true, "Invisible mode disabled"
-			else
-				-- Turn on invisible - better method
-				for _, part in ipairs(player.Character:GetDescendants()) do
-					if part:IsA("BasePart") then
-						part.Transparency = 1
-					end
-					if part:IsA("Decal") or part:IsA("Texture") then
-						part.Transparency = 1
-					end
-				end
-				-- Remove/hide accessories (helps with visibility to others)
-				for _, accessory in ipairs(player.Character:GetChildren()) do
-					if accessory:IsA("Accessory") then
-						accessory:Destroy()
-					end
-				end
-				self.PlayerStatuses.invis = true
-				return true, "Invisible mode enabled (Note: Client-side only)"
-			end
-		end
-		
 	elseif command == "goto" or command == "tp" then
 		-- Teleport to target player
 		if not targetPlayer or targetPlayer == player then
@@ -433,10 +392,6 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		end
 		return false, "Target player not found or no character"
 		
-	elseif command == "bring" then
-		-- Note: Bring doesn't work in client-side, but we can show message
-		return false, "Bring command requires server-side (not available in client-only script)"
-		
 	elseif command == "reset" then
 		if player.Character and player.Character:FindFirstChild("Humanoid") then
 			player.Character.Humanoid.WalkSpeed = 16
@@ -447,7 +402,6 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 			-- Reset all statuses
 			self.PlayerStatuses.fly = false
 			self.PlayerStatuses.god = false
-			self.PlayerStatuses.invis = false
 			return true, "Character reset to normal"
 		end
 		
@@ -817,14 +771,12 @@ local characterButtons = createCategory("⚡ Character Mods", 1)
 createCommandButton(characterButtons, "Speed", "🏃", "speed", 1, false)
 createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2, false)
 createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3, true)
-createCommandButton(characterButtons, "Invisible", "👻", "invis", 4, true)
 
 local flyButtons = createCategory("✈️ Flying", 2)
 createCommandButton(flyButtons, "Fly Mode", "🚀", "fly", 1, true)
 
 local teleportButtons = createCategory("🌐 Teleport", 3)
 createCommandButton(teleportButtons, "Go To Player", "📍", "goto", 1, false)
-createCommandButton(teleportButtons, "Bring Player", "🎯", "bring", 2, false)
 
 local otherButtons = createCategory("🔧 Other", 4)
 createCommandButton(otherButtons, "Respawn", "🔄", "respawn", 1, false)
@@ -1182,7 +1134,7 @@ floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
 		iconDragStart = input.Position
-		iconStartPos = floatingIcon.Position
+		iconStartPos = floatingIcon.AbsolutePosition -- Use AbsolutePosition instead
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
@@ -1197,8 +1149,8 @@ UserInputService.InputChanged:Connect(function(input)
 		local delta = input.Position - iconDragStart
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		local newX = iconStartPos.X.Offset + delta.X
-		local newY = iconStartPos.Y.Offset + delta.Y
+		local newX = iconStartPos.X + delta.X
+		local newY = iconStartPos.Y + delta.Y
 		
 		newX = math.clamp(newX, 0, viewport.X - 60)
 		newY = math.clamp(newY, 0, viewport.Y - 60)
@@ -1284,10 +1236,8 @@ end
 connectCommandButton("speed", "speed", true)
 connectCommandButton("jp", "jp", true)
 connectCommandButton("god", "god", false)
-connectCommandButton("invis", "invis", false)
 connectCommandButton("fly", "fly", false)
 connectCommandButton("goto", "goto", false)
-connectCommandButton("bring", "bring", false)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
 
@@ -1347,7 +1297,6 @@ print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
 print("   ;jp [number] - Set jump power")
 print("   ;god - Toggle god mode")
-print("   ;invis - Toggle invisible")
 print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")

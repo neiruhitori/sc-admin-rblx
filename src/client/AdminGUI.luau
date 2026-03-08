@@ -367,8 +367,6 @@ createCommandButton(characterButtons, "Speed", "🏃", "speed", 1)
 createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2)
 createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3)
 createCommandButton(characterButtons, "Ungod", "❌", "ungod", 4)
-createCommandButton(characterButtons, "Invisible", "👻", "invis", 5)
-createCommandButton(characterButtons, "Visible", "👁️", "vis", 6)
 
 local flyButtons = createCategory("✈️ Flying", 4)
 createCommandButton(flyButtons, "Enable Fly", "🚀", "fly", 1)
@@ -722,7 +720,7 @@ floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
 		iconDragStart = input.Position
-		iconStartPos = floatingIcon.Position
+		iconStartPos = floatingIcon.AbsolutePosition -- Use AbsolutePosition to fix bug
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
@@ -737,8 +735,8 @@ UserInputService.InputChanged:Connect(function(input)
 		local delta = input.Position - iconDragStart
 		local viewport = workspace.CurrentCamera.ViewportSize
 		
-		local newX = iconStartPos.X.Offset + delta.X
-		local newY = iconStartPos.Y.Offset + delta.Y
+		local newX = iconStartPos.X + delta.X
+		local newY = iconStartPos.Y + delta.Y
 		
 		-- Clamp to screen bounds
 		newX = math.clamp(newX, 0, viewport.X - 60)
@@ -831,8 +829,6 @@ connectCommandButton("speed", "speed", false, true)
 connectCommandButton("jp", "jp", false, true)
 connectCommandButton("god", "god", false, false)
 connectCommandButton("ungod", "ungod", false, false)
-connectCommandButton("invis", "invis", false, false)
-connectCommandButton("vis", "vis", false, false)
 connectCommandButton("fly", "fly", false, false)
 connectCommandButton("unfly", "unfly", false, false)
 connectCommandButton("reset", "reset", false, false)
