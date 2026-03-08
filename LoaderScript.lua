@@ -245,7 +245,14 @@ function FlyController:StopFlying()
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
-			humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+			
+			-- Safely change state - if god mode is on, just go to GettingUp instead of Freefall
+			-- This prevents fall damage death
+			if CommandExecutor.PlayerStatuses.god then
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+			else
+				humanoid:ChangeState(Enum.HumanoidStateType.Freefall)
+			end
 		end
 	end
 	
@@ -335,14 +342,36 @@ function CommandExecutor:EnableGodMode()
 	
 	-- Prevent humanoid from entering dead state
 	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
-		if newState == Enum.HumanoidStateType.Dead and self.PlayerStatuses.god then
-			pcall(function()
-				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		if self.PlayerStatuses.god then
+			-- Prevent death state
+			if newState == Enum.HumanoidStateType.Dead then
+				pcall(function()
+					humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+					humanoid.Health = math.huge
+				end)
+			end
+			-- Keep health at max during any state change (prevents fly/fall damage)
+			if humanoid.Health < math.huge then
 				humanoid.Health = math.huge
-			end)
+			end
 		end
 	end)
 	table.insert(self.GodModeConnections, stateConn)
+	
+	-- Additional heartbeat protection for aggressive health restoration
+	-- This prevents instant death from fall damage or state changes
+	local heartbeatConn = RunService.Heartbeat:Connect(function()
+		if self.PlayerStatuses.god then
+			local char = player.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health < math.huge then
+					hum.Health = math.huge
+				end
+			end
+		end
+	end)
+	table.insert(self.GodModeConnections, heartbeatConn)
 	
 	self.PlayerStatuses.god = true
 	return true

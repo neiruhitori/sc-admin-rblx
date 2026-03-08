@@ -67,12 +67,35 @@ local function enableGodMode(player: Player)
 	
 	-- Prevent humanoid from entering dead state
 	local stateConn = humanoid.StateChanged:Connect(function(oldState, newState)
-		if newState == Enum.HumanoidStateType.Dead and getPlayerStatus(player.Name).GodMode then
-			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-			humanoid.Health = math.huge
+		if getPlayerStatus(player.Name).GodMode then
+			-- Prevent death state
+			if newState == Enum.HumanoidStateType.Dead then
+				humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+				humanoid.Health = math.huge
+			end
+			-- Keep health at max during any state change (prevents fly/fall damage)
+			if humanoid.Health < math.huge then
+				humanoid.Health = math.huge
+			end
 		end
 	end)
 	table.insert(AdminCommands.GodModeConnections[player.UserId], stateConn)
+	
+	-- Additional heartbeat protection for aggressive health restoration
+	-- This prevents instant death from fall damage or state changes
+	local RunService = game:GetService("RunService")
+	local heartbeatConn = RunService.Heartbeat:Connect(function()
+		if getPlayerStatus(player.Name).GodMode then
+			local char = player.Character
+			if char then
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health < math.huge then
+					hum.Health = math.huge
+				end
+			end
+		end
+	end)
+	table.insert(AdminCommands.GodModeConnections[player.UserId], heartbeatConn)
 	
 	getPlayerStatus(player.Name).GodMode = true
 end
