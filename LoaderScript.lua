@@ -7,14 +7,7 @@
 	   🔓 PUBLIC ACCESS - No admin check required!
 	   Anyone who executes this script gets full access.
 	   
-	   📝 LOGO SETUP (Optional):
-	   1. Upload logo.png to imgur.com
-	   2. Click on image → Right click → "Copy image address"
-	   3. Find line with: local LOGO_URL = 
-	   4. Replace URL with your imgur link
-	      Example: "https://i.imgur.com/XXXXX.png"
-	   
-	   🚀 HOW TO USE:
+	    HOW TO USE:
 	   1. Upload this file to GitHub (get raw link)
 	   2. In executor, run:
 	      loadstring(game:HttpGet("YOUR_GITHUB_RAW_URL"))()
@@ -463,15 +456,14 @@ local iconCorner = Instance.new("UICorner")
 iconCorner.CornerRadius = UDim.new(0, 30)
 iconCorner.Parent = floatingIcon
 
--- Logo Image (SETUP: Upload logo.png to imgur.com, copy direct link, replace URL below)
-local LOGO_URL = "https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/refs/heads/main/logo.png" -- REPLACE with https://i.imgur.com/XXXXX.png
-local iconImage = Instance.new("ImageLabel")
-iconImage.Size = UDim2.new(0.8, 0, 0.8, 0)
-iconImage.Position = UDim2.new(0.1, 0, 0.1, 0)
-iconImage.BackgroundTransparency = 1
-iconImage.Image = LOGO_URL
-iconImage.ScaleType = Enum.ScaleType.Fit
-iconImage.Parent = floatingIcon
+-- Icon emoji
+local iconLabel = Instance.new("TextLabel")
+iconLabel.Size = UDim2.new(1, 0, 1, 0)
+iconLabel.BackgroundTransparency = 1
+iconLabel.Text = "👁️‍🗨️"
+iconLabel.TextSize = 32
+iconLabel.Font = Enum.Font.GothamBold
+iconLabel.Parent = floatingIcon
 
 -- Main Frame
 local mainFrame = Instance.new("Frame")
@@ -563,19 +555,11 @@ local watermarkCorner = Instance.new("UICorner")
 watermarkCorner.CornerRadius = UDim.new(0, 6)
 watermarkCorner.Parent = watermark
 
-local watermarkLogo = Instance.new("ImageLabel")
-watermarkLogo.Size = UDim2.new(0, 24, 0, 24)
-watermarkLogo.Position = UDim2.new(0, 5, 0.5, -12)
-watermarkLogo.BackgroundTransparency = 1
-watermarkLogo.Image = LOGO_URL
-watermarkLogo.ScaleType = Enum.ScaleType.Fit
-watermarkLogo.Parent = watermark
-
 local watermarkText = Instance.new("TextLabel")
-watermarkText.Size = UDim2.new(1, -35, 1, 0)
-watermarkText.Position = UDim2.new(0, 35, 0, 0)
+watermarkText.Size = UDim2.new(1, -20, 1, 0)
+watermarkText.Position = UDim2.new(0, 10, 0, 0)
 watermarkText.BackgroundTransparency = 1
-watermarkText.Text = "Made by TwoHand Comunity | discord.gg/xHrJaSgy"
+watermarkText.Text = "⚙️ Made by TwoHand Comunity | discord.gg/xHrJaSgy"
 watermarkText.TextColor3 = AdminConfig.Theme.Text
 watermarkText.TextSize = 12
 watermarkText.Font = Enum.Font.Gotham
@@ -1178,9 +1162,9 @@ dialogInput.FocusLost:Connect(function(enterPressed)
 end)
 
 local iconDragging = false
-local iconDragStart
-local iconStartPos
-local dragOffset
+local dragInput
+local dragStart
+local startPos
 local isDragging = false
 
 -- Click handler (only triggers if not dragging)
@@ -1194,22 +1178,14 @@ floatingIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
 		iconDragging = true
 		isDragging = false
-		
-		-- Use GetMouseLocation for accurate screen coordinates
-		local mousePos = UserInputService:GetMouseLocation()
-		iconDragStart = mousePos
-		iconStartPos = floatingIcon.AbsolutePosition
-		
-		-- Calculate offset from cursor to icon top-left
-		dragOffset = Vector2.new(
-			iconStartPos.X - mousePos.X,
-			iconStartPos.Y - mousePos.Y
-		)
+		dragInput = input
+		dragStart = input.Position
+		startPos = floatingIcon.Position
 		
 		input.Changed:Connect(function()
 			if input.UserInputState == Enum.UserInputState.End then
 				iconDragging = false
-				-- Reset drag flag after short delay to allow click event
+				-- Reset drag flag after short delay
 				task.wait(0.1)
 				isDragging = false
 			end
@@ -1218,25 +1194,23 @@ floatingIcon.InputBegan:Connect(function(input)
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-	if iconDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-		local mousePos = UserInputService:GetMouseLocation()
-		local viewport = workspace.CurrentCamera.ViewportSize
+	if iconDragging and input == dragInput then
+		local delta = input.Position - dragStart
 		
 		-- Check if moved significantly (more than 3 pixels)
-		local dragDistance = (mousePos - iconDragStart).Magnitude
-		if dragDistance > 3 then
+		if delta.Magnitude > 3 then
 			isDragging = true -- Mark as dragging to prevent click
 		end
 		
-		-- Apply offset to keep cursor at same relative position
-		local newX = mousePos.X + dragOffset.X
-		local newY = mousePos.Y + dragOffset.Y
+		-- Calculate new position
+		local newPosition = UDim2.new(
+			startPos.X.Scale,
+			startPos.X.Offset + delta.X,
+			startPos.Y.Scale,
+			startPos.Y.Offset + delta.Y
+		)
 		
-		-- Clamp to screen bounds
-		newX = math.clamp(newX, 0, viewport.X - 60)
-		newY = math.clamp(newY, 0, viewport.Y - 60)
-		
-		floatingIcon.Position = UDim2.new(0, newX, 0, newY)
+		floatingIcon.Position = newPosition
 	end
 end)
 
