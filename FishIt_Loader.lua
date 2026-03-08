@@ -343,7 +343,13 @@ function WeatherController:BuyWeather(weatherName)
 							end)
 							
 							if result and success then
-								print("✅ Success with remote:", remote.Name, "Params:", table.concat(params, ", "))
+								-- Convert params to string for display
+								local paramStr = ""
+								for i, p in ipairs(params) do
+									paramStr = paramStr .. tostring(p)
+									if i < #params then paramStr = paramStr .. ", " end
+								end
+								print("✅ Success with remote:", remote.Name, "Params:", paramStr)
 								break
 							end
 						end
@@ -585,7 +591,7 @@ function WeatherController:Start()
 				
 				if success then
 					print("   ✅ Purchase successful!")
-					if GUI.Elements.WeathersBoughtLabel then
+					if GUI and GUI.Elements and GUI.Elements.WeathersBoughtLabel then
 						GUI.Elements.WeathersBoughtLabel.Text = "☁️ Weathers Bought: " .. self.Stats.WeathersBought
 					end
 					task.wait(2) -- Wait a bit after successful purchase
