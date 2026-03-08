@@ -206,68 +206,171 @@ end
 -- Buy a specific weather
 function WeatherController:BuyWeather(weatherName)
 	local success = false
+	print("🔍 Trying to buy weather:", weatherName)
 	
-	-- Method 1: Try to find weather button in GUI
+	-- Method 1: Try to find and click weather button in GUI
 	local weatherGui = self:FindWeatherMachine()
 	if weatherGui then
-		local weatherButton = weatherGui:FindFirstChild(weatherName, true)
-		if weatherButton and weatherButton:IsA("GuiButton") then
-			pcall(function()
-				firesignal(weatherButton.MouseButton1Click)
-				success = true
-			end)
-		end
-	end
-	
-	-- Method 2: Try RemoteEvent/RemoteFunction
-	if not success then
-		local remotes = {"BuyWeather", "PurchaseWeather", "WeatherPurchase", "SetWeather"}
-		for _, remoteName in ipairs(remotes) do
-			local remote = ReplicatedStorage:FindFirstChild(remoteName, true)
-			if remote then
-				if remote:IsA("RemoteEvent") then
-					pcall(function()
-						remote:FireServer(weatherName)
+		print("📱 Found Weather GUI:", weatherGui.Name)
+		
+		-- Try different button name patterns
+		local buttonPatterns = {
+			weatherName,
+			weatherName:lower(),
+			weatherName:upper(),
+			weatherName .. "Button",
+			weatherName .. "Btn",
+		}
+		
+		for _, pattern in ipairs(buttonPatterns) do
+			local weatherButton = weatherGui:FindFirstChild(pattern, true)
+			if weatherButton then
+				print("🔘 Found button:", weatherButton.Name, "Type:", weatherButton.ClassName)
+				
+				if weatherButton:IsA("GuiButton") or weatherButton:IsA("TextButton") or weatherButton:IsA("ImageButton") then
+					local clicked = pcall(function()
+						if firesignal then
+							firesignal(weatherButton.MouseButton1Click)
+						else
+							-- Fallback: try activating directly
+							weatherButton.Activated:Fire()
+						end
 						success = true
 					end)
-				elseif remote:IsA("RemoteFunction") then
-					pcall(function()
-						remote:InvokeServer(weatherName)
-						success = true
-					end)
+					
+					if clicked and success then
+						print("✅ Clicked weather button!")
+						break
+					end
 				end
-				if success then break end
+			end
+		end
+	else
+		print("❌ Weather GUI not found")
+	end
+	
+	-- Method 2: Scan ALL RemoteEvents/RemoteFunctions in game
+	if not success then
+		print("🔍 Scanning for weather remotes...")
+		local locations = {ReplicatedStorage, workspace, player.PlayerGui}
+		
+		for _, location in ipairs(locations) do
+			for _, remote in pairs(location:GetDescendants()) do
+				if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+					local remoteName = remote.Name:lower()
+					
+					-- Check if remote name contains weather-related keywords
+					if remoteName:find("weather") or remoteName:find("purchase") or 
+					   remoteName:find("buy") or remoteName:find("shop") then
+						
+						print("📡 Trying remote:", remote:GetFullName())
+						
+						-- Try different parameter formats
+						local paramFormats = {
+							{weatherName},
+							{weatherName:lower()},
+							{weatherName:upper()},
+							{"Weather", weatherName},
+							{"BuyWeather", weatherName},
+							{weatherName, 1},
+							{1, weatherName},
+						}
+						
+						for _, params in ipairs(paramFormats) do
+							local result = pcall(function()
+								if remote:IsA("RemoteEvent") then
+									remote:FireServer(unpack(params))
+								elseif remote:IsA("RemoteFunction") then
+									remote:InvokeServer(unpack(params))
+								end
+								success = true
+							end)
+							
+							if result and success then
+								print("✅ Success with remote:", remote.Name, "Params:", table.concat(params, ", "))
+								break
+							end
+						end
+						
+						if success then break end
+					end
+				end
+			end
+			if success then break end
+		end
+	end
+	
+	-- Method 3: Try to interact with Weather Machine in workspace
+	if not success then
+		print("🔍 Looking for Weather Machine in workspace...")
+		for _, obj in pairs(workspace:GetDescendants()) do
+			local objName = obj.Name:lower()
+			
+			if objName:find("weather") or objName:find("machine") then
+				print("🏭 Found potential machine:", obj:GetFullName())
+				
+				-- Try ProximityPrompt
+				local prompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
+				if prompt then
+					print("🔔 Found ProximityPrompt")
+					if fireproximityprompt then
+						pcall(function()
+							fireproximityprompt(prompt)
+							success = true
+						end)
+						if success then
+							print("✅ Fired ProximityPrompt!")
+							break
+						end
+					end
+				end
+				
+				-- Try ClickDetector
+				local detector = obj:FindFirstChildOfClass("ClickDetector", true)
+				if detector then
+					print("🖱️ Found ClickDetector")
+					if fireclickdetector then
+						pcall(function()
+							fireclickdetector(detector)
+							success = true
+						end)
+						if success then
+							print("✅ Fired ClickDetector!")
+							break
+						end
+					end
+				end
 			end
 		end
 	end
 	
-	-- Method 3: Try workspace interaction
+	-- Method 4: Try bindable events/functions (for local scripts)
 	if not success then
-		local weatherMachine = workspace:FindFirstChild("WeatherMachine", true)
-		if weatherMachine then
-			-- Try ProximityPrompt
-			local prompt = weatherMachine:FindFirstChildOfClass("ProximityPrompt", true)
-			if prompt and fireproximityprompt then
-				pcall(function()
-					fireproximityprompt(prompt)
-					success = true
-				end)
-			end
-			
-			-- Try ClickDetector
-			local detector = weatherMachine:FindFirstChildOfClass("ClickDetector", true)
-			if detector and fireclickdetector then
-				pcall(function()
-					fireclickdetector(detector)
-					success = true
-				end)
+		print("🔍 Checking for local bindables...")
+		for _, bindable in pairs(ReplicatedStorage:GetDescendants()) do
+			if bindable:IsA("BindableEvent") or bindable:IsA("BindableFunction") then
+				local bindName = bindable.Name:lower()
+				if bindName:find("weather") or bindName:find("buy") then
+					print("🔗 Trying bindable:", bindable.Name)
+					pcall(function()
+						if bindable:IsA("BindableEvent") then
+							bindable:Fire(weatherName)
+						else
+							bindable:Invoke(weatherName)
+						end
+						success = true
+					end)
+					if success then break end
+				end
 			end
 		end
 	end
 	
 	if success then
 		self.Stats.WeathersBought = self.Stats.WeathersBought + 1
-		print("☁️ Bought weather:", weatherName)
+		print("☁️✅ Successfully bought weather:", weatherName)
+	else
+		print("❌ Failed to buy weather:", weatherName)
 	end
 	
 	return success
@@ -282,6 +385,96 @@ function WeatherController:GetSelectedWeathers()
 		end
 	end
 	return selected
+end
+
+-- Debug: List all weather-related remotes in game
+function WeatherController:ListAllRemotes()
+	print("=== 🔍 SCANNING ALL REMOTES ===")
+	local count = 0
+	
+	-- Scan ReplicatedStorage
+	print("\n📦 ReplicatedStorage:")
+	for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
+		if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+			print("  -", remote.ClassName, ":", remote:GetFullName())
+			count = count + 1
+		end
+	end
+	
+	-- Scan Workspace
+	print("\n🌍 Workspace:")
+	for _, remote in pairs(workspace:GetDescendants()) do
+		if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+			print("  -", remote.ClassName, ":", remote:GetFullName())
+			count = count + 1
+		end
+	end
+	
+	-- Scan PlayerGui
+	print("\n📱 PlayerGui:")
+	for _, remote in pairs(player.PlayerGui:GetDescendants()) do
+		if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
+			print("  -", remote.ClassName, ":", remote:GetFullName())
+			count = count + 1
+		end
+	end
+	
+	-- List all GUIs
+	print("\n📱 All GUIs in PlayerGui:")
+	for _, gui in pairs(player.PlayerGui:GetChildren()) do
+		if gui:IsA("ScreenGui") then
+			print("  - ScreenGui:", gui.Name)
+		end
+	end
+	
+	print("\n✅ Total Remotes Found:", count)
+	print("=== END SCAN ===\n")
+end
+
+-- Debug: Try to find weather machine
+function WeatherController:DebugWeatherMachine()
+	print("=== 🔍 DEBUGGING WEATHER MACHINE ===")
+	
+	-- Check PlayerGui
+	local playerGui = player:WaitForChild("PlayerGui")
+	print("\n📱 Checking PlayerGui for Weather GUIs...")
+	
+	for _, gui in pairs(playerGui:GetChildren()) do
+		local guiName = gui.Name:lower()
+		if guiName:find("weather") or guiName:find("shop") or guiName:find("store") then
+			print("  ✅ Found potential GUI:", gui.Name)
+			
+			-- List all buttons in this GUI
+			for _, button in pairs(gui:GetDescendants()) do
+				if button:IsA("GuiButton") or button:IsA("TextButton") or button:IsA("ImageButton") then
+					print("    🔘 Button:", button.Name, "- Text:", button.Text or "N/A")
+				end
+			end
+		end
+	end
+	
+	-- Check Workspace
+	print("\n🌍 Checking Workspace for Weather Machine...")
+	for _, obj in pairs(workspace:GetDescendants()) do
+		local objName = obj.Name:lower()
+		if objName:find("weather") then
+			print("  ✅ Found:", obj:GetFullName(), "- Type:", obj.ClassName)
+			
+			-- Check for ProximityPrompt
+			local prompt = obj:FindFirstChildOfClass("ProximityPrompt", true)
+			if prompt then
+				print("    🔔 Has ProximityPrompt:", prompt:GetFullName())
+			end
+			
+			-- Check for ClickDetector  
+			local detector = obj:FindFirstChildOfClass("ClickDetector", true)
+			if detector then
+				print("    🖱️ Has ClickDetector:", detector:GetFullName())
+			end
+		end
+	end
+	
+	print("=== END DEBUG ===\n")
 end
 
 -- Start auto weather buying
@@ -1534,6 +1727,39 @@ createButton(settingsContent, "Reset to Default", "♻️", function()
 	print("✅ Settings reset to default")
 end)
 
+-- Debug Section
+local debugTitle = Instance.new("TextLabel")
+debugTitle.Size = UDim2.new(1, -20, 0, 30)
+debugTitle.BackgroundTransparency = 1
+debugTitle.Text = "🐛 Debug Tools"
+debugTitle.TextColor3 = Config.Theme.Accent
+debugTitle.TextSize = 16
+debugTitle.Font = Enum.Font.GothamBold
+debugTitle.TextXAlignment = Enum.TextXAlignment.Left
+debugTitle.Parent = settingsContent
+
+createButton(settingsContent, "List All Remotes", "📡", function()
+	WeatherController:ListAllRemotes()
+	print("✅ Check console for remote list!")
+end)
+
+createButton(settingsContent, "Debug Weather Machine", "☁️", function()
+	WeatherController:DebugWeatherMachine()
+	print("✅ Check console for weather debug info!")
+end)
+
+createButton(settingsContent, "Test Buy Weather (Cloudy)", "🧪", function()
+	print("🧪 Testing manual weather buy...")
+	local success = WeatherController:BuyWeather("Cloudy")
+	if success then
+		print("✅ Test successful!")
+	else
+		print("❌ Test failed - check debug info above")
+	end
+end)
+
+createInfoLabel(settingsContent, "ℹ️ Debug tools print info to executor console (F9)")
+
 -- Tab Switching Logic
 local function switchTab(tab, content)
 	-- Hide all content
@@ -1606,6 +1832,15 @@ print("✅ Fish It Auto Farm Loaded Successfully!")
 print("🎣 Click the floating button to open the menu")
 print("💬 Join our Discord: discord.gg/xHrJaSgy")
 print("⚡ Made by TwoHand Comunity")
+
+-- Auto-scan for remotes on startup (helps with debugging)
+print("\n🔍 Auto-scanning game remotes for weather system...")
+task.spawn(function()
+	task.wait(2) -- Wait a bit for game to load
+	WeatherController:ListAllRemotes()
+	WeatherController:DebugWeatherMachine()
+	print("\n💡 TIP: Go to Settings tab and use Debug Tools to re-scan anytime!")
+end)
 
 end) -- End of pcall
 
