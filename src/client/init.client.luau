@@ -10,7 +10,10 @@ local AdminConfig = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChil
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Only load GUI if player is admin
+-- Load Utility GUI for all players
+require(script.UtilityGUI)
+
+-- Only load Admin GUI if player is admin
 if AdminConfig:IsAdmin(player) then
 	require(script.AdminGUI)
 	require(script.FlyController)
