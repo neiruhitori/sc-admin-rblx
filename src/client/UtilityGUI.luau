@@ -341,21 +341,61 @@ end
 
 -- ==================== FEATURE 3: SPEED BOOST ====================
 
+UtilityGUI.ShiftConnection = nil
+
 function UtilityGUI:ToggleSpeed()
 	self.SpeedEnabled = not self.SpeedEnabled
 	
-	local char = player.Character
-	if char then
-		local hum = char:FindFirstChildOfClass("Humanoid")
-		if hum then
-			if self.SpeedEnabled then
+	if self.SpeedEnabled then
+		-- Set speed to 20
+		local char = player.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
 				hum.WalkSpeed = self.BoostSpeed
-				print("✓ Speed Boost Enabled: " .. self.BoostSpeed)
-			else
-				hum.WalkSpeed = self.DefaultSpeed
-				print("✗ Speed Boost Disabled")
 			end
 		end
+		
+		-- Simulate holding Shift key continuously
+		self.ShiftConnection = RunService.RenderStepped:Connect(function()
+			if self.SpeedEnabled then
+				-- Continuously press shift
+				local VirtualInputManager = game:GetService("VirtualInputManager")
+				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
+				
+				-- Also maintain speed at 20
+				local char = player.Character
+				if char then
+					local hum = char:FindFirstChildOfClass("Humanoid")
+					if hum and hum.WalkSpeed < self.BoostSpeed then
+						hum.WalkSpeed = self.BoostSpeed
+					end
+				end
+			end
+		end)
+		
+		print("✓ Speed Boost Enabled: " .. self.BoostSpeed .. " + Auto Shift")
+	else
+		-- Stop simulating shift
+		if self.ShiftConnection then
+			self.ShiftConnection:Disconnect()
+			self.ShiftConnection = nil
+			
+			-- Send shift key release
+			local VirtualInputManager = game:GetService("VirtualInputManager")
+			VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftShift, false, game)
+		end
+		
+		-- Reset speed
+		local char = player.Character
+		if char then
+			local hum = char:FindFirstChildOfClass("Humanoid")
+			if hum then
+				hum.WalkSpeed = self.DefaultSpeed
+			end
+		end
+		
+		print("✗ Speed Boost Disabled")
 	end
 	
 	return self.SpeedEnabled
@@ -370,6 +410,24 @@ player.CharacterAdded:Connect(function(char)
 	if UtilityGUI.SpeedEnabled then
 		wait(0.5)
 		humanoid.WalkSpeed = UtilityGUI.BoostSpeed
+		
+		-- Restart shift simulation if needed
+		if not UtilityGUI.ShiftConnection then
+			UtilityGUI.ShiftConnection = RunService.RenderStepped:Connect(function()
+				if UtilityGUI.SpeedEnabled then
+					local VirtualInputManager = game:GetService("VirtualInputManager")
+					VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
+					
+					local char = player.Character
+					if char then
+						local hum = char:FindFirstChildOfClass("Humanoid")
+						if hum and hum.WalkSpeed < UtilityGUI.BoostSpeed then
+							hum.WalkSpeed = UtilityGUI.BoostSpeed
+						end
+					end
+				end
+			end)
+		end
 	end
 end)
 
@@ -392,8 +450,8 @@ createFeatureCard(
 )
 
 createFeatureCard(
-	"⚡ Speed Boost",
-	"Set speed to 20 (Press L)",
+	"⚡ Speed Boost + Shift",
+	"Speed 20 + Auto Hold Shift (Press L)",
 	"L",
 	UtilityGUI.SpeedEnabled,
 	function() return UtilityGUI:ToggleSpeed() end
@@ -516,6 +574,38 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("Utility GUI loaded - Shortcuts: K (Cursor), J (ESP), L (Speed)")
+-- ==================== DRAGGABLE MAIN FRAME ====================
+
+local frameDragging = false
+local frameDragStart = nil
+local frameStartPos = nil
+
+titleBar.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		frameDragging = true
+		frameDragStart = input.Position
+		frameStartPos = mainFrame.Position
+	end
+end)
+
+titleBar.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		frameDragging = false
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+	if frameDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - frameDragStart
+		mainFrame.Position = UDim2.new(
+			frameStartPos.X.Scale,
+			frameStartPos.X.Offset + delta.X,
+			frameStartPos.Y.Scale,
+			frameStartPos.Y.Offset + delta.Y
+		)
+	end
+end)
+
+print("Utility GUI loaded - Shortcuts: K (Cursor), J (ESP), L (Speed+Shift)")
 
 return UtilityGUI
