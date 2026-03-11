@@ -1,7 +1,7 @@
 --[[
-	Utility GUI Client
+	Violence District Utility GUI
 	Game utility features with keyboard shortcuts
-	Features: Cursor Unlock (K), ESP Wallhack (J), Speed Boost (L)
+	Features: Cursor Unlock (K), ESP Wallhack (J), Crosshair (H), Speed Boost (L)
 ]]
 
 local Players = game:GetService("Players")
@@ -18,11 +18,15 @@ local UtilityGUI = {}
 UtilityGUI.CursorEnabled = false
 UtilityGUI.ESPEnabled = false
 UtilityGUI.SpeedEnabled = false
+UtilityGUI.CrosshairEnabled = false
 UtilityGUI.DefaultSpeed = 16
 UtilityGUI.BoostSpeed = 20
 
 -- ESP Highlight storage
 UtilityGUI.ESPHighlights = {}
+
+-- Crosshair storage
+UtilityGUI.CrosshairFrame = nil
 
 -- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -106,7 +110,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -100, 1, 0)
 titleLabel.Position = UDim2.new(0, 20, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "⚡ Utility Menu"
+titleLabel.Text = "⚡ Violence District"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 titleLabel.TextSize = 20
 titleLabel.Font = Enum.Font.GothamBold
@@ -339,7 +343,88 @@ function UtilityGUI:ToggleESP()
 	return self.ESPEnabled
 end
 
--- ==================== FEATURE 3: SPEED BOOST ====================
+-- ==================== FEATURE 3: CROSSHAIR AIM ASSIST ====================
+
+function UtilityGUI:CreateCrosshair()
+	if self.CrosshairFrame then return end
+	
+	-- Create crosshair frame
+	local crosshair = Instance.new("Frame")
+	crosshair.Name = "Crosshair"
+	crosshair.Size = UDim2.new(0, 40, 0, 40)
+	crosshair.Position = UDim2.new(0.5, -20, 0.5, -20)
+	crosshair.BackgroundTransparency = 1
+	crosshair.ZIndex = 10
+	crosshair.Parent = screenGui
+	
+	-- Horizontal line
+	local horizontal = Instance.new("Frame")
+	horizontal.Name = "Horizontal"
+	horizontal.Size = UDim2.new(0, 30, 0, 2)
+	horizontal.Position = UDim2.new(0.5, -15, 0.5, -1)
+	horizontal.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+	horizontal.BorderSizePixel = 0
+	horizontal.Parent = crosshair
+	
+	-- Vertical line
+	local vertical = Instance.new("Frame")
+	vertical.Name = "Vertical"
+	vertical.Size = UDim2.new(0, 2, 0, 30)
+	vertical.Position = UDim2.new(0.5, -1, 0.5, -15)
+	vertical.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+	vertical.BorderSizePixel = 0
+	vertical.Parent = crosshair
+	
+	-- Center dot
+	local centerDot = Instance.new("Frame")
+	centerDot.Name = "CenterDot"
+	centerDot.Size = UDim2.new(0, 4, 0, 4)
+	centerDot.Position = UDim2.new(0.5, -2, 0.5, -2)
+	centerDot.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+	centerDot.BorderSizePixel = 0
+	centerDot.Parent = crosshair
+	
+	local dotCorner = Instance.new("UICorner")
+	dotCorner.CornerRadius = UDim.new(1, 0)
+	dotCorner.Parent = centerDot
+	
+	-- Add black outline for visibility
+	local function addOutline(frame)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.Thickness = 1
+		stroke.Parent = frame
+	end
+	
+	addOutline(horizontal)
+	addOutline(vertical)
+	addOutline(centerDot)
+	
+	self.CrosshairFrame = crosshair
+end
+
+function UtilityGUI:RemoveCrosshair()
+	if self.CrosshairFrame then
+		self.CrosshairFrame:Destroy()
+		self.CrosshairFrame = nil
+	end
+end
+
+function UtilityGUI:ToggleCrosshair()
+	self.CrosshairEnabled = not self.CrosshairEnabled
+	
+	if self.CrosshairEnabled then
+		self:CreateCrosshair()
+		print("✓ Crosshair Enabled")
+	else
+		self:RemoveCrosshair()
+		print("✗ Crosshair Disabled")
+	end
+	
+	return self.CrosshairEnabled
+end
+
+-- ==================== FEATURE 4: SPEED BOOST ====================
 
 UtilityGUI.ShiftConnection = nil
 
@@ -450,6 +535,14 @@ createFeatureCard(
 )
 
 createFeatureCard(
+	"🎯 Crosshair Aim",
+	"Show crosshair for better aim (Press H)",
+	"H",
+	UtilityGUI.CrosshairEnabled,
+	function() return UtilityGUI:ToggleCrosshair() end
+)
+
+createFeatureCard(
 	"⚡ Speed Boost + Shift",
 	"Speed 20 + Auto Hold Shift (Press L)",
 	"L",
@@ -527,11 +620,25 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		end
 	end
 	
+	-- H = Crosshair Toggle
+	if input.KeyCode == Enum.KeyCode.H then
+		UtilityGUI:ToggleCrosshair()
+		-- Update button visual
+		local card = contentFrame:FindFirstChild("🎯 Crosshair AimCard")
+		if card then
+			local statusButton = card:FindFirstChild("StatusButton")
+			if statusButton then
+				statusButton.Text = UtilityGUI.CrosshairEnabled and "ON" or "OFF"
+				statusButton.BackgroundColor3 = UtilityGUI.CrosshairEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+			end
+		end
+	end
+	
 	-- L = Speed Toggle
 	if input.KeyCode == Enum.KeyCode.L then
 		UtilityGUI:ToggleSpeed()
 		-- Update button visual
-		local card = contentFrame:FindFirstChild("⚡ Speed BoostCard")
+		local card = contentFrame:FindFirstChild("⚡ Speed Boost + ShiftCard")
 		if card then
 			local statusButton = card:FindFirstChild("StatusButton")
 			if statusButton then
@@ -606,6 +713,6 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("Utility GUI loaded - Shortcuts: K (Cursor), J (ESP), L (Speed+Shift)")
+print("Violence District loaded - K (Cursor), J (ESP), H (Crosshair), L (Speed+Shift)")
 
 return UtilityGUI
