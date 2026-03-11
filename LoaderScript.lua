@@ -1849,12 +1849,21 @@ function UtilityGUI:CreateCrosshair()
 	-- Create crosshair frame
 	local crosshair = Instance.new("Frame")
 	crosshair.Name = "Crosshair"
-	crosshair.Size = UDim2.new(0, 40, 0, 40)
-	crosshair.Position = UDim2.new(0.5, -20, 0.5, -20)
+	crosshair.Size = UDim2.new(0, 200, 0, 300)
+	crosshair.Position = UDim2.new(0.5, -100, 0.5, -150)
 	crosshair.BackgroundTransparency = 1
 	crosshair.ZIndex = 10
 	crosshair.Parent = utilityScreenGui
 	
+	-- Add black outline helper
+	local function addOutline(frame)
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.fromRGB(0, 0, 0)
+		stroke.Thickness = 1.5
+		stroke.Parent = frame
+	end
+	
+	-- CENTER CROSSHAIR (0-30 studs)
 	-- Horizontal line
 	local horizontal = Instance.new("Frame")
 	horizontal.Name = "Horizontal"
@@ -1863,6 +1872,7 @@ function UtilityGUI:CreateCrosshair()
 	horizontal.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 	horizontal.BorderSizePixel = 0
 	horizontal.Parent = crosshair
+	addOutline(horizontal)
 	
 	-- Vertical line
 	local vertical = Instance.new("Frame")
@@ -1872,12 +1882,13 @@ function UtilityGUI:CreateCrosshair()
 	vertical.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
 	vertical.BorderSizePixel = 0
 	vertical.Parent = crosshair
+	addOutline(vertical)
 	
 	-- Center dot
 	local centerDot = Instance.new("Frame")
 	centerDot.Name = "CenterDot"
-	centerDot.Size = UDim2.new(0, 4, 0, 4)
-	centerDot.Position = UDim2.new(0.5, -2, 0.5, -2)
+	centerDot.Size = UDim2.new(0, 5, 0, 5)
+	centerDot.Position = UDim2.new(0.5, -2.5, 0.5, -2.5)
 	centerDot.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
 	centerDot.BorderSizePixel = 0
 	centerDot.Parent = crosshair
@@ -1885,18 +1896,73 @@ function UtilityGUI:CreateCrosshair()
 	local dotCorner = Instance.new("UICorner")
 	dotCorner.CornerRadius = UDim.new(1, 0)
 	dotCorner.Parent = centerDot
-	
-	-- Add black outline for visibility
-	local function addOutline(frame)
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.fromRGB(0, 0, 0)
-		stroke.Thickness = 1
-		stroke.Parent = frame
-	end
-	
-	addOutline(horizontal)
-	addOutline(vertical)
 	addOutline(centerDot)
+	
+	-- RANGE MARK 1 (30-60 studs) - Close range
+	local mark1 = Instance.new("Frame")
+	mark1.Name = "Mark1"
+	mark1.Size = UDim2.new(0, 35, 0, 2)
+	mark1.Position = UDim2.new(0.5, -17.5, 0.5, 30)
+	mark1.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+	mark1.BorderSizePixel = 0
+	mark1.Parent = crosshair
+	addOutline(mark1)
+	
+	local label1 = Instance.new("TextLabel")
+	label1.Size = UDim2.new(0, 40, 0, 15)
+	label1.Position = UDim2.new(0.5, 25, 0.5, 25)
+	label1.BackgroundTransparency = 1
+	label1.Text = "30m"
+	label1.TextColor3 = Color3.fromRGB(0, 255, 100)
+	label1.TextSize = 12
+	label1.Font = Enum.Font.GothamBold
+	label1.TextStrokeTransparency = 0.5
+	label1.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	label1.Parent = crosshair
+	
+	-- RANGE MARK 2 (60-90 studs) - Medium range
+	local mark2 = Instance.new("Frame")
+	mark2.Name = "Mark2"
+	mark2.Size = UDim2.new(0, 45, 0, 2)
+	mark2.Position = UDim2.new(0.5, -22.5, 0.5, 60)
+	mark2.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+	mark2.BorderSizePixel = 0
+	mark2.Parent = crosshair
+	addOutline(mark2)
+	
+	local label2 = Instance.new("TextLabel")
+	label2.Size = UDim2.new(0, 40, 0, 15)
+	label2.Position = UDim2.new(0.5, 30, 0.5, 55)
+	label2.BackgroundTransparency = 1
+	label2.Text = "60m"
+	label2.TextColor3 = Color3.fromRGB(255, 255, 0)
+	label2.TextSize = 12
+	label2.Font = Enum.Font.GothamBold
+	label2.TextStrokeTransparency = 0.5
+	label2.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	label2.Parent = crosshair
+	
+	-- RANGE MARK 3 (90+ studs) - Long range
+	local mark3 = Instance.new("Frame")
+	mark3.Name = "Mark3"
+	mark3.Size = UDim2.new(0, 55, 0, 2)
+	mark3.Position = UDim2.new(0.5, -27.5, 0.5, 90)
+	mark3.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
+	mark3.BorderSizePixel = 0
+	mark3.Parent = crosshair
+	addOutline(mark3)
+	
+	local label3 = Instance.new("TextLabel")
+	label3.Size = UDim2.new(0, 40, 0, 15)
+	label3.Position = UDim2.new(0.5, 35, 0.5, 85)
+	label3.BackgroundTransparency = 1
+	label3.Text = "90m+"
+	label3.TextColor3 = Color3.fromRGB(255, 100, 0)
+	label3.TextSize = 12
+	label3.Font = Enum.Font.GothamBold
+	label3.TextStrokeTransparency = 0.5
+	label3.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	label3.Parent = crosshair
 	
 	self.CrosshairFrame = crosshair
 end
@@ -1913,7 +1979,7 @@ function UtilityGUI:ToggleCrosshair()
 	
 	if self.CrosshairEnabled then
 		self:CreateCrosshair()
-		print("✓ Crosshair Enabled")
+		print("✓ Crosshair Enabled - Range Marks: 30m/60m/90m+")
 	else
 		self:RemoveCrosshair()
 		print("✗ Crosshair Disabled")
@@ -2031,7 +2097,7 @@ local espButton = createUtilityCard(
 
 local crosshairButton = createUtilityCard(
 	"🎯 Crosshair Aim",
-	"Show crosshair for better aim (Press H)",
+	"Range marks: 30m/60m/90m+ (Press H)",
 	"H",
 	function() return UtilityGUI:ToggleCrosshair() end
 )
