@@ -45,31 +45,39 @@ function AdminConfig:ParseCommand(input)
 	local command = parts[1]:lower()
 	
 	table.remove(parts, 1)
-	
+
+
 	return command, parts
 end
 
 -- ============================================
 -- ANTI-AFK MODULE
+
 -- ============================================
 local VirtualUser = game:GetService("VirtualUser")
+
 local AntiAFK = {}
 AntiAFK.Enabled = false
 AntiAFK.Connection = nil
 
 function AntiAFK:Enable()
 	if self.Enabled then return end
+
 	self.Enabled = true
+
 	
 	local player = game:GetService("Players").LocalPlayer
 	self.Connection = player.Idled:Connect(function()
+
 		VirtualUser:CaptureController()
 		VirtualUser:ClickButton2(Vector2.new())
+
 	end)
 	
 	print("✅ Anti-AFK enabled!")
 	return true
 end
+
 
 function AntiAFK:Disable()
 	if not self.Enabled then return end
@@ -77,12 +85,15 @@ function AntiAFK:Disable()
 	
 	if self.Connection then
 		self.Connection:Disconnect()
+
 		self.Connection = nil
 	end
 	
 	print("❌ Anti-AFK disabled!")
 	return false
+
 end
+
 
 function AntiAFK:Toggle()
 	if self.Enabled then
@@ -94,6 +105,7 @@ end
 
 -- ============================================
 -- FLY CONTROLLER MODULE
+
 -- ============================================
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
@@ -108,6 +120,7 @@ FlyController.MaxSpeed = 200
 FlyController.DefaultSpeed = 50
 
 local movementKeys = {
+
 	Forward = Enum.KeyCode.W,
 	Backward = Enum.KeyCode.S,
 	Left = Enum.KeyCode.A,
@@ -118,6 +131,7 @@ local movementKeys = {
 
 local keysPressed = {
 	Forward = false,
+
 	Backward = false,
 	Left = false,
 	Right = false,
@@ -344,6 +358,10 @@ function CommandExecutor:EnableGodMode()
 				end
 			end
 		end
+
+		if UtilityGUI.CameraZoomEnabled then
+			UtilityGUI:ApplyCameraZoomSettings()
+		end
 	end)
 	table.insert(self.GodModeConnections, renderConn)
 	
@@ -359,6 +377,10 @@ function CommandExecutor:EnableGodMode()
 					end
 				end
 			end
+		end
+
+		if UtilityGUI.CameraZoomEnabled then
+			UtilityGUI:ApplyCameraZoomSettings()
 		end
 	end)
 	table.insert(self.GodModeConnections, heartbeatConn)
@@ -1517,8 +1539,13 @@ UtilityGUI.CursorEnabled = false
 UtilityGUI.ESPEnabled = false
 UtilityGUI.SpeedEnabled = false
 UtilityGUI.CrosshairEnabled = false
+UtilityGUI.CameraZoomEnabled = false
 UtilityGUI.DefaultSpeed = 16
 UtilityGUI.BoostSpeed = 20
+UtilityGUI.CameraMinZoom = 0.5
+UtilityGUI.CameraMaxZoom = 20
+UtilityGUI.StoredCameraSettings = nil
+UtilityGUI.CameraZoomConnection = nil
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.CrosshairFrame = nil
 
@@ -1750,6 +1777,61 @@ function UtilityGUI:ToggleCursor()
 	end
 	
 	return self.CursorEnabled
+end
+
+-- ==================== FEATURE 1.5: CAMERA ZOOM UNLOCK ====================
+
+function UtilityGUI:ApplyCameraZoomSettings()
+	player.CameraMode = Enum.CameraMode.Classic
+	player.CameraMinZoomDistance = self.CameraMinZoom
+	player.CameraMaxZoomDistance = self.CameraMaxZoom
+end
+
+function UtilityGUI:ToggleCameraZoom()
+	self.CameraZoomEnabled = not self.CameraZoomEnabled
+
+	if self.CameraZoomEnabled then
+		self.StoredCameraSettings = {
+			CameraMode = player.CameraMode,
+			MinZoom = player.CameraMinZoomDistance,
+			MaxZoom = player.CameraMaxZoomDistance,
+		}
+
+		self:ApplyCameraZoomSettings()
+
+		if self.CameraZoomConnection then
+			self.CameraZoomConnection:Disconnect()
+		end
+
+		self.CameraZoomConnection = RunService.RenderStepped:Connect(function()
+			if not self.CameraZoomEnabled then
+				return
+			end
+
+			if player.CameraMode ~= Enum.CameraMode.Classic
+				or player.CameraMinZoomDistance ~= self.CameraMinZoom
+				or player.CameraMaxZoomDistance ~= self.CameraMaxZoom then
+				self:ApplyCameraZoomSettings()
+			end
+		end)
+
+		print("✓ Camera Zoom Enabled - Mouse scroll can change camera distance")
+	else
+		if self.CameraZoomConnection then
+			self.CameraZoomConnection:Disconnect()
+			self.CameraZoomConnection = nil
+		end
+
+		if self.StoredCameraSettings then
+			player.CameraMode = self.StoredCameraSettings.CameraMode
+			player.CameraMinZoomDistance = self.StoredCameraSettings.MinZoom
+			player.CameraMaxZoomDistance = self.StoredCameraSettings.MaxZoom
+		end
+
+		print("✗ Camera Zoom Disabled - Original camera lock restored")
+	end
+
+	return self.CameraZoomEnabled
 end
 
 -- ==================== FEATURE 2: ESP WALLHACK ====================
@@ -2077,6 +2159,10 @@ local utilityRespawnConnection = player.CharacterAdded:Connect(function(char)
 			end)
 		end
 	end
+
+	if UtilityGUI.CameraZoomEnabled then
+		UtilityGUI:ApplyCameraZoomSettings()
+	end
 end)
 
 -- ==================== CREATE FEATURE CARDS ====================
@@ -2100,6 +2186,13 @@ local crosshairButton = createUtilityCard(
 	"Range marks: 30m/60m/90m+ (Press H)",
 	"H",
 	function() return UtilityGUI:ToggleCrosshair() end
+)
+
+local cameraZoomButton = createUtilityCard(
+	"📷 Camera Zoom Unlock",
+	"Allow mouse scroll camera zoom (Press G)",
+	"G",
+	function() return UtilityGUI:ToggleCameraZoom() end
 )
 
 local speedButton = createUtilityCard(
@@ -2173,6 +2266,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		-- Update button visual
 		crosshairButton.Text = UtilityGUI.CrosshairEnabled and "ON" or "OFF"
 		crosshairButton.BackgroundColor3 = UtilityGUI.CrosshairEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+	end
+
+	-- G = Camera Zoom Toggle
+	if input.KeyCode == Enum.KeyCode.G then
+		UtilityGUI:ToggleCameraZoom()
+		cameraZoomButton.Text = UtilityGUI.CameraZoomEnabled and "ON" or "OFF"
+		cameraZoomButton.BackgroundColor3 = UtilityGUI.CameraZoomEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
 	-- L = Speed Toggle
@@ -2248,7 +2348,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP), H (Crosshair), L (Speed+Shift)")
+print("⚡ Violence District loaded - K (Cursor), J (ESP), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
 
 -- ============================================
 -- INITIALIZATION
@@ -2263,7 +2363,7 @@ print("   • Click the ⚙️ floating button to open admin panel")
 print("   • Click the ⚡ floating button to open Violence District menu")
 print("   • Or type commands in chat with prefix: " .. AdminConfig.Prefix)
 print("\n⚡ Violence District shortcuts:")
-print("   K = Unlock Cursor | J = ESP Wallhack | H = Crosshair | L = Speed+Shift")
+print("   K = Unlock Cursor | J = ESP Wallhack | H = Crosshair | G = Camera Zoom | L = Speed+Shift")
 print("\n🔧 Available commands (client-side only):")
 print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")

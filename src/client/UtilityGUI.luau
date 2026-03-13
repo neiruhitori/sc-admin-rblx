@@ -1,14 +1,12 @@
 --[[
 	Violence District Utility GUI
 	Game utility features with keyboard shortcuts
-	Features: Cursor Unlock (K), ESP Wallhack (J), Crosshair (H), Speed Boost (L)
+	Features: Cursor Unlock (K), ESP Wallhack (J), Crosshair (H), Camera Zoom (G), Speed Boost (L)
 ]]
-
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
-
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local character = player.Character or player.CharacterAdded:Wait()
@@ -19,8 +17,13 @@ UtilityGUI.CursorEnabled = false
 UtilityGUI.ESPEnabled = false
 UtilityGUI.SpeedEnabled = false
 UtilityGUI.CrosshairEnabled = false
+UtilityGUI.CameraZoomEnabled = false
 UtilityGUI.DefaultSpeed = 16
 UtilityGUI.BoostSpeed = 20
+UtilityGUI.CameraMinZoom = 0.5
+UtilityGUI.CameraMaxZoom = 20
+UtilityGUI.StoredCameraSettings = nil
+UtilityGUI.CameraZoomConnection = nil
 
 -- ESP Highlight storage
 UtilityGUI.ESPHighlights = {}
@@ -33,41 +36,51 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "UtilityGUI"
 screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
+
 
 -- ==================== FLOATING ICON BUTTON ====================
 local floatingIcon = Instance.new("ImageButton")
 floatingIcon.Name = "UtilityIcon"
 floatingIcon.Size = UDim2.new(0, 60, 0, 60)
 floatingIcon.Position = UDim2.new(1, -80, 0.5, 60)
+
 floatingIcon.BackgroundColor3 = Color3.fromRGB(100, 149, 237) -- Cornflower blue
+
 floatingIcon.BorderSizePixel = 0
 floatingIcon.AutoButtonColor = false
 floatingIcon.Parent = screenGui
 
+
 local iconCorner = Instance.new("UICorner")
 iconCorner.CornerRadius = UDim.new(0, 30)
 iconCorner.Parent = floatingIcon
+
 
 -- Icon emoji
 local iconLabel = Instance.new("TextLabel")
 iconLabel.Size = UDim2.new(1, 0, 1, 0)
 iconLabel.BackgroundTransparency = 1
 iconLabel.Text = "⚡"
+
 iconLabel.TextSize = 32
 iconLabel.Font = Enum.Font.GothamBold
 iconLabel.Parent = floatingIcon
 
 -- Icon shadow
 local iconShadow = Instance.new("ImageLabel")
+
 iconShadow.Name = "Shadow"
 iconShadow.BackgroundTransparency = 1
 iconShadow.Position = UDim2.new(0, -5, 0, -5)
 iconShadow.Size = UDim2.new(1, 10, 1, 10)
 iconShadow.ZIndex = 0
+
 iconShadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
 iconShadow.ImageColor3 = Color3.new(0, 0, 0)
+
 iconShadow.ImageTransparency = 0.7
 iconShadow.Parent = floatingIcon
 
@@ -79,7 +92,6 @@ mainFrame.Position = UDim2.new(0.5, -200, 0.5, -150)
 mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
-mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 12)
@@ -93,6 +105,7 @@ titleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 titleBar.BorderSizePixel = 0
 titleBar.Parent = mainFrame
 
+
 local titleCorner = Instance.new("UICorner")
 titleCorner.CornerRadius = UDim.new(0, 12)
 titleCorner.Parent = titleBar
@@ -103,6 +116,7 @@ titleFix.Size = UDim2.new(1, 0, 0, 12)
 titleFix.Position = UDim2.new(0, 0, 1, -12)
 titleFix.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
 titleFix.BorderSizePixel = 0
+
 titleFix.Parent = titleBar
 
 -- Title text
@@ -252,6 +266,61 @@ function UtilityGUI:ToggleCursor()
 	end
 	
 	return self.CursorEnabled
+end
+
+-- ==================== FEATURE 1.5: CAMERA ZOOM UNLOCK ====================
+
+function UtilityGUI:ApplyCameraZoomSettings()
+	player.CameraMode = Enum.CameraMode.Classic
+	player.CameraMinZoomDistance = self.CameraMinZoom
+	player.CameraMaxZoomDistance = self.CameraMaxZoom
+end
+
+function UtilityGUI:ToggleCameraZoom()
+	self.CameraZoomEnabled = not self.CameraZoomEnabled
+
+	if self.CameraZoomEnabled then
+		self.StoredCameraSettings = {
+			CameraMode = player.CameraMode,
+			MinZoom = player.CameraMinZoomDistance,
+			MaxZoom = player.CameraMaxZoomDistance,
+		}
+
+		self:ApplyCameraZoomSettings()
+
+		if self.CameraZoomConnection then
+			self.CameraZoomConnection:Disconnect()
+		end
+
+		self.CameraZoomConnection = RunService.RenderStepped:Connect(function()
+			if not self.CameraZoomEnabled then
+				return
+			end
+
+			if player.CameraMode ~= Enum.CameraMode.Classic
+				or player.CameraMinZoomDistance ~= self.CameraMinZoom
+				or player.CameraMaxZoomDistance ~= self.CameraMaxZoom then
+				self:ApplyCameraZoomSettings()
+			end
+		end)
+
+		print("✓ Camera Zoom Enabled - Mouse scroll can change camera distance")
+	else
+		if self.CameraZoomConnection then
+			self.CameraZoomConnection:Disconnect()
+			self.CameraZoomConnection = nil
+		end
+
+		if self.StoredCameraSettings then
+			player.CameraMode = self.StoredCameraSettings.CameraMode
+			player.CameraMinZoomDistance = self.StoredCameraSettings.MinZoom
+			player.CameraMaxZoomDistance = self.StoredCameraSettings.MaxZoom
+		end
+
+		print("✗ Camera Zoom Disabled - Original camera lock restored")
+	end
+
+	return self.CameraZoomEnabled
 end
 
 -- ==================== FEATURE 2: ESP WALLHACK ====================
@@ -580,6 +649,10 @@ player.CharacterAdded:Connect(function(char)
 			end)
 		end
 	end
+
+	if UtilityGUI.CameraZoomEnabled then
+		UtilityGUI:ApplyCameraZoomSettings()
+	end
 end)
 
 -- ==================== CREATE FEATURE CARDS ====================
@@ -606,6 +679,14 @@ createFeatureCard(
 	"H",
 	UtilityGUI.CrosshairEnabled,
 	function() return UtilityGUI:ToggleCrosshair() end
+)
+
+createFeatureCard(
+	"📷 Camera Zoom Unlock",
+	"Allow mouse scroll camera zoom (Press G)",
+	"G",
+	UtilityGUI.CameraZoomEnabled,
+	function() return UtilityGUI:ToggleCameraZoom() end
 )
 
 createFeatureCard(
@@ -699,6 +780,19 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			end
 		end
 	end
+
+	-- G = Camera Zoom Toggle
+	if input.KeyCode == Enum.KeyCode.G then
+		UtilityGUI:ToggleCameraZoom()
+		local card = contentFrame:FindFirstChild("📷 Camera Zoom UnlockCard")
+		if card then
+			local statusButton = card:FindFirstChild("StatusButton")
+			if statusButton then
+				statusButton.Text = UtilityGUI.CameraZoomEnabled and "ON" or "OFF"
+				statusButton.BackgroundColor3 = UtilityGUI.CameraZoomEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+			end
+		end
+	end
 	
 	-- L = Speed Toggle
 	if input.KeyCode == Enum.KeyCode.L then
@@ -779,6 +873,6 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("Violence District loaded - K (Cursor), J (ESP), H (Crosshair), L (Speed+Shift)")
+print("Violence District loaded - K (Cursor), J (ESP), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
 
 return UtilityGUI
