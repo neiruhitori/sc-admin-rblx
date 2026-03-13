@@ -1546,6 +1546,7 @@ UtilityGUI.CameraMinZoom = 0.5
 UtilityGUI.CameraMaxZoom = 20
 UtilityGUI.StoredCameraSettings = nil
 UtilityGUI.CameraZoomConnection = nil
+UtilityGUI.StoredMouseSettings = nil
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.CrosshairFrame = nil
 
@@ -1785,6 +1786,9 @@ function UtilityGUI:ApplyCameraZoomSettings()
 	player.CameraMode = Enum.CameraMode.Classic
 	player.CameraMinZoomDistance = self.CameraMinZoom
 	player.CameraMaxZoomDistance = self.CameraMaxZoom
+	-- Lock mouse to center so camera rotates by just moving mouse (no right-click hold)
+	UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
+	UserInputService.MouseIconEnabled = false
 end
 
 function UtilityGUI:ToggleCameraZoom()
@@ -1795,6 +1799,11 @@ function UtilityGUI:ToggleCameraZoom()
 			CameraMode = player.CameraMode,
 			MinZoom = player.CameraMinZoomDistance,
 			MaxZoom = player.CameraMaxZoomDistance,
+		}
+
+		self.StoredMouseSettings = {
+			MouseBehavior = UserInputService.MouseBehavior,
+			MouseIconEnabled = UserInputService.MouseIconEnabled,
 		}
 
 		self:ApplyCameraZoomSettings()
@@ -1828,7 +1837,12 @@ function UtilityGUI:ToggleCameraZoom()
 			player.CameraMaxZoomDistance = self.StoredCameraSettings.MaxZoom
 		end
 
-		print("✗ Camera Zoom Disabled - Original camera lock restored")
+		if self.StoredMouseSettings then
+			UserInputService.MouseBehavior = self.StoredMouseSettings.MouseBehavior
+			UserInputService.MouseIconEnabled = self.StoredMouseSettings.MouseIconEnabled
+		end
+
+		print("✗ Camera Zoom Disabled - Original camera and mouse settings restored")
 	end
 
 	return self.CameraZoomEnabled
@@ -2190,7 +2204,7 @@ local crosshairButton = createUtilityCard(
 
 local cameraZoomButton = createUtilityCard(
 	"📷 Camera Zoom Unlock",
-	"Allow mouse scroll camera zoom (Press G)",
+	"Scroll zoom + free look (no right click) (Press G)",
 	"G",
 	function() return UtilityGUI:ToggleCameraZoom() end
 )
