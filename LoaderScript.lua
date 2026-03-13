@@ -1548,6 +1548,7 @@ UtilityGUI.StoredCameraSettings = nil
 UtilityGUI.CameraZoomConnection = nil
 UtilityGUI.StoredMouseSettings = nil
 UtilityGUI.ESPHighlights = {}
+UtilityGUI.ESPNameTags = {}
 UtilityGUI.CrosshairFrame = nil
 
 -- Check if already loaded
@@ -1855,10 +1856,15 @@ function UtilityGUI:CreateESP(targetPlayer)
 	
 	local char = targetPlayer.Character
 	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
 	
 	-- Remove existing ESP if present
 	if self.ESPHighlights[targetPlayer] then
 		self.ESPHighlights[targetPlayer]:Destroy()
+	end
+	if self.ESPNameTags[targetPlayer] then
+		self.ESPNameTags[targetPlayer]:Destroy()
 	end
 	
 	-- Create Highlight effect
@@ -1873,12 +1879,41 @@ function UtilityGUI:CreateESP(targetPlayer)
 	highlight.Parent = char
 	
 	self.ESPHighlights[targetPlayer] = highlight
+
+	-- Create name tag above head (DisplayName + @Username)
+	local nameTag = Instance.new("BillboardGui")
+	nameTag.Name = "ESP_NameTag"
+	nameTag.Adornee = head
+	nameTag.Size = UDim2.new(0, 220, 0, 44)
+	nameTag.StudsOffset = Vector3.new(0, 3, 0)
+	nameTag.AlwaysOnTop = true
+	nameTag.MaxDistance = 2000
+	nameTag.Parent = char
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Name = "NameLabel"
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = string.format("%s\n@%s", targetPlayer.DisplayName, targetPlayer.Name)
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	nameLabel.TextStrokeTransparency = 0.2
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = nameTag
+
+	self.ESPNameTags[targetPlayer] = nameTag
 end
 
 function UtilityGUI:RemoveESP(targetPlayer)
 	if self.ESPHighlights[targetPlayer] then
 		self.ESPHighlights[targetPlayer]:Destroy()
 		self.ESPHighlights[targetPlayer] = nil
+	end
+
+	if self.ESPNameTags[targetPlayer] then
+		self.ESPNameTags[targetPlayer]:Destroy()
+		self.ESPNameTags[targetPlayer] = nil
 	end
 end
 
@@ -1918,6 +1953,9 @@ function UtilityGUI:ToggleESP()
 	else
 		-- Remove all ESP
 		for plr, _ in pairs(self.ESPHighlights) do
+			self:RemoveESP(plr)
+		end
+		for plr, _ in pairs(self.ESPNameTags) do
 			self:RemoveESP(plr)
 		end
 		
