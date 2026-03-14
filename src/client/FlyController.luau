@@ -134,6 +134,7 @@ function FlyController:StartFlying()
 	-- Enable body movers
 	bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 	bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	humanoid.PlatformStand = true
 	
 	-- Keep character in standing/idle pose while flying
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
@@ -144,6 +145,9 @@ function FlyController:StartFlying()
 	-- Update loop
 	connection = RunService.Heartbeat:Connect(function()
 		if not self.Flying then return end
+		if humanoid and humanoid.Parent and humanoid:GetState() ~= Enum.HumanoidStateType.Physics then
+			humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		end
 		
 		local camera = workspace.CurrentCamera
 		local velocity = calculateVelocity()
@@ -170,6 +174,7 @@ function FlyController:StopFlying()
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
+			humanoid.PlatformStand = false
 			-- Re-enable disabled states
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
@@ -194,7 +199,7 @@ end
 
 -- Handle key input
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if UserInputService:GetFocusedTextBox() then return end
 	
 	for direction, keyCode in pairs(movementKeys) do
 		if input.KeyCode == keyCode then

@@ -36,7 +36,7 @@ AdminConfig.Theme = {
 
 -- Parse command function
 function AdminConfig:ParseCommand(input)
-	if not input:sub(1, #self.Prefix) == self.Prefix then
+	if input:sub(1, #self.Prefix) ~= self.Prefix then
 		return "", {}
 	end
 	
@@ -112,6 +112,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+local CommandExecutor
 
 local FlyController = {}
 FlyController.Flying = false
@@ -223,6 +224,7 @@ function FlyController:StartFlying()
 	
 	bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
 	bodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	humanoid.PlatformStand = true
 	
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
 	humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
@@ -231,6 +233,9 @@ function FlyController:StartFlying()
 	
 	connection = RunService.Heartbeat:Connect(function()
 		if not self.Flying then return end
+		if humanoid and humanoid.Parent and humanoid:GetState() ~= Enum.HumanoidStateType.Physics then
+			humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+		end
 		
 		local camera = workspace.CurrentCamera
 		local velocity = calculateVelocity()
@@ -256,9 +261,13 @@ function FlyController:StopFlying()
 	if character then
 		local humanoid = character:FindFirstChildOfClass("Humanoid")
 		if humanoid then
+			humanoid.PlatformStand = false
 			-- Only re-enable states if god mode is OFF
 			-- If god mode is ON, these states should remain disabled
-			if not CommandExecutor.PlayerStatuses.god then
+			local isGodMode = CommandExecutor
+				and CommandExecutor.PlayerStatuses
+				and CommandExecutor.PlayerStatuses.god
+			if not isGodMode then
 				humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
 				humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
 				humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
@@ -285,7 +294,7 @@ function FlyController:Toggle()
 end
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
+	if UserInputService:GetFocusedTextBox() then return end
 	
 	for direction, keyCode in pairs(movementKeys) do
 		if input.KeyCode == keyCode then
@@ -307,7 +316,7 @@ end)
 -- ============================================
 -- CLIENT-SIDE COMMAND EXECUTOR
 -- ============================================
-local CommandExecutor = {}
+CommandExecutor = {}
 CommandExecutor.PlayerStatuses = {
 	fly = false,
 	god = false,
