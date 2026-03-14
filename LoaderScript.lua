@@ -1545,10 +1545,12 @@ UtilityGUI.DefaultSpeed = 16
 UtilityGUI.BoostSpeed = 20
 UtilityGUI.CameraMinZoom = 0.5
 UtilityGUI.CameraMaxZoom = 20
-UtilityGUI.FastVaultJumpMultiplier = 1.3
-UtilityGUI.FastVaultAnimMultiplier = 1.35
-UtilityGUI.FastVaultDuration = 0.8
+UtilityGUI.FastVaultJumpMultiplier = 1.8
+UtilityGUI.FastVaultAnimMultiplier = 2.0
+UtilityGUI.FastVaultDuration = 1.0
 UtilityGUI.FastVaultBoostActive = false
+UtilityGUI.FastVaultProximityLoop = nil
+UtilityGUI.FastVaultIndicator = nil
 UtilityGUI.StoredCameraSettings = nil
 UtilityGUI.CameraZoomConnection = nil
 UtilityGUI.StoredMouseSettings = nil
@@ -1953,6 +1955,48 @@ function UtilityGUI:ApplyFastVaultBoost(humanoid)
 	end)
 end
 
+function UtilityGUI:CreateVaultIndicator()
+	if self.FastVaultIndicator then return end
+
+	local indicator = Instance.new("Frame")
+	indicator.Name = "VaultIndicator"
+	indicator.Size = UDim2.new(0, 260, 0, 40)
+	indicator.Position = UDim2.new(0.5, -130, 1, -90)
+	indicator.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	indicator.BackgroundTransparency = 0.2
+	indicator.BorderSizePixel = 0
+	indicator.Visible = false
+	indicator.ZIndex = 15
+	indicator.Parent = utilityScreenGui
+
+	local indCorner = Instance.new("UICorner")
+	indCorner.CornerRadius = UDim.new(0, 8)
+	indCorner.Parent = indicator
+
+	local indStroke = Instance.new("UIStroke")
+	indStroke.Color = Color3.fromRGB(255, 210, 0)
+	indStroke.Thickness = 1.5
+	indStroke.Parent = indicator
+
+	local indLabel = Instance.new("TextLabel")
+	indLabel.Name = "Label"
+	indLabel.Size = UDim2.new(1, 0, 1, 0)
+	indLabel.BackgroundTransparency = 1
+	indLabel.Text = "⬆ SPACE — Fast Vault"
+	indLabel.TextColor3 = Color3.fromRGB(255, 210, 0)
+	indLabel.TextSize = 15
+	indLabel.Font = Enum.Font.GothamBold
+	indLabel.Parent = indicator
+
+	self.FastVaultIndicator = indicator
+end
+
+function UtilityGUI:SetVaultIndicatorVisible(visible)
+	if self.FastVaultIndicator then
+		self.FastVaultIndicator.Visible = visible
+	end
+end
+
 function UtilityGUI:ToggleFastVault()
 	self.FastVaultEnabled = not self.FastVaultEnabled
 
@@ -1961,7 +2005,25 @@ function UtilityGUI:ToggleFastVault()
 		self.FastVaultInputConnection = nil
 	end
 
+	if self.FastVaultProximityLoop then
+		self.FastVaultProximityLoop:Disconnect()
+		self.FastVaultProximityLoop = nil
+	end
+
 	if self.FastVaultEnabled then
+		self:CreateVaultIndicator()
+
+		-- Proximity loop: show indicator when near a vault surface
+		self.FastVaultProximityLoop = RunService.Heartbeat:Connect(function()
+			if not self.FastVaultEnabled then return end
+			local humanoid = self:GetLocalHumanoid()
+			if humanoid then
+				self:SetVaultIndicatorVisible(self:IsNearVaultSurface(humanoid))
+			else
+				self:SetVaultIndicatorVisible(false)
+			end
+		end)
+
 		self.FastVaultInputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			if gameProcessed or not self.FastVaultEnabled then return end
 			if input.KeyCode ~= Enum.KeyCode.Space then return end
@@ -1969,11 +2031,12 @@ function UtilityGUI:ToggleFastVault()
 			local humanoid = self:GetLocalHumanoid()
 			if not humanoid then return end
 			self:ApplyFastVaultBoost(humanoid)
-			print("✓ Fast Vault activated: no cooldown, boosted jump/vault")
+			print("✓ Fast Vault activated")
 		end)
 
-		print("✓ Fast Vault Enabled (Space near window/obstacle)")
+		print("✓ Fast Vault Enabled — indikator muncul saat dekat jendela")
 	else
+		self:SetVaultIndicatorVisible(false)
 		print("✗ Fast Vault Disabled")
 	end
 
