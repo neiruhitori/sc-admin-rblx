@@ -1540,13 +1540,19 @@ UtilityGUI.ESPEnabled = false
 UtilityGUI.SpeedEnabled = false
 UtilityGUI.CrosshairEnabled = false
 UtilityGUI.CameraZoomEnabled = false
+UtilityGUI.FastVaultEnabled = false
 UtilityGUI.DefaultSpeed = 16
 UtilityGUI.BoostSpeed = 20
 UtilityGUI.CameraMinZoom = 0.5
 UtilityGUI.CameraMaxZoom = 20
+UtilityGUI.FastVaultJumpMultiplier = 1.3
+UtilityGUI.FastVaultAnimMultiplier = 1.35
+UtilityGUI.FastVaultDuration = 0.8
+UtilityGUI.FastVaultBoostActive = false
 UtilityGUI.StoredCameraSettings = nil
 UtilityGUI.CameraZoomConnection = nil
 UtilityGUI.StoredMouseSettings = nil
+UtilityGUI.FastVaultInputConnection = nil
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.ESPNameTags = {}
 UtilityGUI.CrosshairFrame = nil
@@ -1847,6 +1853,131 @@ function UtilityGUI:ToggleCameraZoom()
 	end
 
 	return self.CameraZoomEnabled
+end
+
+-- ==================== FEATURE 1.6: FAST VAULT JUMP ====================
+
+function UtilityGUI:GetLocalHumanoid()
+	local char = player.Character
+	if not char then return nil end
+	return char:FindFirstChildOfClass("Humanoid")
+end
+
+function UtilityGUI:IsNearVaultSurface(humanoid)
+	local char = player.Character
+	if not char then return false end
+
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if not hrp then return false end
+
+	local direction = humanoid.MoveDirection
+	if direction.Magnitude < 0.1 then
+		direction = hrp.CFrame.LookVector
+	end
+
+	local rayParams = RaycastParams.new()
+	rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+	rayParams.FilterDescendantsInstances = {char}
+
+	local origin = hrp.Position + Vector3.new(0, 2.5, 0)
+	local result = workspace:Raycast(origin, direction.Unit * 7, rayParams)
+	if not result then
+		return false
+	end
+
+	local hitYDiff = result.Position.Y - hrp.Position.Y
+	return hitYDiff > -2 and hitYDiff < 6
+end
+
+function UtilityGUI:ApplyFastVaultBoost(humanoid)
+	if self.FastVaultBoostActive then return end
+	self.FastVaultBoostActive = true
+
+	local originalJumpPower = humanoid.JumpPower
+	local originalJumpHeight = humanoid.JumpHeight
+	local usesJumpPower = humanoid.UseJumpPower
+
+	if usesJumpPower then
+		humanoid.JumpPower = originalJumpPower * self.FastVaultJumpMultiplier
+	else
+		humanoid.JumpHeight = originalJumpHeight * self.FastVaultJumpMultiplier
+	end
+
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	local adjustedTracks = {}
+
+	local function boostTrack(track)
+		if adjustedTracks[track] then return end
+		adjustedTracks[track] = true
+		pcall(function()
+			track:AdjustSpeed(self.FastVaultAnimMultiplier)
+		end)
+	end
+
+	for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+		boostTrack(track)
+	end
+
+	local animationConn
+	animationConn = animator.AnimationPlayed:Connect(function(track)
+		boostTrack(track)
+	end)
+
+	task.delay(self.FastVaultDuration, function()
+		if animationConn then
+			animationConn:Disconnect()
+		end
+
+		for track, _ in pairs(adjustedTracks) do
+			pcall(function()
+				if track.IsPlaying then
+					track:AdjustSpeed(1)
+				end
+			end)
+		end
+
+		if humanoid and humanoid.Parent then
+			if usesJumpPower then
+				humanoid.JumpPower = originalJumpPower
+			else
+				humanoid.JumpHeight = originalJumpHeight
+			end
+		end
+
+		self.FastVaultBoostActive = false
+	end)
+end
+
+function UtilityGUI:ToggleFastVault()
+	self.FastVaultEnabled = not self.FastVaultEnabled
+
+	if self.FastVaultInputConnection then
+		self.FastVaultInputConnection:Disconnect()
+		self.FastVaultInputConnection = nil
+	end
+
+	if self.FastVaultEnabled then
+		self.FastVaultInputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+			if gameProcessed or not self.FastVaultEnabled then return end
+			if input.KeyCode ~= Enum.KeyCode.Space then return end
+
+			local humanoid = self:GetLocalHumanoid()
+			if not humanoid then return end
+			self:ApplyFastVaultBoost(humanoid)
+			print("✓ Fast Vault activated: no cooldown, boosted jump/vault")
+		end)
+
+		print("✓ Fast Vault Enabled (Space near window/obstacle)")
+	else
+		print("✗ Fast Vault Disabled")
+	end
+
+	return self.FastVaultEnabled
 end
 
 -- ==================== FEATURE 2: ESP WALLHACK ====================
@@ -2254,6 +2385,13 @@ local speedButton = createUtilityCard(
 	function() return UtilityGUI:ToggleSpeed() end
 )
 
+local fastVaultButton = createUtilityCard(
+	"🪟 Fast Vault Jump",
+	"No cooldown, faster jump/vault on Space (Press V)",
+	"V",
+	function() return UtilityGUI:ToggleFastVault() end
+)
+
 -- ==================== GUI TOGGLE ====================
 
 local function toggleUtilityGUI()
@@ -2334,6 +2472,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		speedButton.Text = UtilityGUI.SpeedEnabled and "ON" or "OFF"
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
+
+	-- V = Fast Vault Toggle
+	if input.KeyCode == Enum.KeyCode.V then
+		UtilityGUI:ToggleFastVault()
+		fastVaultButton.Text = UtilityGUI.FastVaultEnabled and "ON" or "OFF"
+		fastVaultButton.BackgroundColor3 = UtilityGUI.FastVaultEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+	end
 end)
 
 -- ==================== DRAGGABLE ICON ====================
@@ -2400,7 +2545,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
+print("⚡ Violence District loaded - K (Cursor), J (ESP), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault)")
 
 -- ============================================
 -- INITIALIZATION
@@ -2415,7 +2560,7 @@ print("   • Click the ⚙️ floating button to open admin panel")
 print("   • Click the ⚡ floating button to open Violence District menu")
 print("   • Or type commands in chat with prefix: " .. AdminConfig.Prefix)
 print("\n⚡ Violence District shortcuts:")
-print("   K = Unlock Cursor | J = ESP Wallhack | H = Crosshair | G = Camera Zoom | L = Speed+Shift")
+print("   K = Unlock Cursor | J = ESP Wallhack | H = Crosshair | G = Camera Zoom | L = Speed+Shift | V = Fast Vault")
 print("\n🔧 Available commands (client-side only):")
 print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
