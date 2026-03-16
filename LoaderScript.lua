@@ -1571,6 +1571,7 @@ UtilityGUI.FastVaultVisiblePrompts = {}
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.ESPNameTags = {}
 UtilityGUI.VaultESPHighlights = {}
+UtilityGUI.VaultESPMarkers = {}
 UtilityGUI.VaultESPConnection = nil
 UtilityGUI.FastGeneratorPromptConnection = nil
 UtilityGUI.FastGeneratorPromptStates = {}
@@ -1821,7 +1822,13 @@ function UtilityGUI:IsVaultObject(instance)
 		return true
 	end
 
-	return instance:IsA("ProximityPrompt")
+	if not instance:IsA("ProximityPrompt") then
+		return false
+	end
+
+	return instance.KeyboardKeyCode == Enum.KeyCode.E
+		or instance.KeyboardKeyCode == Enum.KeyCode.Space
+		or instance.ClickablePrompt == true
 end
 
 function UtilityGUI:ResolveVaultAdornee(instance)
@@ -1858,6 +1865,48 @@ function UtilityGUI:ResolveVaultAdornee(instance)
 	return instance:FindFirstAncestorOfClass("Model")
 end
 
+function UtilityGUI:GetAdorneeBasePart(adornee)
+	if not adornee then return nil end
+
+	if adornee:IsA("BasePart") then
+		return adornee
+	end
+
+	if adornee:IsA("Model") then
+		return adornee.PrimaryPart or adornee:FindFirstChildWhichIsA("BasePart", true)
+	end
+
+	return nil
+end
+
+function UtilityGUI:GetInteractIndicatorText(instance)
+	if not instance then
+		return "INTERACT"
+	end
+
+	if instance:IsA("ClickDetector") then
+		return "LMB"
+	end
+
+	if not instance:IsA("ProximityPrompt") then
+		return "INTERACT"
+	end
+
+	if instance.KeyboardKeyCode == Enum.KeyCode.E then
+		return "E"
+	end
+
+	if instance.KeyboardKeyCode == Enum.KeyCode.Space then
+		return "SPACE"
+	end
+
+	if instance.ClickablePrompt then
+		return "LMB"
+	end
+
+	return "INTERACT"
+end
+
 function UtilityGUI:AddVaultESP(instance)
 	local adornee = self:ResolveVaultAdornee(instance)
 	if not adornee or self.VaultESPHighlights[adornee] then
@@ -1872,9 +1921,34 @@ function UtilityGUI:AddVaultESP(instance)
 	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
 	highlight.OutlineTransparency = 0.2
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = adornee
+	highlight.Parent = workspace
 
 	self.VaultESPHighlights[adornee] = highlight
+
+	local markerPart = self:GetAdorneeBasePart(adornee)
+	if markerPart then
+		local marker = Instance.new("BillboardGui")
+		marker.Name = "Interact_Indicator"
+		marker.Adornee = markerPart
+		marker.Size = UDim2.new(0, 90, 0, 28)
+		marker.StudsOffset = Vector3.new(0, 2.5, 0)
+		marker.AlwaysOnTop = true
+		marker.MaxDistance = 1500
+		marker.Parent = markerPart
+
+		local markerText = Instance.new("TextLabel")
+		markerText.Size = UDim2.new(1, 0, 1, 0)
+		markerText.BackgroundTransparency = 1
+		markerText.Text = self:GetInteractIndicatorText(instance)
+		markerText.TextColor3 = Color3.fromRGB(255, 220, 0)
+		markerText.TextStrokeTransparency = 0
+		markerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		markerText.TextScaled = true
+		markerText.Font = Enum.Font.GothamBlack
+		markerText.Parent = marker
+
+		self.VaultESPMarkers[adornee] = marker
+	end
 end
 
 function UtilityGUI:ClearVaultESP()
@@ -1884,7 +1958,14 @@ function UtilityGUI:ClearVaultESP()
 		end
 	end
 
+	for _, marker in pairs(self.VaultESPMarkers) do
+		if marker then
+			marker:Destroy()
+		end
+	end
+
 	table.clear(self.VaultESPHighlights)
+	table.clear(self.VaultESPMarkers)
 
 	if self.VaultESPConnection then
 		self.VaultESPConnection:Disconnect()
@@ -2730,15 +2811,6 @@ local speedButton = createUtilityCard(
 	function() return UtilityGUI:ToggleSpeed() end
 )
 
-local fastVaultButton = createUtilityCard(
-	"🪟 Fast Vault Jump",
-	"No cooldown, faster jump/vault on Space (Press V)",
-	"V",
-	function() return UtilityGUI:ToggleFastVault() end
-)
-
-UtilityGUI:EnableFastGeneratorCreation()
-
 -- ==================== GUI TOGGLE ====================
 
 local function toggleUtilityGUI()
@@ -2820,12 +2892,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 
-	-- V = Fast Vault Toggle
-	if input.KeyCode == Enum.KeyCode.V then
-		UtilityGUI:ToggleFastVault()
-		fastVaultButton.Text = UtilityGUI.FastVaultEnabled and "ON" or "OFF"
-		fastVaultButton.BackgroundColor3 = UtilityGUI.FastVaultEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
-	end
 end)
 
 -- ==================== DRAGGABLE ICON ====================
@@ -2892,7 +2958,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP+ALL Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault Prompt Link), Generator Boost ON")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+E/SPACE/LMB Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
 
 -- ============================================
 -- INITIALIZATION
@@ -2907,7 +2973,7 @@ print("   • Click the ⚙️ floating button to open admin panel")
 print("   • Click the ⚡ floating button to open Violence District menu")
 print("   • Or type commands in chat with prefix: " .. AdminConfig.Prefix)
 print("\n⚡ Violence District shortcuts:")
-print("   K = Unlock Cursor | J = ESP Wallhack | H = Crosshair | G = Camera Zoom | L = Speed+Shift | V = Fast Vault")
+print("   K = Unlock Cursor | J = ESP Wallhack (E/SPACE/LMB) | H = Crosshair | G = Camera Zoom | L = Speed+Shift")
 print("\n🔧 Available commands (client-side only):")
 print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
