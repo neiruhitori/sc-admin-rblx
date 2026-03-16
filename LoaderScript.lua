@@ -1571,9 +1571,6 @@ UtilityGUI.VaultESPConnection = nil
 UtilityGUI.FastGeneratorPromptConnection = nil
 UtilityGUI.FastGeneratorPromptStates = {}
 UtilityGUI.CrosshairFrame = nil
-UtilityGUI.VaultKeywords = {
-	"vault", "jump", "wall", "climb", "window", "mantle", "obstacle"
-}
 UtilityGUI.GeneratorKeywords = {
 	"generator", "repair", "build", "gen"
 }
@@ -1816,16 +1813,20 @@ end
 function UtilityGUI:IsVaultObject(instance)
 	if not instance then return false end
 
-	if hasKeyword(instance.Name, self.VaultKeywords) then
+	if instance:IsA("ClickDetector") then
 		return true
 	end
 
-	if instance:IsA("ProximityPrompt") then
-		return hasKeyword(instance.ActionText, self.VaultKeywords)
-			or hasKeyword(instance.ObjectText, self.VaultKeywords)
+	if not instance:IsA("ProximityPrompt") then
+		return false
 	end
 
-	return false
+	local keyboardIsSpace = instance.KeyboardKeyCode == Enum.KeyCode.Space
+	local isClickablePrompt = instance.ClickablePrompt == true
+	local actionLooksLikeClick = hasKeyword(instance.ActionText, {"click", "left click", "lmb"})
+	local objectLooksLikeClick = hasKeyword(instance.ObjectText, {"click", "left click", "lmb"})
+
+	return keyboardIsSpace or isClickablePrompt or actionLooksLikeClick or objectLooksLikeClick
 end
 
 function UtilityGUI:ResolveVaultAdornee(instance)
@@ -1844,6 +1845,13 @@ function UtilityGUI:ResolveVaultAdornee(instance)
 		local modelAncestor = instance:FindFirstAncestorOfClass("Model")
 		if modelAncestor then
 			return modelAncestor
+		end
+	end
+
+	if instance:IsA("ClickDetector") then
+		local detectorParent = instance.Parent
+		if detectorParent and (detectorParent:IsA("BasePart") or detectorParent:IsA("Model")) then
+			return detectorParent
 		end
 	end
 
@@ -2365,7 +2373,7 @@ function UtilityGUI:ToggleESP()
 			end)
 		end
 		
-		print("✓ ESP Enabled - Players + vault walls visible")
+		print("✓ ESP Enabled - Players + objek interaktif (Space/Click) visible")
 	else
 		self:ClearVaultESP()
 
@@ -2838,7 +2846,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP+Vault Walls), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault), Generator Boost ON")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+Space/Click Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault), Generator Boost ON")
 
 -- ============================================
 -- INITIALIZATION
