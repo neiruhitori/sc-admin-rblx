@@ -1564,6 +1564,10 @@ UtilityGUI.StoredCameraSettings = nil
 UtilityGUI.CameraZoomConnection = nil
 UtilityGUI.StoredMouseSettings = nil
 UtilityGUI.FastVaultInputConnection = nil
+UtilityGUI.FastVaultPromptShownConnection = nil
+UtilityGUI.FastVaultPromptHiddenConnection = nil
+UtilityGUI.FastVaultPromptHoldConnection = nil
+UtilityGUI.FastVaultVisiblePrompts = {}
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.ESPNameTags = {}
 UtilityGUI.VaultESPHighlights = {}
@@ -1817,16 +1821,7 @@ function UtilityGUI:IsVaultObject(instance)
 		return true
 	end
 
-	if not instance:IsA("ProximityPrompt") then
-		return false
-	end
-
-	local keyboardIsSpace = instance.KeyboardKeyCode == Enum.KeyCode.Space
-	local isClickablePrompt = instance.ClickablePrompt == true
-	local actionLooksLikeClick = hasKeyword(instance.ActionText, {"click", "left click", "lmb"})
-	local objectLooksLikeClick = hasKeyword(instance.ObjectText, {"click", "left click", "lmb"})
-
-	return keyboardIsSpace or isClickablePrompt or actionLooksLikeClick or objectLooksLikeClick
+	return instance:IsA("ProximityPrompt")
 end
 
 function UtilityGUI:ResolveVaultAdornee(instance)
@@ -2223,6 +2218,23 @@ function UtilityGUI:SetVaultIndicatorVisible(visible)
 	end
 end
 
+function UtilityGUI:IsFastVaultPrompt(prompt)
+	if not prompt or not prompt:IsA("ProximityPrompt") then
+		return false
+	end
+
+	if prompt.KeyboardKeyCode == Enum.KeyCode.Space then
+		return true
+	end
+
+	return hasKeyword(prompt.ActionText, {"vault", "jump", "climb", "mantle", "window"})
+		or hasKeyword(prompt.ObjectText, {"vault", "jump", "climb", "mantle", "window"})
+end
+
+function UtilityGUI:RefreshFastVaultIndicatorFromPrompts()
+	self:SetVaultIndicatorVisible(next(self.FastVaultVisiblePrompts) ~= nil)
+end
+
 function UtilityGUI:ToggleFastVault()
 	self.FastVaultEnabled = not self.FastVaultEnabled
 
@@ -2236,23 +2248,56 @@ function UtilityGUI:ToggleFastVault()
 		self.FastVaultProximityLoop = nil
 	end
 
+	if self.FastVaultPromptShownConnection then
+		self.FastVaultPromptShownConnection:Disconnect()
+		self.FastVaultPromptShownConnection = nil
+	end
+
+	if self.FastVaultPromptHiddenConnection then
+		self.FastVaultPromptHiddenConnection:Disconnect()
+		self.FastVaultPromptHiddenConnection = nil
+	end
+
+	if self.FastVaultPromptHoldConnection then
+		self.FastVaultPromptHoldConnection:Disconnect()
+		self.FastVaultPromptHoldConnection = nil
+	end
+
+	table.clear(self.FastVaultVisiblePrompts)
+
 	if self.FastVaultEnabled then
 		self:CreateVaultIndicator()
+		local proximityPromptService = game:GetService("ProximityPromptService")
 
-		-- Proximity loop: show indicator when near a vault surface
-		self.FastVaultProximityLoop = RunService.Heartbeat:Connect(function()
+		self.FastVaultPromptShownConnection = proximityPromptService.PromptShown:Connect(function(prompt)
 			if not self.FastVaultEnabled then return end
-			local humanoid = self:GetLocalHumanoid()
-			if humanoid then
-				self:SetVaultIndicatorVisible(self:IsNearVaultSurface(humanoid))
-			else
-				self:SetVaultIndicatorVisible(false)
+			if self:IsFastVaultPrompt(prompt) then
+				self.FastVaultVisiblePrompts[prompt] = true
+				self:RefreshFastVaultIndicatorFromPrompts()
 			end
+		end)
+
+		self.FastVaultPromptHiddenConnection = proximityPromptService.PromptHidden:Connect(function(prompt)
+			if self.FastVaultVisiblePrompts[prompt] then
+				self.FastVaultVisiblePrompts[prompt] = nil
+				self:RefreshFastVaultIndicatorFromPrompts()
+			end
+		end)
+
+		self.FastVaultPromptHoldConnection = proximityPromptService.PromptButtonHoldBegan:Connect(function(prompt)
+			if not self.FastVaultEnabled then return end
+			if not self:IsFastVaultPrompt(prompt) then return end
+
+			local humanoid = self:GetLocalHumanoid()
+			if not humanoid then return end
+			self:ApplyFastVaultBoost(humanoid)
+			print("✓ Fast Vault activated (map prompt)")
 		end)
 
 		self.FastVaultInputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 			if gameProcessed or not self.FastVaultEnabled then return end
 			if input.KeyCode ~= Enum.KeyCode.Space then return end
+			if next(self.FastVaultVisiblePrompts) == nil then return end
 
 			local humanoid = self:GetLocalHumanoid()
 			if not humanoid then return end
@@ -2260,8 +2305,9 @@ function UtilityGUI:ToggleFastVault()
 			print("✓ Fast Vault activated")
 		end)
 
-		print("✓ Fast Vault Enabled — indikator muncul saat dekat jendela")
+		print("✓ Fast Vault Enabled — terhubung ke prompt map (SPACE)")
 	else
+		table.clear(self.FastVaultVisiblePrompts)
 		self:SetVaultIndicatorVisible(false)
 		print("✗ Fast Vault Disabled")
 	end
@@ -2373,7 +2419,7 @@ function UtilityGUI:ToggleESP()
 			end)
 		end
 		
-		print("✓ ESP Enabled - Players + objek interaktif (Space/Click) visible")
+		print("✓ ESP Enabled - Players + ALL interactable objects visible")
 	else
 		self:ClearVaultESP()
 
@@ -2846,7 +2892,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP+Space/Click Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault), Generator Boost ON")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+ALL Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault Prompt Link), Generator Boost ON")
 
 -- ============================================
 -- INITIALIZATION
