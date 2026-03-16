@@ -1555,7 +1555,7 @@ UtilityGUI.BoostSpeed = 20
 UtilityGUI.CameraMinZoom = 0.5
 UtilityGUI.CameraMaxZoom = 20
 UtilityGUI.FastVaultJumpMultiplier = 1.8
-UtilityGUI.FastVaultAnimMultiplier = 2.0
+UtilityGUI.FastVaultAnimMultiplier = 2.3
 UtilityGUI.FastVaultDuration = 1.0
 UtilityGUI.FastVaultBoostActive = false
 UtilityGUI.FastVaultProximityLoop = nil
@@ -1566,7 +1566,17 @@ UtilityGUI.StoredMouseSettings = nil
 UtilityGUI.FastVaultInputConnection = nil
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.ESPNameTags = {}
+UtilityGUI.VaultESPHighlights = {}
+UtilityGUI.VaultESPConnection = nil
+UtilityGUI.FastGeneratorPromptConnection = nil
+UtilityGUI.FastGeneratorPromptStates = {}
 UtilityGUI.CrosshairFrame = nil
+UtilityGUI.VaultKeywords = {
+	"vault", "jump", "wall", "climb", "window", "mantle", "obstacle"
+}
+UtilityGUI.GeneratorKeywords = {
+	"generator", "repair", "build", "gen"
+}
 
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
@@ -1780,6 +1790,201 @@ local function createUtilityCard(title, description, keyBind, callback)
 	return statusButton
 end
 
+local function hasKeyword(text, keywords)
+	if not text or text == "" then
+		return false
+	end
+
+	local loweredText = string.lower(text)
+	for _, keyword in ipairs(keywords) do
+		if string.find(loweredText, keyword, 1, true) then
+			return true
+		end
+	end
+
+	return false
+end
+
+function UtilityGUI:NotifyToggle(featureName, enabled)
+	local message = string.format("%s %s", featureName, enabled and "ON" or "OFF")
+	local notifType = enabled and "success" or "info"
+	if AdminGUI and AdminGUI.ShowNotification then
+		AdminGUI:ShowNotification(message, notifType)
+	end
+end
+
+function UtilityGUI:IsVaultObject(instance)
+	if not instance then return false end
+
+	if hasKeyword(instance.Name, self.VaultKeywords) then
+		return true
+	end
+
+	if instance:IsA("ProximityPrompt") then
+		return hasKeyword(instance.ActionText, self.VaultKeywords)
+			or hasKeyword(instance.ObjectText, self.VaultKeywords)
+	end
+
+	return false
+end
+
+function UtilityGUI:ResolveVaultAdornee(instance)
+	if not instance then return nil end
+
+	if instance:IsA("BasePart") or instance:IsA("Model") then
+		return instance
+	end
+
+	if instance:IsA("ProximityPrompt") then
+		local promptParent = instance.Parent
+		if promptParent and (promptParent:IsA("BasePart") or promptParent:IsA("Model")) then
+			return promptParent
+		end
+
+		local modelAncestor = instance:FindFirstAncestorOfClass("Model")
+		if modelAncestor then
+			return modelAncestor
+		end
+	end
+
+	local basePartAncestor = instance:FindFirstAncestorOfClass("BasePart")
+	if basePartAncestor then
+		return basePartAncestor
+	end
+
+	return instance:FindFirstAncestorOfClass("Model")
+end
+
+function UtilityGUI:AddVaultESP(instance)
+	local adornee = self:ResolveVaultAdornee(instance)
+	if not adornee or self.VaultESPHighlights[adornee] then
+		return
+	end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "Vault_ESP_Highlight"
+	highlight.Adornee = adornee
+	highlight.FillColor = Color3.fromRGB(0, 170, 255)
+	highlight.FillTransparency = 0.7
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.OutlineTransparency = 0.2
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = adornee
+
+	self.VaultESPHighlights[adornee] = highlight
+end
+
+function UtilityGUI:ClearVaultESP()
+	for _, highlight in pairs(self.VaultESPHighlights) do
+		if highlight then
+			highlight:Destroy()
+		end
+	end
+
+	table.clear(self.VaultESPHighlights)
+
+	if self.VaultESPConnection then
+		self.VaultESPConnection:Disconnect()
+		self.VaultESPConnection = nil
+	end
+end
+
+function UtilityGUI:EnableVaultESP()
+	self:ClearVaultESP()
+
+	local descendants = workspace:GetDescendants()
+	task.spawn(function()
+		for index, instance in ipairs(descendants) do
+			if not self.ESPEnabled then
+				break
+			end
+
+			if self:IsVaultObject(instance) then
+				self:AddVaultESP(instance)
+			end
+
+			if index % 200 == 0 then
+				task.wait()
+			end
+		end
+	end)
+
+	self.VaultESPConnection = workspace.DescendantAdded:Connect(function(instance)
+		if not self.ESPEnabled then return end
+		if self:IsVaultObject(instance) then
+			self:AddVaultESP(instance)
+		end
+	end)
+end
+
+function UtilityGUI:IsGeneratorPrompt(prompt)
+	if not prompt or not prompt:IsA("ProximityPrompt") then
+		return false
+	end
+
+	if hasKeyword(prompt.ActionText, self.GeneratorKeywords)
+		or hasKeyword(prompt.ObjectText, self.GeneratorKeywords)
+		or hasKeyword(prompt.Name, self.GeneratorKeywords) then
+		return true
+	end
+
+	local parent = prompt.Parent
+	if parent and hasKeyword(parent.Name, self.GeneratorKeywords) then
+		return true
+	end
+
+	local modelAncestor = prompt:FindFirstAncestorOfClass("Model")
+	if modelAncestor and hasKeyword(modelAncestor.Name, self.GeneratorKeywords) then
+		return true
+	end
+
+	return false
+end
+
+function UtilityGUI:ApplyFastGeneratorPrompt(prompt)
+	if not self:IsGeneratorPrompt(prompt) then
+		return
+	end
+
+	if self.FastGeneratorPromptStates[prompt] then
+		return
+	end
+
+	self.FastGeneratorPromptStates[prompt] = {
+		HoldDuration = prompt.HoldDuration,
+		MaxActivationDistance = prompt.MaxActivationDistance,
+	}
+
+	prompt.HoldDuration = 0
+	prompt.MaxActivationDistance = math.max(prompt.MaxActivationDistance, 12)
+
+	prompt.Destroying:Connect(function()
+		self.FastGeneratorPromptStates[prompt] = nil
+	end)
+end
+
+function UtilityGUI:EnableFastGeneratorCreation()
+	for _, instance in ipairs(workspace:GetDescendants()) do
+		if instance:IsA("ProximityPrompt") then
+			self:ApplyFastGeneratorPrompt(instance)
+		end
+	end
+
+	if self.FastGeneratorPromptConnection then
+		self.FastGeneratorPromptConnection:Disconnect()
+	end
+
+	self.FastGeneratorPromptConnection = workspace.DescendantAdded:Connect(function(instance)
+		if instance:IsA("ProximityPrompt") then
+			self:ApplyFastGeneratorPrompt(instance)
+		end
+	end)
+
+	if AdminGUI and AdminGUI.ShowNotification then
+		AdminGUI:ShowNotification("Generator build boost aktif (hold dipercepat)", "success")
+	end
+end
+
 -- ==================== FEATURE 1: CURSOR UNLOCK ====================
 
 function UtilityGUI:ToggleCursor()
@@ -1794,6 +1999,8 @@ function UtilityGUI:ToggleCursor()
 		UserInputService.MouseBehavior = Enum.MouseBehavior.LockCenter
 		print("✗ Cursor Locked")
 	end
+
+	self:NotifyToggle("Cursor Unlock", self.CursorEnabled)
 	
 	return self.CursorEnabled
 end
@@ -1862,6 +2069,8 @@ function UtilityGUI:ToggleCameraZoom()
 
 		print("✗ Camera Zoom Disabled - Original camera and mouse settings restored")
 	end
+
+	self:NotifyToggle("Camera Zoom", self.CameraZoomEnabled)
 
 	return self.CameraZoomEnabled
 end
@@ -2049,6 +2258,8 @@ function UtilityGUI:ToggleFastVault()
 		print("✗ Fast Vault Disabled")
 	end
 
+	self:NotifyToggle("Fast Vault", self.FastVaultEnabled)
+
 	return self.FastVaultEnabled
 end
 
@@ -2124,6 +2335,8 @@ function UtilityGUI:ToggleESP()
 	self.ESPEnabled = not self.ESPEnabled
 	
 	if self.ESPEnabled then
+		self:EnableVaultESP()
+
 		-- Add ESP to all existing players
 		for _, plr in pairs(Players:GetPlayers()) do
 			if plr.Character then
@@ -2152,8 +2365,10 @@ function UtilityGUI:ToggleESP()
 			end)
 		end
 		
-		print("✓ ESP Enabled - All players visible")
+		print("✓ ESP Enabled - Players + vault walls visible")
 	else
+		self:ClearVaultESP()
+
 		-- Remove all ESP
 		for plr, _ in pairs(self.ESPHighlights) do
 			self:RemoveESP(plr)
@@ -2174,6 +2389,8 @@ function UtilityGUI:ToggleESP()
 		
 		print("✗ ESP Disabled")
 	end
+
+	self:NotifyToggle("ESP", self.ESPEnabled)
 	
 	return self.ESPEnabled
 end
@@ -2383,6 +2600,8 @@ function UtilityGUI:ToggleSpeed()
 		
 		print("✗ Speed Boost Disabled")
 	end
+
+	self:NotifyToggle("Speed Boost", self.SpeedEnabled)
 	
 	return self.SpeedEnabled
 end
@@ -2463,6 +2682,8 @@ local fastVaultButton = createUtilityCard(
 	"V",
 	function() return UtilityGUI:ToggleFastVault() end
 )
+
+UtilityGUI:EnableFastGeneratorCreation()
 
 -- ==================== GUI TOGGLE ====================
 
@@ -2617,7 +2838,7 @@ UserInputService.InputChanged:Connect(function(input)
 	end
 end)
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault)")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+Vault Walls), H (Crosshair), G (Camera Zoom), L (Speed+Shift), V (Fast Vault), Generator Boost ON")
 
 -- ============================================
 -- INITIALIZATION
