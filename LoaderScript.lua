@@ -2694,23 +2694,28 @@ function UtilityGUI:EnableLowGraphics()
 	print("  Shadows: " .. tostring(self.OriginalSettings.shadowsEnabled))
 	print("  Brightness: " .. tostring(self.OriginalSettings.exposure))
 	
-	-- AGGRESSIVE: Set minimum brightness
+	-- BRIGHT MODE: Enable visibility without shadows
 	pcall(function() 
 		game.Lighting.GlobalShadows = false
-		print("DEBUG: GlobalShadows set to false")
+		print("DEBUG: GlobalShadows disabled (no shadows)")
 	end)
 	
 	pcall(function() 
-		game.Lighting.Brightness = 0  -- Minimum valid value
-		print("DEBUG: Brightness set to 0")
+		game.Lighting.Brightness = 2  -- Bright but normal, not blinding
+		print("DEBUG: Brightness set to 2 (normal bright)")
 	end)
 	
 	pcall(function()
-		game.Lighting.Ambient = Color3.fromRGB(0, 0, 0)  -- Pure black
-		print("DEBUG: Ambient set to black")
+		game.Lighting.Ambient = Color3.fromRGB(150, 150, 150)  -- Neutral gray (bright)
+		print("DEBUG: Ambient set to bright neutral gray")
 	end)
 	
-	-- DISABLE PARTICLES workforce-wide
+	pcall(function()
+		game.Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
+		print("DEBUG: OutdoorAmbient set to bright")
+	end)
+	
+	-- DISABLE PARTICLES
 	print("DEBUG: Starting particle disable...")
 	local particleCount = 0
 	
@@ -2734,36 +2739,43 @@ function UtilityGUI:EnableLowGraphics()
 	
 	print("DEBUG: Disabled " .. particleCount .. " particle emitters")
 	
-	-- DISABLE BEAMS & TRAILS
-	local beamCount = 0
-	local trailCount = 0
+	-- MAKE SURFACES SMOOTH/MATTE
+	print("DEBUG: Starting surface smoothing...")
+	local smoothCount = 0
 	
 	if workspace and workspace.GetDescendants then
 		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj:IsA("Beam") then
-				pcall(function() 
-					obj.Enabled = false
-					beamCount = beamCount + 1
+			-- Make all parts matte (no reflections)
+			if obj:IsA("BasePart") then
+				pcall(function()
+					obj.Material = Enum.Material.Slate  -- Matte/smooth material
+					obj.TopSurface = Enum.SurfaceType.Smooth
+					obj.BottomSurface = Enum.SurfaceType.Smooth
+					if obj:FindFirstChild("SurfaceGui") then
+						pcall(function() obj.SurfaceGui:Destroy() end)
+					end
+					smoothCount = smoothCount + 1
 				end)
 			end
+			-- Disable beams and trails
+			if obj:IsA("Beam") then
+				pcall(function() obj.Enabled = false end)
+			end
 			if obj:IsA("Trail") then
-				pcall(function() 
-					obj.Enabled = false
-					trailCount = trailCount + 1
-				end)
+				pcall(function() obj.Enabled = false end)
 			end
 		end
 	end
 	
-	print("DEBUG: Disabled " .. beamCount .. " beams, " .. trailCount .. " trails")
+	print("DEBUG: Smoothed " .. smoothCount .. " parts")
 	
 	-- CONFIRMATION
-	print("✓ SUPER LOW GRAPHICS MODE ENABLED")
+	print("✓ LOW GRAPHICS BRIGHT MODE ENABLED")
 	print("  Shadows: OFF")
-	print("  Brightness: 0")
-	print("  Ambient: BLACK")
+	print("  Brightness: 2 (Normal Bright)")
+	print("  Ambient: Bright Neutral Gray")
+	print("  Surfaces: MATTE/SMOOTH (" .. smoothCount .. " parts)")
 	print("  Particles: DISABLED (" .. particleCount .. ")")
-	print("  Beams/Trails: DISABLED (" .. beamCount .. "/" .. trailCount .. ")")
 end
 
 function UtilityGUI:DisableLowGraphics()
@@ -2792,54 +2804,38 @@ function UtilityGUI:DisableLowGraphics()
 		end)
 	end
 	
-	-- Re-enable particles
-	local particleCount = 0
-	local function enableParticles(parent, name)
-		if not parent then return end
-		local desc = parent:GetDescendants()
-		if not desc then return end
-		
-		for _, obj in pairs(desc) do
-			if obj:IsA("ParticleEmitter") then
-				pcall(function() 
-					obj.Enabled = true
-					particleCount = particleCount + 1
-				end)
-			end
-		end
-	end
-	
-	enableParticles(workspace, "workspace")
-	enableParticles(game.Lighting, "Lighting")
-	
-	print("DEBUG: Re-enabled " .. particleCount .. " particle emitters")
-	
-	-- Re-enable beams and trails
-	local beamCount = 0
-	local trailCount = 0
+	-- Restore original surfaces
+	local restoreCount = 0
 	
 	if workspace and workspace.GetDescendants then
 		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj:IsA("Beam") then
-				pcall(function() 
-					obj.Enabled = true
-					beamCount = beamCount + 1
+			if obj:IsA("BasePart") then
+				pcall(function()
+					-- Restore to default material (Plastic)
+					obj.Material = Enum.Material.Plastic
+					obj.TopSurface = Enum.SurfaceType.Smooth
+					obj.BottomSurface = Enum.SurfaceType.Bottom
+					restoreCount = restoreCount + 1
 				end)
 			end
+			-- Re-enable particles, beams, trails
+			if obj:IsA("ParticleEmitter") then
+				pcall(function() obj.Enabled = true end)
+			end
+			if obj:IsA("Beam") then
+				pcall(function() obj.Enabled = true end)
+			end
 			if obj:IsA("Trail") then
-				pcall(function() 
-					obj.Enabled = true
-					trailCount = trailCount + 1
-				end)
+				pcall(function() obj.Enabled = true end)
 			end
 		end
 	end
 	
 	print("✗ Graphics Mode Restored to Normal")
-	print("  Shadows: ON")
+	print("  Shadows: RESTORED")
 	print("  Brightness: RESTORED")
-	print("  Particles: RE-ENABLED (" .. particleCount .. ")")
-	print("  Beams/Trails: RE-ENABLED (" .. beamCount .. "/" .. trailCount .. ")")
+	print("  Surfaces: RESTORED (" .. restoreCount .. " parts)")
+	print("  Particles: RE-ENABLED")
 end
 
 function UtilityGUI:ToggleLowGraphics()
