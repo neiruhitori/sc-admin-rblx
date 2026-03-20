@@ -2684,7 +2684,6 @@ end
 function UtilityGUI:EnableLowGraphics()
 	-- Store original settings for all game elements
 	self.OriginalSettings = {
-		lightingEnabled = game.Lighting.Enabled,
 		shadowsEnabled = game:GetService("Lighting").GlobalShadows,
 		exposure = game.Lighting.Brightness,
 		clockTime = game.Lighting.ClockTime,
@@ -2718,7 +2717,6 @@ function UtilityGUI:EnableLowGraphics()
 	
 	disableAllParticles(workspace)
 	disableAllParticles(game.Lighting)
-	disableAllParticles(game)
 	
 	-- STEP 4: Disable beams and trails
 	local function disableBeamsTrails(parent)
@@ -2737,24 +2735,8 @@ function UtilityGUI:EnableLowGraphics()
 	local terrain = workspace.Terrain
 	if terrain then
 		pcall(function()
-			-- Generate a tet mesh to replace terrain
 			terrain:Clear()
 		end)
-	end
-	
-	-- STEP 6: Disable GUI effects globally
-	local players = game:GetService("Players")
-	local player = players.LocalPlayer
-	if player and player:FindFirstChild("PlayerGui") then
-		for _, gui in pairs(player.PlayerGui:GetDescendants()) do
-			if gui:IsA("GuiObject") then
-				pcall(function()
-					if gui:FindFirstChild("UIGradient") then
-						gui.UIGradient.Enabled = false
-					end
-				end)
-			end
-		end
 	end
 	
 	-- Console feedback
@@ -2764,7 +2746,6 @@ function UtilityGUI:EnableLowGraphics()
 	print("  ✓ All particles disabled")
 	print("  ✓ Beams & trails disabled")
 	print("  ✓ Terrain cleared")
-	print("  ✓ All effects removed")
 end
 
 function UtilityGUI:DisableLowGraphics()
