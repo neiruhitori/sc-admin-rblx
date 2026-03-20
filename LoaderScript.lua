@@ -2831,7 +2831,7 @@ function UtilityGUI:DisableLowGraphics()
 					-- Restore to default material (Plastic)
 					obj.Material = Enum.Material.Plastic
 					obj.TopSurface = Enum.SurfaceType.Smooth
-					obj.BottomSurface = Enum.SurfaceType.Bottom
+					obj.BottomSurface = Enum.SurfaceType.Smooth  -- Fixed: was Bottom (invalid)
 					restoreCount = restoreCount + 1
 				end)
 			end
