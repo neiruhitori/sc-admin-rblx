@@ -2682,8 +2682,6 @@ end
 -- ==================== FEATURE 3: LOW GRAPHICS MODE ====================
 
 function UtilityGUI:EnableLowGraphics()
-	if self.LowGraphicsEnabled then return end
-	
 	-- Store original settings
 	self.OriginalSettings = {
 		shadowsEnabled = game.Lighting.GlobalShadows,
@@ -2692,61 +2690,156 @@ function UtilityGUI:EnableLowGraphics()
 		ambient = game.Lighting.Ambient,
 	}
 	
-	-- DISABLE LIGHTING
-	pcall(function() game.Lighting.GlobalShadows = false end)
-	pcall(function() game.Lighting.Brightness = -1 end)
+	print("DEBUG: Original Settings Stored")
+	print("  Shadows: " .. tostring(self.OriginalSettings.shadowsEnabled))
+	print("  Brightness: " .. tostring(self.OriginalSettings.exposure))
 	
-	-- DISABLE PARTICLES
-	local function disableParticles(parent)
-		for _, obj in pairs((parent and parent:GetDescendants()) or {}) do
+	-- AGGRESSIVE: Set minimum brightness
+	pcall(function() 
+		game.Lighting.GlobalShadows = false
+		print("DEBUG: GlobalShadows set to false")
+	end)
+	
+	pcall(function() 
+		game.Lighting.Brightness = 0  -- Minimum valid value
+		print("DEBUG: Brightness set to 0")
+	end)
+	
+	pcall(function()
+		game.Lighting.Ambient = Color3.fromRGB(0, 0, 0)  -- Pure black
+		print("DEBUG: Ambient set to black")
+	end)
+	
+	-- DISABLE PARTICLES workforce-wide
+	print("DEBUG: Starting particle disable...")
+	local particleCount = 0
+	
+	local function disableParticles(parent, name)
+		if not parent then return end
+		local descCore = parent:GetDescendants()
+		if not descCore then return end
+		
+		for _, obj in pairs(descCore) do
 			if obj:IsA("ParticleEmitter") then
-				pcall(function() obj.Enabled = false end)
+				pcall(function() 
+					obj.Enabled = false
+					particleCount = particleCount + 1
+				end)
 			end
 		end
 	end
 	
-	disableParticles(workspace)
-	disableParticles(game.Lighting)
+	disableParticles(workspace, "workspace")
+	disableParticles(game.Lighting, "Lighting")
+	
+	print("DEBUG: Disabled " .. particleCount .. " particle emitters")
 	
 	-- DISABLE BEAMS & TRAILS
-	for _, obj in pairs((workspace and workspace:GetDescendants()) or {}) do
-		if obj:IsA("Beam") then pcall(function() obj.Enabled = false end) end
-		if obj:IsA("Trail") then pcall(function() obj.Enabled = false end) end
+	local beamCount = 0
+	local trailCount = 0
+	
+	if workspace and workspace.GetDescendants then
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("Beam") then
+				pcall(function() 
+					obj.Enabled = false
+					beamCount = beamCount + 1
+				end)
+			end
+			if obj:IsA("Trail") then
+				pcall(function() 
+					obj.Enabled = false
+					trailCount = trailCount + 1
+				end)
+			end
+		end
 	end
 	
-	print("✓ SUPER LOW GRAPHICS MODE ENABLED - Lag reduced!")
+	print("DEBUG: Disabled " .. beamCount .. " beams, " .. trailCount .. " trails")
+	
+	-- CONFIRMATION
+	print("✓ SUPER LOW GRAPHICS MODE ENABLED")
+	print("  Shadows: OFF")
+	print("  Brightness: 0")
+	print("  Ambient: BLACK")
+	print("  Particles: DISABLED (" .. particleCount .. ")")
+	print("  Beams/Trails: DISABLED (" .. beamCount .. "/" .. trailCount .. ")")
 end
 
 function UtilityGUI:DisableLowGraphics()
-	if not self.LowGraphicsEnabled then return end
+	print("DEBUG: Restoring graphics settings...")
 	
-	-- Restore lighting
+	-- Restore original settings
 	if self.OriginalSettings then
-		pcall(function() game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled end)
-		pcall(function() game.Lighting.Brightness = self.OriginalSettings.exposure end)
-		pcall(function() game.Lighting.ClockTime = self.OriginalSettings.clockTime end)
-		pcall(function() game.Lighting.Ambient = self.OriginalSettings.ambient end)
+		pcall(function() 
+			game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
+			print("DEBUG: GlobalShadows restored to " .. tostring(self.OriginalSettings.shadowsEnabled))
+		end)
+		
+		pcall(function() 
+			game.Lighting.Brightness = self.OriginalSettings.exposure
+			print("DEBUG: Brightness restored to " .. tostring(self.OriginalSettings.exposure))
+		end)
+		
+		pcall(function() 
+			game.Lighting.ClockTime = self.OriginalSettings.clockTime
+			print("DEBUG: ClockTime restored to " .. tostring(self.OriginalSettings.clockTime))
+		end)
+		
+		pcall(function() 
+			game.Lighting.Ambient = self.OriginalSettings.ambient
+			print("DEBUG: Ambient restored")
+		end)
 	end
 	
 	-- Re-enable particles
-	local function enableParticles(parent)
-		for _, obj in pairs((parent and parent:GetDescendants()) or {}) do
+	local particleCount = 0
+	local function enableParticles(parent, name)
+		if not parent then return end
+		local desc = parent:GetDescendants()
+		if not desc then return end
+		
+		for _, obj in pairs(desc) do
 			if obj:IsA("ParticleEmitter") then
-				pcall(function() obj.Enabled = true end)
+				pcall(function() 
+					obj.Enabled = true
+					particleCount = particleCount + 1
+				end)
 			end
 		end
 	end
 	
-	enableParticles(workspace)
-	enableParticles(game.Lighting)
+	enableParticles(workspace, "workspace")
+	enableParticles(game.Lighting, "Lighting")
+	
+	print("DEBUG: Re-enabled " .. particleCount .. " particle emitters")
 	
 	-- Re-enable beams and trails
-	for _, obj in pairs((workspace and workspace:GetDescendants()) or {}) do
-		if obj:IsA("Beam") then pcall(function() obj.Enabled = true end) end
-		if obj:IsA("Trail") then pcall(function() obj.Enabled = true end) end
+	local beamCount = 0
+	local trailCount = 0
+	
+	if workspace and workspace.GetDescendants then
+		for _, obj in pairs(workspace:GetDescendants()) do
+			if obj:IsA("Beam") then
+				pcall(function() 
+					obj.Enabled = true
+					beamCount = beamCount + 1
+				end)
+			end
+			if obj:IsA("Trail") then
+				pcall(function() 
+					obj.Enabled = true
+					trailCount = trailCount + 1
+				end)
+			end
+		end
 	end
 	
 	print("✗ Graphics Mode Restored to Normal")
+	print("  Shadows: ON")
+	print("  Brightness: RESTORED")
+	print("  Particles: RE-ENABLED (" .. particleCount .. ")")
+	print("  Beams/Trails: RE-ENABLED (" .. beamCount .. "/" .. trailCount .. ")")
 end
 
 function UtilityGUI:ToggleLowGraphics()
