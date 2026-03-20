@@ -2543,36 +2543,30 @@ end
 -- ==================== FEATURE 2B: PALLET ESP ====================
 
 function UtilityGUI:IsPalletObject(object)
-	-- Detect if object is an INTERACTIVE trap pallet (can be dropped with space)
+	-- Detect if object is a pallet (simple check)
 	if not object or not object:IsA("BasePart") then return false end
 	
 	local name = object.Name:lower()
-	if not name:find("pallet") then return false end
 	
-	-- Exclude humanoid parents
-	if object.Parent and object.Parent:FindFirstChildOfClass("Humanoid") then
-		return false
-	end
-	
-	-- PRIMARY CHECK: Has ProximityPrompt (means it's interactive - can be dropped!)
-	if object:FindFirstChildOfClass("ProximityPrompt") then
-		return true
-	end
-	
-	-- SECONDARY CHECK: Check parent model for ProximityPrompt (pallet is inside a model)
-	if object.Parent and object.Parent:FindFirstChildOfClass("ProximityPrompt") then
-		return true
-	end
-	
-	-- TERTIARY CHECK: Named specifically as droppable pallet
-	if name:find("trap") or name:find("drop") or name:find("interactive") then
-		-- Make sure it's not anchored (trap pallets are usually unanchored)
-		if not object.Anchored then
-			return true
+	-- Simple name check for pallet
+	if name:find("pallet") then
+		-- Exclude humanoid parents (player characters)
+		if object.Parent and object.Parent:FindFirstChildOfClass("Humanoid") then
+			return false
 		end
+		
+		-- Exclude if inside humanoid
+		local current = object.Parent
+		while current do
+			if current:FindFirstChildOfClass("Humanoid") then
+				return false
+			end
+			current = current.Parent
+		end
+		
+		return true
 	end
 	
-	-- Only show if passes some check (avoid decorative pallets)
 	return false
 end
 
@@ -2584,11 +2578,11 @@ function UtilityGUI:AddPalletESP(palletObject)
 	highlight.Name = "Pallet_ESP"
 	highlight.Adornee = palletObject
 	highlight.FillColor = Color3.fromRGB(255, 140, 0)  -- Orange
-	highlight.FillTransparency = 0.6  -- Semi-transparent
+	highlight.FillTransparency = 0.5  -- More visible
 	highlight.OutlineColor = Color3.fromRGB(255, 165, 0)
-	highlight.OutlineTransparency = 0.2
+	highlight.OutlineTransparency = 0
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = palletObject
+	highlight.Parent = workspace  -- Parent to workspace, not object
 	
 	self.PalletESPHighlights[palletObject] = highlight
 end
