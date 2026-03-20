@@ -2543,17 +2543,36 @@ end
 -- ==================== FEATURE 2B: PALLET ESP ====================
 
 function UtilityGUI:IsPalletObject(object)
-	-- Detect if object is a pallet trap
+	-- Detect if object is an INTERACTIVE trap pallet (can be dropped with space)
 	if not object or not object:IsA("BasePart") then return false end
 	
 	local name = object.Name:lower()
-	if name:find("pallet") then
-		-- Make sure it's not a humanoid
-		if object.Parent and object.Parent:FindFirstChildOfClass("Humanoid") then
-			return false
-		end
+	if not name:find("pallet") then return false end
+	
+	-- Exclude humanoid parents
+	if object.Parent and object.Parent:FindFirstChildOfClass("Humanoid") then
+		return false
+	end
+	
+	-- PRIMARY CHECK: Has ProximityPrompt (means it's interactive - can be dropped!)
+	if object:FindFirstChildOfClass("ProximityPrompt") then
 		return true
 	end
+	
+	-- SECONDARY CHECK: Check parent model for ProximityPrompt (pallet is inside a model)
+	if object.Parent and object.Parent:FindFirstChildOfClass("ProximityPrompt") then
+		return true
+	end
+	
+	-- TERTIARY CHECK: Named specifically as droppable pallet
+	if name:find("trap") or name:find("drop") or name:find("interactive") then
+		-- Make sure it's not anchored (trap pallets are usually unanchored)
+		if not object.Anchored then
+			return true
+		end
+	end
+	
+	-- Only show if passes some check (avoid decorative pallets)
 	return false
 end
 
@@ -2575,11 +2594,13 @@ function UtilityGUI:AddPalletESP(palletObject)
 end
 
 function UtilityGUI:EnablePalletESP()
-	-- Scan workspace for pallets
+	-- Scan workspace for trap pallets
+	local palletCount = 0
 	local function scanForPallets(parent)
 		for _, obj in pairs(parent:GetDescendants()) do
 			if self:IsPalletObject(obj) then
 				self:AddPalletESP(obj)
+				palletCount = palletCount + 1
 			end
 		end
 	end
@@ -2599,7 +2620,11 @@ function UtilityGUI:EnablePalletESP()
 		end
 	end)
 	
-	print("✓ Pallet ESP Enabled - Trap pallets highlighted in orange")
+	if palletCount > 0 then
+		print("✓ Pallet ESP Enabled - Found " .. palletCount .. " interactive trap pallet(s)")
+	else
+		print("⚠️ Pallet ESP Enabled - No trap pallets found yet (they may spawn later)")
+	end
 end
 
 function UtilityGUI:ClearPalletESP()
