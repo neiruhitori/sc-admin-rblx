@@ -145,7 +145,8 @@ local bodyGyro = nil
 local connection = nil
 
 local function setupBodyMovers(character)
-	local hrp = character:WaitForChild("HumanoidRootPart")
+	local hrp = character:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
 	
 	bodyVelocity = Instance.new("BodyVelocity")
 	bodyVelocity.MaxForce = Vector3.new(0, 0, 0)
@@ -606,7 +607,13 @@ end
 -- ADMIN GUI
 -- ============================================
 local TweenService = game:GetService("TweenService")
-local playerGui = player:WaitForChild("PlayerGui")
+
+-- Safe PlayerGui loading with timeout (5 seconds max)
+local playerGui = player:WaitForChild("PlayerGui", 5)
+if not playerGui then
+	warn("⚠️ PlayerGui not found after 5 seconds - GUI might not load!")
+	return
+end
 
 -- Check if already loaded
 if playerGui:FindFirstChild("AdminGUI") then
@@ -2747,8 +2754,10 @@ local utilityRespawnConnection = player.CharacterAdded:Connect(function(char)
 	
 	-- Reapply speed if enabled
 	if UtilityGUI.SpeedEnabled then
-		local hum = char:WaitForChild("Humanoid")
-		hum.WalkSpeed = UtilityGUI.BoostSpeed
+		local hum = char:WaitForChild("Humanoid", 5)
+		if hum then
+			hum.WalkSpeed = UtilityGUI.BoostSpeed
+		end
 		
 		-- Restart shift simulation if needed
 		if not UtilityGUI.ShiftConnection then
