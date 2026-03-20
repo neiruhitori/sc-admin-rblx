@@ -14,6 +14,16 @@
 	===============================================
 ]]
 
+-- Global error tracking
+local function safeExecute(func, description)
+	local success, err = pcall(func)
+	if not success then
+		print("❌ ERROR in " .. description .. ": " .. tostring(err))
+		warn(description .. " failed: " .. tostring(err))
+	end
+	return success
+end
+
 print("🚀 Loading Admin Script...")
 
 -- ============================================
@@ -609,11 +619,16 @@ end
 local TweenService = game:GetService("TweenService")
 
 -- Safe PlayerGui loading with timeout (5 seconds max)
+print("DEBUG: Waiting for PlayerGui...")
 local playerGui = player:WaitForChild("PlayerGui", 5)
 if not playerGui then
-	warn("⚠️ PlayerGui not found after 5 seconds - GUI might not load!")
+	warn("⚠️ CRITICAL ERROR: PlayerGui not found after 5 seconds!")
+	print("❌ Script execution halted - PlayerGui unavailable")
+	error("PlayerGui loading failed")
 	return
 end
+
+print("✓ PlayerGui found successfully")
 
 -- Check if already loaded
 if playerGui:FindFirstChild("AdminGUI") then
@@ -632,6 +647,8 @@ screenGui.ResetOnSpawn = false
 screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 screenGui.IgnoreGuiInset = true
 screenGui.Parent = playerGui
+
+print("✓ Admin GUI ScreenGui created")
 
 -- Floating Icon
 local floatingIcon = Instance.new("ImageButton")
