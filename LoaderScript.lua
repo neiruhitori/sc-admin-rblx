@@ -1586,6 +1586,9 @@ UtilityGUI.CrosshairFrame = nil
 UtilityGUI.GeneratorKeywords = {
 	"generator", "repair", "build", "gen"
 }
+UtilityGUI.PalletESPHighlights = {}
+UtilityGUI.PalletESPEnabled = false
+UtilityGUI.PalletESPConnection = nil
 
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
@@ -2537,6 +2540,99 @@ function UtilityGUI:ToggleESP()
 	return self.ESPEnabled
 end
 
+-- ==================== FEATURE 2B: PALLET ESP ====================
+
+function UtilityGUI:IsPalletObject(object)
+	-- Detect if object is a pallet trap
+	if not object or not object:IsA("BasePart") then return false end
+	
+	local name = object.Name:lower()
+	if name:find("pallet") then
+		-- Make sure it's not a humanoid
+		if object.Parent and object.Parent:FindFirstChildOfClass("Humanoid") then
+			return false
+		end
+		return true
+	end
+	return false
+end
+
+function UtilityGUI:AddPalletESP(palletObject)
+	if self.PalletESPHighlights[palletObject] then return end
+	
+	-- Create Highlight effect - Orange transparent
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "Pallet_ESP"
+	highlight.Adornee = palletObject
+	highlight.FillColor = Color3.fromRGB(255, 140, 0)  -- Orange
+	highlight.FillTransparency = 0.6  -- Semi-transparent
+	highlight.OutlineColor = Color3.fromRGB(255, 165, 0)
+	highlight.OutlineTransparency = 0.2
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = palletObject
+	
+	self.PalletESPHighlights[palletObject] = highlight
+end
+
+function UtilityGUI:EnablePalletESP()
+	-- Scan workspace for pallets
+	local function scanForPallets(parent)
+		for _, obj in pairs(parent:GetDescendants()) do
+			if self:IsPalletObject(obj) then
+				self:AddPalletESP(obj)
+			end
+		end
+	end
+	
+	-- Initial scan
+	scanForPallets(workspace)
+	
+	-- Monitor for new pallets
+	if self.PalletESPConnection then
+		self.PalletESPConnection:Disconnect()
+	end
+	
+	self.PalletESPConnection = workspace.DescendantAdded:Connect(function(obj)
+		if self.PalletESPEnabled and self:IsPalletObject(obj) then
+			wait(0.05)  -- Small delay to ensure full object creation
+			self:AddPalletESP(obj)
+		end
+	end)
+	
+	print("✓ Pallet ESP Enabled - Trap pallets highlighted in orange")
+end
+
+function UtilityGUI:ClearPalletESP()
+	-- Remove all pallet highlights
+	for palletObj, highlight in pairs(self.PalletESPHighlights) do
+		if highlight and highlight.Parent then
+			highlight:Destroy()
+		end
+	end
+	table.clear(self.PalletESPHighlights)
+	
+	-- Disconnect monitoring
+	if self.PalletESPConnection then
+		self.PalletESPConnection:Disconnect()
+		self.PalletESPConnection = nil
+	end
+	
+	print("✗ Pallet ESP Disabled")
+end
+
+function UtilityGUI:TogglePalletESP()
+	self.PalletESPEnabled = not self.PalletESPEnabled
+	
+	if self.PalletESPEnabled then
+		self:EnablePalletESP()
+	else
+		self:ClearPalletESP()
+	end
+	
+	self:NotifyToggle("Pallet ESP", self.PalletESPEnabled)
+	return self.PalletESPEnabled
+end
+
 -- ==================== FEATURE 3: CROSSHAIR AIM ASSIST ====================
 
 function UtilityGUI:CreateCrosshair()
@@ -2799,6 +2895,13 @@ local espButton = createUtilityCard(
 	function() return UtilityGUI:ToggleESP() end
 )
 
+local palletESPButton = createUtilityCard(
+	"🪤 Pallet Trap Detection",
+	"Highlight trap pallets in orange (Part of J key)",
+	"J",
+	function() return UtilityGUI:TogglePalletESP() end
+)
+
 local crosshairButton = createUtilityCard(
 	"🎯 Crosshair Aim",
 	"Range marks: 30m/60m/90m+ (Press H)",
@@ -2870,12 +2973,15 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		cursorButton.BackgroundColor3 = UtilityGUI.CursorEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
-	-- J = ESP Toggle
+	-- J = ESP Toggle (Players + Interactables + Pallets)
 	if input.KeyCode == Enum.KeyCode.J then
 		UtilityGUI:ToggleESP()
-		-- Update button visual
+		UtilityGUI:TogglePalletESP()  -- Also toggle pallet ESP
+		-- Update button visuals
 		espButton.Text = UtilityGUI.ESPEnabled and "ON" or "OFF"
 		espButton.BackgroundColor3 = UtilityGUI.ESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+		palletESPButton.Text = UtilityGUI.PalletESPEnabled and "ON" or "OFF"
+		palletESPButton.BackgroundColor3 = UtilityGUI.PalletESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
 	-- H = Crosshair Toggle
