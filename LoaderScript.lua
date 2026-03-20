@@ -2573,18 +2573,38 @@ end
 function UtilityGUI:AddPalletESP(palletObject)
 	if self.PalletESPHighlights[palletObject] then return end
 	
-	-- Create Highlight effect - Orange transparent
+	-- Try Highlight first
 	local highlight = Instance.new("Highlight")
-	highlight.Name = "Pallet_ESP"
+	highlight.Name = "Pallet_ESP_Highlight"
 	highlight.Adornee = palletObject
 	highlight.FillColor = Color3.fromRGB(255, 140, 0)  -- Orange
-	highlight.FillTransparency = 0.5  -- More visible
-	highlight.OutlineColor = Color3.fromRGB(255, 165, 0)
+	highlight.FillTransparency = 0.3  -- Very visible
+	highlight.OutlineColor = Color3.fromRGB(255, 100, 0)
 	highlight.OutlineTransparency = 0
 	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-	highlight.Parent = workspace  -- Parent to workspace, not object
+	highlight.Parent = palletObject.Parent or workspace
 	
-	self.PalletESPHighlights[palletObject] = highlight
+	-- Also add BillboardGui marker for absolute visibility
+	local billboardGui = Instance.new("BillboardGui")
+	billboardGui.Name = "Pallet_ESP_Marker"
+	billboardGui.Adornee = palletObject
+	billboardGui.Size = UDim2.new(4, 0, 4, 0)
+	billboardGui.MaxDistance = 500
+	billboardGui.StudsOffset = Vector3.new(0, 2, 0)
+	billboardGui.Parent = palletObject
+	
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.new(1, 0, 1, 0)
+	frame.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+	frame.BackgroundTransparency = 0.4
+	frame.BorderSizePixel = 0
+	frame.Parent = billboardGui
+	
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = frame
+	
+	self.PalletESPHighlights[palletObject] = {highlight = highlight, billboard = billboardGui}
 end
 
 function UtilityGUI:EnablePalletESP()
@@ -2609,23 +2629,26 @@ function UtilityGUI:EnablePalletESP()
 	
 	self.PalletESPConnection = workspace.DescendantAdded:Connect(function(obj)
 		if self.PalletESPEnabled and self:IsPalletObject(obj) then
-			wait(0.05)  -- Small delay to ensure full object creation
+			wait(0.05)
 			self:AddPalletESP(obj)
 		end
 	end)
 	
 	if palletCount > 0 then
-		print("✓ Pallet ESP Enabled - Found " .. palletCount .. " interactive trap pallet(s)")
+		print("✓ Pallet ESP Enabled - Found " .. palletCount .. " pallets (Orange markers visible on screen)")
 	else
-		print("⚠️ Pallet ESP Enabled - No trap pallets found yet (they may spawn later)")
+		print("⚠️ Pallet ESP Enabled - No pallets found in workspace yet")
 	end
 end
 
 function UtilityGUI:ClearPalletESP()
 	-- Remove all pallet highlights
-	for palletObj, highlight in pairs(self.PalletESPHighlights) do
-		if highlight and highlight.Parent then
-			highlight:Destroy()
+	for palletObj, objects in pairs(self.PalletESPHighlights) do
+		if objects.highlight and objects.highlight.Parent then
+			pcall(function() objects.highlight:Destroy() end)
+		end
+		if objects.billboard and objects.billboard.Parent then
+			pcall(function() objects.billboard:Destroy() end)
 		end
 	end
 	table.clear(self.PalletESPHighlights)
