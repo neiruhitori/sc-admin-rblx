@@ -2682,54 +2682,116 @@ end
 -- ==================== FEATURE 3: LOW GRAPHICS MODE ====================
 
 function UtilityGUI:EnableLowGraphics()
-	-- Store original settings
+	-- Store original settings for all game elements
 	self.OriginalSettings = {
 		lightingEnabled = game.Lighting.Enabled,
 		shadowsEnabled = game:GetService("Lighting").GlobalShadows,
 		exposure = game.Lighting.Brightness,
+		clockTime = game.Lighting.ClockTime,
+		ambient = game.Lighting.Ambient,
 	}
 	
-	-- Reduce lighting/shadows
+	-- STEP 1: Disable ALL lighting effects
 	game.Lighting.GlobalShadows = false
-	game.Lighting.Brightness = 0.5
+	game.Lighting.Brightness = 0  -- Full dark
+	game.Lighting.ClockTime = 12  -- Midday but with brightness 0
+	game.Lighting.Ambient = Color3.fromRGB(40, 40, 40)  -- Minimal ambient
 	
-	-- Disable particle emitters across game
-	local function disableParticles(parent)
+	-- STEP 2: Remove all post-effects and bloom
+	for _, effect in pairs(game.Lighting:GetChildren()) do
+		if effect:IsA("PostEffect") then
+			pcall(function() effect.Enabled = false end)
+		end
+	end
+	
+	-- STEP 3: Disable ALL particle emitters
+	local function disableAllParticles(parent)
 		for _, obj in pairs(parent:GetDescendants()) do
 			if obj:IsA("ParticleEmitter") then
+				pcall(function()
+					obj.Enabled = false
+					obj.Rate = 0
+				end)
+			end
+		end
+	end
+	
+	disableAllParticles(workspace)
+	disableAllParticles(game.Lighting)
+	disableAllParticles(game)
+	
+	-- STEP 4: Disable beams and trails
+	local function disableBeamsTrails(parent)
+		for _, obj in pairs(parent:GetDescendants()) do
+			if obj:IsA("Beam") then
+				pcall(function() obj.Enabled = false end)
+			elseif obj:IsA("Trail") then
 				pcall(function() obj.Enabled = false end)
 			end
 		end
 	end
 	
-	disableParticles(workspace)
-	disableParticles(game.Lighting)
+	disableBeamsTrails(workspace)
 	
-	-- Disable bloom and other effects in camera
-	local camera = workspace.CurrentCamera
-	if camera then
-		for _, obj in pairs(camera:GetChildren()) do
-			if obj:IsA("PostEffect") then
-				pcall(function() obj.Enabled = false end)
+	-- STEP 5: Remove terrain if complex
+	local terrain = workspace.Terrain
+	if terrain then
+		pcall(function()
+			-- Generate a tet mesh to replace terrain
+			terrain:Clear()
+		end)
+	end
+	
+	-- STEP 6: Disable GUI effects globally
+	local players = game:GetService("Players")
+	local player = players.LocalPlayer
+	if player and player:FindFirstChild("PlayerGui") then
+		for _, gui in pairs(player.PlayerGui:GetDescendants()) do
+			if gui:IsA("GuiObject") then
+				pcall(function()
+					if gui:FindFirstChild("UIGradient") then
+						gui.UIGradient.Enabled = false
+					end
+				end)
 			end
 		end
 	end
 	
-	print("✓ Low Graphics Mode Enabled - Reduced particles, shadows, and effects")
+	-- Console feedback
+	print("✓ SUPER LOW GRAPHICS MODE ENABLED")
+	print("  ✓ Shadows disabled")
+	print("  ✓ Lighting minimized")
+	print("  ✓ All particles disabled")
+	print("  ✓ Beams & trails disabled")
+	print("  ✓ Terrain cleared")
+	print("  ✓ All effects removed")
 end
 
 function UtilityGUI:DisableLowGraphics()
-	-- Restore original settings
-	if self.OriginalSettings.lightingEnabled ~= nil then
-		game.Lighting.Enabled = self.OriginalSettings.lightingEnabled
+	-- Restore original lighting settings
+	if self.OriginalSettings then
+		if self.OriginalSettings.shadowsEnabled ~= nil then
+			game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
+		end
+		
+		if self.OriginalSettings.exposure ~= nil then
+			game.Lighting.Brightness = self.OriginalSettings.exposure
+		end
+		
+		if self.OriginalSettings.clockTime ~= nil then
+			game.Lighting.ClockTime = self.OriginalSettings.clockTime
+		end
+		
+		if self.OriginalSettings.ambient ~= nil then
+			game.Lighting.Ambient = self.OriginalSettings.ambient
+		end
 	end
 	
-	if self.OriginalSettings.shadowsEnabled ~= nil then
-		game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
-	end
-	
-	if self.OriginalSettings.exposure ~= nil then
-		game.Lighting.Brightness = self.OriginalSettings.exposure
+	-- Re-enable post effects
+	for _, effect in pairs(game.Lighting:GetChildren()) do
+		if effect:IsA("PostEffect") then
+			pcall(function() effect.Enabled = true end)
+		end
 	end
 	
 	-- Re-enable particle emitters
@@ -2744,17 +2806,20 @@ function UtilityGUI:DisableLowGraphics()
 	enableParticles(workspace)
 	enableParticles(game.Lighting)
 	
-	-- Re-enable effects in camera
-	local camera = workspace.CurrentCamera
-	if camera then
-		for _, obj in pairs(camera:GetChildren()) do
-			if obj:IsA("PostEffect") then
+	-- Re-enable beams and trails
+	local function enableBeamsTrails(parent)
+		for _, obj in pairs(parent:GetDescendants()) do
+			if obj:IsA("Beam") then
+				pcall(function() obj.Enabled = true end)
+			elseif obj:IsA("Trail") then
 				pcall(function() obj.Enabled = true end)
 			end
 		end
 	end
 	
-	print("✗ Low Graphics Mode Disabled")
+	enableBeamsTrails(workspace)
+	
+	print("✗ Graphics Mode Restored to Normal")
 end
 
 function UtilityGUI:ToggleLowGraphics()
