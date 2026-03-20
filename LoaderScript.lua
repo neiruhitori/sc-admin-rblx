@@ -1590,6 +1590,10 @@ UtilityGUI.PalletESPHighlights = {}
 UtilityGUI.PalletESPEnabled = false
 UtilityGUI.PalletESPConnection = nil
 
+-- Low Graphics Mode
+UtilityGUI.LowGraphicsEnabled = false
+UtilityGUI.OriginalSettings = {}
+
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
 	playerGui.UtilityGUI:Destroy()
@@ -2675,7 +2679,98 @@ function UtilityGUI:TogglePalletESP()
 	return self.PalletESPEnabled
 end
 
--- ==================== FEATURE 3: CROSSHAIR AIM ASSIST ====================
+-- ==================== FEATURE 3: LOW GRAPHICS MODE ====================
+
+function UtilityGUI:EnableLowGraphics()
+	-- Store original settings
+	self.OriginalSettings = {
+		lightingEnabled = game.Lighting.Enabled,
+		shadowsEnabled = game:GetService("Lighting").GlobalShadows,
+		exposure = game.Lighting.Brightness,
+	}
+	
+	-- Reduce lighting/shadows
+	game.Lighting.GlobalShadows = false
+	game.Lighting.Brightness = 0.5
+	
+	-- Disable particle emitters across game
+	local function disableParticles(parent)
+		for _, obj in pairs(parent:GetDescendants()) do
+			if obj:IsA("ParticleEmitter") then
+				pcall(function() obj.Enabled = false end)
+			end
+		end
+	end
+	
+	disableParticles(workspace)
+	disableParticles(game.Lighting)
+	
+	-- Disable bloom and other effects in camera
+	local camera = workspace.CurrentCamera
+	if camera then
+		for _, obj in pairs(camera:GetChildren()) do
+			if obj:IsA("PostEffect") then
+				pcall(function() obj.Enabled = false end)
+			end
+		end
+	end
+	
+	print("✓ Low Graphics Mode Enabled - Reduced particles, shadows, and effects")
+end
+
+function UtilityGUI:DisableLowGraphics()
+	-- Restore original settings
+	if self.OriginalSettings.lightingEnabled ~= nil then
+		game.Lighting.Enabled = self.OriginalSettings.lightingEnabled
+	end
+	
+	if self.OriginalSettings.shadowsEnabled ~= nil then
+		game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
+	end
+	
+	if self.OriginalSettings.exposure ~= nil then
+		game.Lighting.Brightness = self.OriginalSettings.exposure
+	end
+	
+	-- Re-enable particle emitters
+	local function enableParticles(parent)
+		for _, obj in pairs(parent:GetDescendants()) do
+			if obj:IsA("ParticleEmitter") then
+				pcall(function() obj.Enabled = true end)
+			end
+		end
+	end
+	
+	enableParticles(workspace)
+	enableParticles(game.Lighting)
+	
+	-- Re-enable effects in camera
+	local camera = workspace.CurrentCamera
+	if camera then
+		for _, obj in pairs(camera:GetChildren()) do
+			if obj:IsA("PostEffect") then
+				pcall(function() obj.Enabled = true end)
+			end
+		end
+	end
+	
+	print("✗ Low Graphics Mode Disabled")
+end
+
+function UtilityGUI:ToggleLowGraphics()
+	self.LowGraphicsEnabled = not self.LowGraphicsEnabled
+	
+	if self.LowGraphicsEnabled then
+		self:EnableLowGraphics()
+	else
+		self:DisableLowGraphics()
+	end
+	
+	self:NotifyToggle("Low Graphics", self.LowGraphicsEnabled)
+	return self.LowGraphicsEnabled
+end
+
+-- ==================== FEATURE 4: CROSSHAIR AIM ASSIST ====================
 
 function UtilityGUI:CreateCrosshair()
 	if self.CrosshairFrame then return end
@@ -2965,6 +3060,13 @@ local speedButton = createUtilityCard(
 	function() return UtilityGUI:ToggleSpeed() end
 )
 
+local lowGraphicsButton = createUtilityCard(
+	"📉 Low Graphics Mode",
+	"Reduce lag - disable effects, shadows (Press P)",
+	"P",
+	function() return UtilityGUI:ToggleLowGraphics() end
+)
+
 -- ==================== GUI TOGGLE ====================
 
 local function toggleUtilityGUI()
@@ -3047,6 +3149,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		-- Update button visual
 		speedButton.Text = UtilityGUI.SpeedEnabled and "ON" or "OFF"
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+	end
+	
+	-- P = Low Graphics Toggle
+	if input.KeyCode == Enum.KeyCode.P then
+		UtilityGUI:ToggleLowGraphics()
+		-- Update button visual
+		lowGraphicsButton.Text = UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"
+		lowGraphicsButton.BackgroundColor3 = UtilityGUI.LowGraphicsEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 
 end)
