@@ -2682,102 +2682,55 @@ end
 -- ==================== FEATURE 3: LOW GRAPHICS MODE ====================
 
 function UtilityGUI:EnableLowGraphics()
-	-- Store original settings for all game elements
+	if self.LowGraphicsEnabled then return end
+	
+	-- Store original settings
 	self.OriginalSettings = {
-		shadowsEnabled = game:GetService("Lighting").GlobalShadows,
+		shadowsEnabled = game.Lighting.GlobalShadows,
 		exposure = game.Lighting.Brightness,
 		clockTime = game.Lighting.ClockTime,
 		ambient = game.Lighting.Ambient,
 	}
 	
-	-- STEP 1: Disable ALL lighting effects
-	game.Lighting.GlobalShadows = false
-	game.Lighting.Brightness = 0  -- Full dark
-	game.Lighting.ClockTime = 12  -- Midday but with brightness 0
-	game.Lighting.Ambient = Color3.fromRGB(40, 40, 40)  -- Minimal ambient
+	-- DISABLE LIGHTING
+	pcall(function() game.Lighting.GlobalShadows = false end)
+	pcall(function() game.Lighting.Brightness = -1 end)
 	
-	-- STEP 2: Remove all post-effects and bloom
-	for _, effect in pairs(game.Lighting:GetChildren()) do
-		if effect:IsA("PostEffect") then
-			pcall(function() effect.Enabled = false end)
-		end
-	end
-	
-	-- STEP 3: Disable ALL particle emitters
-	local function disableAllParticles(parent)
-		for _, obj in pairs(parent:GetDescendants()) do
+	-- DISABLE PARTICLES
+	local function disableParticles(parent)
+		for _, obj in pairs((parent and parent:GetDescendants()) or {}) do
 			if obj:IsA("ParticleEmitter") then
-				pcall(function()
-					obj.Enabled = false
-					obj.Rate = 0
-				end)
-			end
-		end
-	end
-	
-	disableAllParticles(workspace)
-	disableAllParticles(game.Lighting)
-	
-	-- STEP 4: Disable beams and trails
-	local function disableBeamsTrails(parent)
-		for _, obj in pairs(parent:GetDescendants()) do
-			if obj:IsA("Beam") then
-				pcall(function() obj.Enabled = false end)
-			elseif obj:IsA("Trail") then
 				pcall(function() obj.Enabled = false end)
 			end
 		end
 	end
 	
-	disableBeamsTrails(workspace)
+	disableParticles(workspace)
+	disableParticles(game.Lighting)
 	
-	-- STEP 5: Remove terrain if complex
-	local terrain = workspace.Terrain
-	if terrain then
-		pcall(function()
-			terrain:Clear()
-		end)
+	-- DISABLE BEAMS & TRAILS
+	for _, obj in pairs((workspace and workspace:GetDescendants()) or {}) do
+		if obj:IsA("Beam") then pcall(function() obj.Enabled = false end) end
+		if obj:IsA("Trail") then pcall(function() obj.Enabled = false end) end
 	end
 	
-	-- Console feedback
-	print("✓ SUPER LOW GRAPHICS MODE ENABLED")
-	print("  ✓ Shadows disabled")
-	print("  ✓ Lighting minimized")
-	print("  ✓ All particles disabled")
-	print("  ✓ Beams & trails disabled")
-	print("  ✓ Terrain cleared")
+	print("✓ SUPER LOW GRAPHICS MODE ENABLED - Lag reduced!")
 end
 
 function UtilityGUI:DisableLowGraphics()
-	-- Restore original lighting settings
+	if not self.LowGraphicsEnabled then return end
+	
+	-- Restore lighting
 	if self.OriginalSettings then
-		if self.OriginalSettings.shadowsEnabled ~= nil then
-			game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
-		end
-		
-		if self.OriginalSettings.exposure ~= nil then
-			game.Lighting.Brightness = self.OriginalSettings.exposure
-		end
-		
-		if self.OriginalSettings.clockTime ~= nil then
-			game.Lighting.ClockTime = self.OriginalSettings.clockTime
-		end
-		
-		if self.OriginalSettings.ambient ~= nil then
-			game.Lighting.Ambient = self.OriginalSettings.ambient
-		end
+		pcall(function() game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled end)
+		pcall(function() game.Lighting.Brightness = self.OriginalSettings.exposure end)
+		pcall(function() game.Lighting.ClockTime = self.OriginalSettings.clockTime end)
+		pcall(function() game.Lighting.Ambient = self.OriginalSettings.ambient end)
 	end
 	
-	-- Re-enable post effects
-	for _, effect in pairs(game.Lighting:GetChildren()) do
-		if effect:IsA("PostEffect") then
-			pcall(function() effect.Enabled = true end)
-		end
-	end
-	
-	-- Re-enable particle emitters
+	-- Re-enable particles
 	local function enableParticles(parent)
-		for _, obj in pairs(parent:GetDescendants()) do
+		for _, obj in pairs((parent and parent:GetDescendants()) or {}) do
 			if obj:IsA("ParticleEmitter") then
 				pcall(function() obj.Enabled = true end)
 			end
@@ -2788,17 +2741,10 @@ function UtilityGUI:DisableLowGraphics()
 	enableParticles(game.Lighting)
 	
 	-- Re-enable beams and trails
-	local function enableBeamsTrails(parent)
-		for _, obj in pairs(parent:GetDescendants()) do
-			if obj:IsA("Beam") then
-				pcall(function() obj.Enabled = true end)
-			elseif obj:IsA("Trail") then
-				pcall(function() obj.Enabled = true end)
-			end
-		end
+	for _, obj in pairs((workspace and workspace:GetDescendants()) or {}) do
+		if obj:IsA("Beam") then pcall(function() obj.Enabled = true end) end
+		if obj:IsA("Trail") then pcall(function() obj.Enabled = true end) end
 	end
-	
-	enableBeamsTrails(workspace)
 	
 	print("✗ Graphics Mode Restored to Normal")
 end
@@ -3200,9 +3146,14 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- P = Low Graphics Toggle
 	if input.KeyCode == Enum.KeyCode.P then
 		UtilityGUI:ToggleLowGraphics()
-		-- Update button visual
-		lowGraphicsButton.Text = UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"
-		lowGraphicsButton.BackgroundColor3 = UtilityGUI.LowGraphicsEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+		-- Update button visual safely
+		if lowGraphicsButton then
+			pcall(function()
+				lowGraphicsButton.Text = UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"
+				lowGraphicsButton.BackgroundColor3 = UtilityGUI.LowGraphicsEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+				print("🔘 Low Graphics Button Updated: " .. (UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"))
+			end)
+		end
 	end
 
 end)
