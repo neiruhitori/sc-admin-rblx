@@ -1607,10 +1607,6 @@ UtilityGUI.PalletESPHighlights = {}
 UtilityGUI.PalletESPEnabled = false
 UtilityGUI.PalletESPConnection = nil
 
--- Low Graphics Mode
-UtilityGUI.LowGraphicsEnabled = false
-UtilityGUI.OriginalSettings = {}
-
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
 	playerGui.UtilityGUI:Destroy()
@@ -2696,179 +2692,7 @@ function UtilityGUI:TogglePalletESP()
 	return self.PalletESPEnabled
 end
 
--- ==================== FEATURE 3: LOW GRAPHICS MODE ====================
-
-function UtilityGUI:EnableLowGraphics()
-	-- Store original settings
-	self.OriginalSettings = {
-		shadowsEnabled = game.Lighting.GlobalShadows,
-		exposure = game.Lighting.Brightness,
-		clockTime = game.Lighting.ClockTime,
-		ambient = game.Lighting.Ambient,
-	}
-	
-	print("DEBUG: Original Settings Stored")
-	print("  Shadows: " .. tostring(self.OriginalSettings.shadowsEnabled))
-	print("  Brightness: " .. tostring(self.OriginalSettings.exposure))
-	
-	-- BRIGHT MODE: Enable visibility without shadows
-	pcall(function() 
-		game.Lighting.GlobalShadows = false
-		print("DEBUG: GlobalShadows disabled (no shadows)")
-	end)
-	
-	pcall(function() 
-		game.Lighting.Brightness = 2  -- Bright but normal, not blinding
-		print("DEBUG: Brightness set to 2 (normal bright)")
-	end)
-	
-	pcall(function()
-		game.Lighting.Ambient = Color3.fromRGB(150, 150, 150)  -- Neutral gray (bright)
-		print("DEBUG: Ambient set to bright neutral gray")
-	end)
-	
-	pcall(function()
-		game.Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
-		print("DEBUG: OutdoorAmbient set to bright")
-	end)
-	
-	-- DISABLE PARTICLES
-	print("DEBUG: Starting particle disable...")
-	local particleCount = 0
-	
-	local function disableParticles(parent, name)
-		if not parent then return end
-		local descCore = parent:GetDescendants()
-		if not descCore then return end
-		
-		for _, obj in pairs(descCore) do
-			if obj:IsA("ParticleEmitter") then
-				pcall(function() 
-					obj.Enabled = false
-					particleCount = particleCount + 1
-				end)
-			end
-		end
-	end
-	
-	disableParticles(workspace, "workspace")
-	disableParticles(game.Lighting, "Lighting")
-	
-	print("DEBUG: Disabled " .. particleCount .. " particle emitters")
-	
-	-- MAKE SURFACES SMOOTH/MATTE
-	print("DEBUG: Starting surface smoothing...")
-	local smoothCount = 0
-	
-	if workspace and workspace.GetDescendants then
-		for _, obj in pairs(workspace:GetDescendants()) do
-			-- Make all parts matte (no reflections)
-			if obj:IsA("BasePart") then
-				pcall(function()
-					obj.Material = Enum.Material.Slate  -- Matte/smooth material
-					obj.TopSurface = Enum.SurfaceType.Smooth
-					obj.BottomSurface = Enum.SurfaceType.Smooth
-					if obj:FindFirstChild("SurfaceGui") then
-						pcall(function() obj.SurfaceGui:Destroy() end)
-					end
-					smoothCount = smoothCount + 1
-				end)
-			end
-			-- Disable beams and trails
-			if obj:IsA("Beam") then
-				pcall(function() obj.Enabled = false end)
-			end
-			if obj:IsA("Trail") then
-				pcall(function() obj.Enabled = false end)
-			end
-		end
-	end
-	
-	print("DEBUG: Smoothed " .. smoothCount .. " parts")
-	
-	-- CONFIRMATION
-	print("✓ LOW GRAPHICS BRIGHT MODE ENABLED")
-	print("  Shadows: OFF")
-	print("  Brightness: 2 (Normal Bright)")
-	print("  Ambient: Bright Neutral Gray")
-	print("  Surfaces: MATTE/SMOOTH (" .. smoothCount .. " parts)")
-	print("  Particles: DISABLED (" .. particleCount .. ")")
-end
-
-function UtilityGUI:DisableLowGraphics()
-	print("DEBUG: Restoring graphics settings...")
-	
-	-- Restore original settings
-	if self.OriginalSettings then
-		pcall(function() 
-			game.Lighting.GlobalShadows = self.OriginalSettings.shadowsEnabled
-			print("DEBUG: GlobalShadows restored to " .. tostring(self.OriginalSettings.shadowsEnabled))
-		end)
-		
-		pcall(function() 
-			game.Lighting.Brightness = self.OriginalSettings.exposure
-			print("DEBUG: Brightness restored to " .. tostring(self.OriginalSettings.exposure))
-		end)
-		
-		pcall(function() 
-			game.Lighting.ClockTime = self.OriginalSettings.clockTime
-			print("DEBUG: ClockTime restored to " .. tostring(self.OriginalSettings.clockTime))
-		end)
-		
-		pcall(function() 
-			game.Lighting.Ambient = self.OriginalSettings.ambient
-			print("DEBUG: Ambient restored")
-		end)
-	end
-	
-	-- Restore original surfaces
-	local restoreCount = 0
-	
-	if workspace and workspace.GetDescendants then
-		for _, obj in pairs(workspace:GetDescendants()) do
-			if obj:IsA("BasePart") then
-				pcall(function()
-					-- Restore to default material (Plastic)
-					obj.Material = Enum.Material.Plastic
-					obj.TopSurface = Enum.SurfaceType.Smooth
-					obj.BottomSurface = Enum.SurfaceType.Smooth  -- Fixed: was Bottom (invalid)
-					restoreCount = restoreCount + 1
-				end)
-			end
-			-- Re-enable particles, beams, trails
-			if obj:IsA("ParticleEmitter") then
-				pcall(function() obj.Enabled = true end)
-			end
-			if obj:IsA("Beam") then
-				pcall(function() obj.Enabled = true end)
-			end
-			if obj:IsA("Trail") then
-				pcall(function() obj.Enabled = true end)
-			end
-		end
-	end
-	
-	print("✗ Graphics Mode Restored to Normal")
-	print("  Shadows: RESTORED")
-	print("  Brightness: RESTORED")
-	print("  Surfaces: RESTORED (" .. restoreCount .. " parts)")
-	print("  Particles: RE-ENABLED")
-end
-
-function UtilityGUI:ToggleLowGraphics()
-	self.LowGraphicsEnabled = not self.LowGraphicsEnabled
-	
-	if self.LowGraphicsEnabled then
-		self:EnableLowGraphics()
-	else
-		self:DisableLowGraphics()
-	end
-	
-	self:NotifyToggle("Low Graphics", self.LowGraphicsEnabled)
-	return self.LowGraphicsEnabled
-end
-
--- ==================== FEATURE 4: CROSSHAIR AIM ASSIST ====================
+-- ==================== FEATURE 3: CROSSHAIR AIM ASSIST ====================
 
 function UtilityGUI:CreateCrosshair()
 	if self.CrosshairFrame then return end
@@ -3158,12 +2982,6 @@ local speedButton = createUtilityCard(
 	function() return UtilityGUI:ToggleSpeed() end
 )
 
-local lowGraphicsButton = createUtilityCard(
-	"📉 Low Graphics Mode",
-	"Reduce lag - disable effects, shadows (Press P)",
-	"P",
-	function() return UtilityGUI:ToggleLowGraphics() end
-)
 
 -- ==================== GUI TOGGLE ====================
 
@@ -3249,18 +3067,7 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
-	-- P = Low Graphics Toggle
-	if input.KeyCode == Enum.KeyCode.P then
-		UtilityGUI:ToggleLowGraphics()
-		-- Update button visual safely
-		if lowGraphicsButton then
-			pcall(function()
-				lowGraphicsButton.Text = UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"
-				lowGraphicsButton.BackgroundColor3 = UtilityGUI.LowGraphicsEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
-				print("🔘 Low Graphics Button Updated: " .. (UtilityGUI.LowGraphicsEnabled and "ON" or "OFF"))
-			end)
-		end
-	end
+
 
 end)
 
