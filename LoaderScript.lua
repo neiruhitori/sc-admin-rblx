@@ -325,6 +325,193 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ============================================
+-- FREECAM CONTROLLER MODULE
+-- ============================================
+local FreecamController = {}
+FreecamController.Freecaming = false
+FreecamController.Speed = 50
+FreecamController.Sensitivity = 0.15
+
+local freecamCamera = nil
+local freecamConnection = nil
+local freecamMouseConnection = nil
+local lastMousePos = nil
+local freecamCFrame = nil
+local freecamKeysPressed = {
+	Forward = false,
+	Backward = false,
+	Left = false,
+	Right = false,
+	Up = false,
+	Down = false,
+}
+
+function FreecamController:StartFreecam()
+	if self.Freecaming then return end
+	
+	self.Freecaming = true
+	local camera = workspace.CurrentCamera
+	
+	-- Save original camera state
+	freecamCamera = camera
+	freecamCFrame = camera.CFrame
+	
+	-- Set camera to custom control
+	camera.CameraType = Enum.CameraType.Scriptable
+	
+	-- Initialize mouse position
+	local mouse = player:GetMouse()
+	lastMousePos = mouse.Hit.Position
+	
+	-- Movement loop
+	freecamConnection = RunService.Heartbeat:Connect(function()
+		if not self.Freecaming then return end
+		
+		local camera = workspace.CurrentCamera
+		local moveDirection = Vector3.new(0, 0, 0)
+		
+		-- WASD movement
+		if freecamKeysPressed.Forward then
+			moveDirection = moveDirection + camera.CFrame.LookVector
+		end
+		if freecamKeysPressed.Backward then
+			moveDirection = moveDirection - camera.CFrame.LookVector
+		end
+		if freecamKeysPressed.Left then
+			moveDirection = moveDirection - camera.CFrame.RightVector
+		end
+		if freecamKeysPressed.Right then
+			moveDirection = moveDirection + camera.CFrame.RightVector
+		end
+		if freecamKeysPressed.Up then
+			moveDirection = moveDirection + Vector3.new(0, 1, 0)
+		end
+		if freecamKeysPressed.Down then
+			moveDirection = moveDirection - Vector3.new(0, 1, 0)
+		end
+		
+		-- Normalize and apply speed
+		if moveDirection.Magnitude > 0 then
+			moveDirection = moveDirection.Unit * self.Speed
+		end
+		
+		-- Update camera position
+		freecamCFrame = freecamCFrame + moveDirection * RunService.Heartbeat:Wait()
+		camera.CFrame = freecamCFrame
+	end)
+	
+	-- Mouse movement for camera rotation
+	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
+		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+		
+		local mouse = player:GetMouse()
+		local currentMousePos = mouse.Hit.Position
+		
+		if lastMousePos then
+			local delta = (currentMousePos - lastMousePos) * self.Sensitivity
+			
+			-- Rotate camera based on mouse movement
+			local currentCFrame = freecamCFrame
+			local horizontalRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), -delta.X * 0.01)
+			local verticalRotation = CFrame.fromAxisAngle(currentCFrame.RightVector, -delta.Y * 0.01)
+			
+			freecamCFrame = (currentCFrame * horizontalRotation * verticalRotation)
+		end
+		
+		lastMousePos = currentMousePos
+	end)
+	
+	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around")
+end
+
+function FreecamController:StopFreecam()
+	if not self.Freecaming then return end
+	
+	self.Freecaming = false
+	
+	if freecamConnection then
+		freecamConnection:Disconnect()
+		freecamConnection = nil
+	end
+	
+	if freecamMouseConnection then
+		freecamMouseConnection:Disconnect()
+		freecamMouseConnection = nil
+	end
+	
+	-- Restore camera to character
+	local camera = workspace.CurrentCamera
+	camera.CameraType = Enum.CameraType.Custom
+	
+	-- Reset keys
+	for key, _ in pairs(freecamKeysPressed) do
+		freecamKeysPressed[key] = false
+	end
+	
+	print("🎥 Freecam disabled")
+end
+
+function FreecamController:Toggle()
+	if self.Freecaming then
+		self:StopFreecam()
+	else
+		self:StartFreecam()
+	end
+end
+
+-- Freecam input handling
+local shiftPressed = false
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if UserInputService:GetFocusedTextBox() then return end
+	
+	-- Handle Shift + Z for Freecam toggle
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		shiftPressed = true
+	elseif input.KeyCode == Enum.KeyCode.Z and shiftPressed then
+		FreecamController:Toggle()
+	end
+	
+	-- Freecam movement keys
+	if FreecamController.Freecaming then
+		if input.KeyCode == Enum.KeyCode.W then
+			freecamKeysPressed.Forward = true
+		elseif input.KeyCode == Enum.KeyCode.S then
+			freecamKeysPressed.Backward = true
+		elseif input.KeyCode == Enum.KeyCode.A then
+			freecamKeysPressed.Left = true
+		elseif input.KeyCode == Enum.KeyCode.D then
+			freecamKeysPressed.Right = true
+		elseif input.KeyCode == Enum.KeyCode.Space then
+			freecamKeysPressed.Up = true
+		elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+			freecamKeysPressed.Down = true
+		end
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+	-- Handle Shift release
+	if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		shiftPressed = false
+	end
+	
+	-- Freecam movement key release
+	if input.KeyCode == Enum.KeyCode.W then
+		freecamKeysPressed.Forward = false
+	elseif input.KeyCode == Enum.KeyCode.S then
+		freecamKeysPressed.Backward = false
+	elseif input.KeyCode == Enum.KeyCode.A then
+		freecamKeysPressed.Left = false
+	elseif input.KeyCode == Enum.KeyCode.D then
+		freecamKeysPressed.Right = false
+	elseif input.KeyCode == Enum.KeyCode.Space then
+		freecamKeysPressed.Up = false
+	elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+		freecamKeysPressed.Down = false
+	end
+end)
+
+-- ============================================
 -- CLIENT-SIDE COMMAND EXECUTOR
 -- ============================================
 CommandExecutor = {}
