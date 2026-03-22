@@ -351,11 +351,6 @@ local freecamLastCharacter = nil
 local freecamOriginalCFrame = nil
 local freecamCharacterFreezeConnection = nil
 
--- Camera rotation angle tracking (untuk prevent camera flip)
-local freecamYaw = 0
-local freecamPitch = 0
-local freecamMaxPitch = 89 -- Jangan bisa flip (tetap di -89 hingga 89 derajat)
-
 function FreecamController:StartFreecam()
 	if self.Freecaming then return end
 	
@@ -405,11 +400,6 @@ function FreecamController:StartFreecam()
 	camera.CameraType = Enum.CameraType.Scriptable
 	freecamCFrame = camera.CFrame
 	
-	-- Initialize rotation angles from current camera CFrame vector
-	local lookDirection = freecamCFrame.LookVector
-	freecamYaw = math.atan2(lookDirection.X, lookDirection.Z)
-	freecamPitch = math.asin(math.clamp(lookDirection.Y, -1, 1))
-	
 	-- Get initial mouse position for rotation
 	local mouse = player:GetMouse()
 	lastMouseX = mouse.X
@@ -452,7 +442,7 @@ function FreecamController:StartFreecam()
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (smooth arc, tidak flip)
+	-- Mouse movement for camera rotation (FULL FREEDOM - Incremental rotation)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 		
@@ -464,24 +454,22 @@ function FreecamController:StartFreecam()
 		local deltaX = currentMouseX - lastMouseX
 		local deltaY = currentMouseY - lastMouseY
 		
-		-- Update rotation angles (dalam radians)
-		freecamYaw = freecamYaw - deltaX * self.Sensitivity * 0.001
-		freecamPitch = freecamPitch - deltaY * self.Sensitivity * 0.001
+		-- Get current camera frame components
+		local currentCFrame = freecamCFrame
+		local cameraPos = currentCFrame.Position
+		local cameraRight = currentCFrame.RightVector
+		local cameraUp = currentCFrame.UpVector
 		
-		-- CONSTRAIN PITCH - Jangan bisa flip (simbol busur, -89 hingga 89 derajat)
-		freecamPitch = math.clamp(freecamPitch, math.rad(-freecamMaxPitch), math.rad(freecamMaxPitch))
+		-- Apply horizontal rotation (around world UP axis Y)
+		-- This gives LEFT-RIGHT free rotation
+		local horizontalRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), -deltaX * self.Sensitivity * 0.001)
 		
-		-- Hitung direction vector dari yaw & pitch
-		local cosPitch = math.cos(freecamPitch)
-		local lookDirection = Vector3.new(
-			math.sin(freecamYaw) * cosPitch,
-			math.sin(freecamPitch),
-			math.cos(freecamYaw) * cosPitch
-		)
+		-- Apply vertical rotation (around camera RIGHT axis)
+		-- This gives UP-DOWN free rotation
+		local verticalRotation = CFrame.fromAxisAngle(cameraRight, -deltaY * self.Sensitivity * 0.001)
 		
-		-- Apply rotation ke camera
-		local cameraPosition = freecamCFrame.Position
-		freecamCFrame = CFrame.new(cameraPosition, cameraPosition + lookDirection)
+		-- Combine rotations: apply around camera position (not world origin)
+		freecamCFrame = CFrame.new(cameraPos) * horizontalRotation * verticalRotation * CFrame.new(-cameraPos) * currentCFrame
 		workspace.CurrentCamera.CFrame = freecamCFrame
 		
 		-- Update last position
@@ -489,7 +477,7 @@ function FreecamController:StartFreecam()
 		lastMouseY = currentMouseY
 	end)
 	
-	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around. Press Shift+Z to exit.")
+	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around (FULL FREEDOM). Press Shift+Z to exit.")
 end
 
 function FreecamController:StopFreecam()
