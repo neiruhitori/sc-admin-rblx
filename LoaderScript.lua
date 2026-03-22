@@ -455,10 +455,10 @@ function FreecamController:StartFreecam()
 	camera.CameraType = Enum.CameraType.Scriptable
 	freecamCFrame = camera.CFrame
 	
-	-- Initialize angles dari current camera direction
-	local initialLook = freecamCFrame.LookVector
-	freecamYaw = math.atan2(initialLook.X, initialLook.Z)
-	freecamPitch = math.asin(math.clamp(initialLook.Y, -0.99, 0.99))
+	-- Initialize angles dari current camera
+	local angles = freecamCFrame:ToEulerAnglesYXZ()
+	freecamYaw = angles.Y
+	freecamPitch = angles.X
 	
 	-- Get initial mouse position for rotation
 	local mouse = player:GetMouse()
@@ -502,7 +502,7 @@ function FreecamController:StartFreecam()
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (RIGHT-CLICK drag - SIMPLE FPS-STYLE)
+	-- Mouse movement for camera rotation (RIGHT-CLICK drag - DIRECT & SIMPLE)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 		
@@ -517,38 +517,17 @@ function FreecamController:StartFreecam()
 		local deltaX = currentMouseX - lastMouseX
 		local deltaY = currentMouseY - lastMouseY
 		
-		if deltaX ~= 0 or deltaY ~= 0 then
-			-- Update angles SIMPLY dan DIRECTLY
-			freecamYaw = freecamYaw - deltaX * self.Sensitivity * 0.0003
-			freecamPitch = freecamPitch - deltaY * self.Sensitivity * 0.0003
-			
-			-- Clamp pitch untuk prevent camera flip (-89 to 89 degrees)
-			freecamPitch = math.clamp(freecamPitch, math.rad(-89), math.rad(89))
-			
-			-- BUILD LOOK VECTOR dari angles (simple spherical coordinates)
-			local cosPitch = math.cos(freecamPitch)
-			local sinPitch = math.sin(freecamPitch)
-			local cosYaw = math.cos(freecamYaw)
-			local sinYaw = math.sin(freecamYaw)
-			
-			local newLookVector = Vector3.new(
-				sinYaw * cosPitch,
-				sinPitch,
-				cosYaw * cosPitch
-			).Unit
-			
-			-- BUILD UP VECTOR (perpendicular ke look vector)
-			local upVector = Vector3.new(
-				-sinYaw * sinPitch,
-				cosPitch,
-				-cosYaw * sinPitch
-			).Unit
-			
-			-- BUILD NEW CAMERA CFRAME dengan position tetap, direction baru
-			local cameraPos = freecamCFrame.Position
-			freecamCFrame = CFrame.new(cameraPos, cameraPos + newLookVector) * CFrame.Angles(0, 0, math.asin(math.clamp(upVector.X, -0.99, 0.99)))
-			workspace.CurrentCamera.CFrame = freecamCFrame
-		end
+		-- Direct angle update dari mouse delta
+		freecamYaw = freecamYaw + deltaX * 0.01
+		freecamPitch = freecamPitch + deltaY * 0.01
+		
+		-- Clamp pitch untuk prevent flip
+		freecamPitch = math.clamp(freecamPitch, -math.pi / 2.2, math.pi / 2.2)
+		
+		-- Build camera CFrame dengan CFrame.Angles (SIMPLE!)
+		local cameraPos = freecamCFrame.Position
+		freecamCFrame = CFrame.new(cameraPos) * CFrame.Angles(freecamPitch, freecamYaw, 0)
+		workspace.CurrentCamera.CFrame = freecamCFrame
 		
 		-- Update last mouse position
 		lastMouseX = currentMouseX
