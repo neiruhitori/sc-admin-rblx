@@ -329,14 +329,12 @@ end)
 -- ============================================
 local FreecamController = {}
 FreecamController.Freecaming = false
-FreecamController.Speed = 0.5
-FreecamController.Sensitivity = 0.5
+FreecamController.Speed = 25  -- Lebih besar untuk gerakan lebih responsif
+FreecamController.Sensitivity = 0.01  -- INCREASED untuk mouse rotation lebih sensitive
 
 local freecamCamera = nil
 local freecamConnection = nil
-local freecamMouseConnection = nil
-local lastMouseX = 0
-local lastMouseY = 0
+local freecamCharacterFreezeConnection = nil
 local freecamCFrame = nil
 local freecamKeysPressed = {
 	Forward = false,
@@ -349,10 +347,11 @@ local freecamKeysPressed = {
 
 local freecamLastCharacter = nil
 local freecamOriginalCFrame = nil
-local freecamCharacterFreezeConnection = nil
 local rightMousePressed = false
+local freecamLastMouseX = 0
+local freecamLastMouseY = 0
 
--- FPS-style camera angles (Yaw & Pitch)
+-- FPS-style camera angles (Yaw & Pitch) dalam radians
 local freecamYaw = 0
 local freecamPitch = 0
 
@@ -360,6 +359,10 @@ local freecamPitch = 0
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
 		rightMousePressed = true
+		-- Update initial mouse position saat klik
+		local mouse = player:GetMouse()
+		freecamLastMouseX = mouse.X
+		freecamLastMouseY = mouse.Y
 	end
 end)
 
@@ -453,37 +456,67 @@ function FreecamController:StartFreecam()
 	
 	-- Set camera to scriptable
 	camera.CameraType = Enum.CameraType.Scriptable
+	
+	-- Initialize freecamCFrame dari current camera
 	freecamCFrame = camera.CFrame
 	
-	-- Initialize angles dari current camera
-	local angles = freecamCFrame:ToEulerAnglesYXZ()
-	freecamYaw = angles.Y
-	freecamPitch = angles.X
+	-- Extract current angles dari camera
+	local cy, cx, cz = freecamCFrame:ToEulerAnglesYXZ()
+	freecamYaw = cy
+	freecamPitch = cx
 	
-	-- Get initial mouse position for rotation
+	-- Get initial mouse position
 	local mouse = player:GetMouse()
-	lastMouseX = mouse.X
-	lastMouseY = mouse.Y
+	freecamLastMouseX = mouse.X
+	freecamLastMouseY = mouse.Y
 	
-	-- Main movement & camera control loop
+	print("🎥 Freecam ENABLED!")
+	print("📋 Controls:")
+	print("   • WASD + SPACE/SHIFT untuk movement")
+	print("   • Kanan klik + drag mouse untuk rotate camera")
+	print("   • Shift+Z untuk disable freecam")
 	freecamConnection = RunService.RenderStepped:Connect(function()
 		if not self.Freecaming then return end
 		
 		local camera = workspace.CurrentCamera
+		
+		-- HANDLE MOUSE DRAG ROTATION
+		if rightMousePressed then
+			local mouse = player:GetMouse()
+			local currentMouseX = mouse.X
+			local currentMouseY = mouse.Y
+			
+			-- Calculate delta movement
+			local deltaX = currentMouseX - freecamLastMouseX
+			local deltaY = currentMouseY - freecamLastMouseY
+			
+			-- Apply rotation (lebih sensitive)
+			freecamYaw = freecamYaw - (deltaX * self.Sensitivity)
+			freecamPitch = freecamPitch - (deltaY * self.Sensitivity)
+			
+			-- Constrain pitch untuk prevent flipping (-90 hingga +90 degrees)
+			freecamPitch = math.clamp(freecamPitch, -math.pi/2 + 0.01, math.pi/2 - 0.01)
+			
+			-- Update mouse position untuk next frame
+			freecamLastMouseX = currentMouseX
+			freecamLastMouseY = currentMouseY
+		end
+		
+		-- HANDLE WASD MOVEMENT
 		local moveDirection = Vector3.new(0, 0, 0)
 		
-		-- WASD movement (relative to camera direction)
+		-- Calculate movement based on camera's current direction
 		if freecamKeysPressed.Forward then
 			moveDirection = moveDirection + camera.CFrame.LookVector
 		end
 		if freecamKeysPressed.Backward then
 			moveDirection = moveDirection - camera.CFrame.LookVector
 		end
-		if freecamKeysPressed.Left then
-			moveDirection = moveDirection - camera.CFrame.RightVector
-		end
 		if freecamKeysPressed.Right then
 			moveDirection = moveDirection + camera.CFrame.RightVector
+		end
+		if freecamKeysPressed.Left then
+			moveDirection = moveDirection - camera.CFrame.RightVector
 		end
 		if freecamKeysPressed.Up then
 			moveDirection = moveDirection + Vector3.new(0, 1, 0)
@@ -497,36 +530,11 @@ function FreecamController:StartFreecam()
 			moveDirection = moveDirection.Unit * self.Speed
 		end
 		
-		-- Update camera position with smooth movement
-		freecamCFrame = freecamCFrame + moveDirection
+		-- Update camera position dengan new position = old position + movement
+		local newPosition = camera.CFrame.Position + moveDirection
 		
-		-- UPDATE ROTATION SETIAP FRAME (jika right mouse pressed)
-		if rightMousePressed then
-			local mouse = player:GetMouse()
-			local currentMouseX = mouse.X
-			local currentMouseY = mouse.Y
-			
-			-- Calculate delta movement
-			local deltaX = currentMouseX - lastMouseX
-			local deltaY = currentMouseY - lastMouseY
-			
-			-- Update angles LANGSUNG
-			if deltaX ~= 0 or deltaY ~= 0 then
-				freecamYaw = freecamYaw + deltaX * 0.015
-				freecamPitch = freecamPitch + deltaY * 0.015
-				
-				-- Allow full vertical rotation (atas/bawah unlimited!)
-				freecamPitch = math.clamp(freecamPitch, -math.pi / 2 + 0.01, math.pi / 2 - 0.01)
-			end
-			
-			-- Update last mouse position
-			lastMouseX = currentMouseX
-			lastMouseY = currentMouseY
-		end
-		
-		-- BUILD CAMERA CFRAME setiap frame dengan position + rotation
-		local cameraPos = freecamCFrame.Position
-		freecamCFrame = CFrame.new(cameraPos) * CFrame.Angles(freecamPitch, freecamYaw, 0)
+		-- BUILD FINAL CAMERA CFRAME: position + rotation based on yaw/pitch
+		freecamCFrame = CFrame.new(newPosition) * CFrame.Angles(freecamPitch, freecamYaw, 0)
 		camera.CFrame = freecamCFrame
 	end)
 	
@@ -541,19 +549,18 @@ function FreecamController:StopFreecam()
 	
 	self.Freecaming = false
 	
+	-- Disconnect loops
 	if freecamConnection then
 		freecamConnection:Disconnect()
 		freecamConnection = nil
 	end
-	
-	-- No more separate mouse connection - update moved to RenderStepped
 	
 	if freecamCharacterFreezeConnection then
 		freecamCharacterFreezeConnection:Disconnect()
 		freecamCharacterFreezeConnection = nil
 	end
 	
-	-- Restore camera to character
+	-- Restore camera to normal
 	local camera = workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Custom
 	
@@ -562,7 +569,7 @@ function FreecamController:StopFreecam()
 		local humanoid = freecamLastCharacter:FindFirstChildOfClass("Humanoid")
 		if humanoid then
 			humanoid.PlatformStand = false
-			-- Re-enable all movement states
+			-- Re-enable ALL humanoid states
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
 			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
@@ -572,7 +579,7 @@ function FreecamController:StopFreecam()
 			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
 		end
 		
-		-- Restore CanCollide untuk semua parts
+		-- Restore CanCollide
 		for _, part in pairs(freecamLastCharacter:GetDescendants()) do
 			if part:IsA("BasePart") then
 				part.CanCollide = true
@@ -582,12 +589,15 @@ function FreecamController:StopFreecam()
 		freecamLastCharacter = nil
 	end
 	
-	-- Reset keys
-	for key, _ in pairs(freecamKeysPressed) do
-		freecamKeysPressed[key] = false
-	end
+	-- Reset all movement keys
+	freecamKeysPressed.Forward = false
+	freecamKeysPressed.Backward = false
+	freecamKeysPressed.Left = false
+	freecamKeysPressed.Right = false
+	freecamKeysPressed.Up = false
+	freecamKeysPressed.Down = false
 	
-	print("🎥 Freecam disabled")
+	print("🎥 Freecam DISABLED")
 end
 
 function FreecamController:Toggle()
