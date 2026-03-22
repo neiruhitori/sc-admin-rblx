@@ -352,10 +352,6 @@ local freecamOriginalCFrame = nil
 local freecamCharacterFreezeConnection = nil
 local rightMousePressed = false
 
--- Camera angle tracking untuk smooth rotation
-local freecamYaw = 0
-local freecamPitch = 0
-
 -- Global mouse button tracking untuk freecam
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -415,27 +411,38 @@ function FreecamController:StartFreecam()
 		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
 	end
 	
-	-- Start character position freeze loop (Heartbeat for consistency)
+	-- Start character position freeze loop (AGGRESSIVE freeze untuk prevent any movement)
 	freecamCharacterFreezeConnection = RunService.Heartbeat:Connect(function()
 		if not self.Freecaming or not freecamLastCharacter then return end
 		
 		local char = freecamLastCharacter
+		if not char.Parent then return end -- Character despawned
+		
 		local hrpPart = char:FindFirstChild("HumanoidRootPart")
-		if hrpPart then
-			-- FREEZE KARAKTER PENUH - posisi DAN rotasi
+		if not hrpPart then return end
+		
+		-- HARD LOCK HRP - persisten di posisi/rotasi original
+		if hrpPart.CFrame ~= freecamOriginalCFrame then
 			hrpPart.CFrame = freecamOriginalCFrame
-			hrpPart.Velocity = Vector3.new(0, 0, 0)
-			hrpPart.RotVelocity = Vector3.new(0, 0, 0)
-			hrpPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
-			hrpPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
 		end
 		
-		-- Freeze semua limbs juga agar tidak bisa move/rotate
+		-- RESET SEMUA VELOCITIES
+		hrpPart.Velocity = Vector3.new(0, 0, 0)
+		hrpPart.RotVelocity = Vector3.new(0, 0, 0)
+		hrpPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+		hrpPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+		
+		-- Lock semua parts agar tidak bisa bergerak/rotate
 		for _, part in pairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
+			if part:IsA("BasePart") and part ~= hrpPart then
+				-- Keep parts in position relative to HRP
+				local relativeOffset = freecamOriginalCFrame:ToObjectSpace(part.CFrame)
+				part.CFrame = freecamOriginalCFrame:ToWorldSpace(relativeOffset)
+				
+				-- Reset velocities dengan HARD
 				part.Velocity = Vector3.new(0, 0, 0)
 				part.RotVelocity = Vector3.new(0, 0, 0)
+				part.CanCollide = false
 			end
 		end
 	end)
@@ -443,11 +450,6 @@ function FreecamController:StartFreecam()
 	-- Set camera to scriptable
 	camera.CameraType = Enum.CameraType.Scriptable
 	freecamCFrame = camera.CFrame
-	
-	-- Get initial camera angles
-	local initialLook = freecamCFrame.LookVector
-	freecamYaw = math.atan2(initialLook.X, initialLook.Z)
-	freecamPitch = math.asin(math.clamp(initialLook.Y, -0.99, 0.99))
 	
 	-- Get initial mouse position for rotation
 	local mouse = player:GetMouse()
@@ -491,7 +493,7 @@ function FreecamController:StartFreecam()
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (RIGHT-CLICK drag untuk rotate)
+	-- Mouse movement for camera rotation (RIGHT-CLICK drag untuk rotate - FULLY FREE)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 		
@@ -506,33 +508,34 @@ function FreecamController:StartFreecam()
 		local deltaX = currentMouseX - lastMouseX
 		local deltaY = currentMouseY - lastMouseY
 		
-		-- Update angles (FULLY FREE - no constraint!)
-		freecamYaw = freecamYaw - deltaX * self.Sensitivity * 0.0005
-		freecamPitch = freecamPitch - deltaY * self.Sensitivity * 0.0005
-		
-		-- Build camera look vector dari angles
-		local cosPitch = math.cos(freecamPitch)
-		local sinPitch = math.sin(freecamPitch)
-		local cosYaw = math.cos(freecamYaw)
-		local sinYaw = math.sin(freecamYaw)
-		
-		local lookVector = Vector3.new(
-			sinYaw * cosPitch,
-			sinPitch,
-			cosYaw * cosPitch
-		)
-		
-		-- Build up vector (perpendicular to look)
-		local upVector = Vector3.new(
-			-sinYaw * sinPitch,
-			cosPitch,
-			-cosYaw * sinPitch
-		)
-		
-		-- Update camera CFrame dengan new look direction, position tetap
-		local cameraPos = freecamCFrame.Position
-		freecamCFrame = CFrame.new(cameraPos, cameraPos + lookVector) * CFrame.fromMatrix(Vector3.new(), Vector3.new(1, 0, 0), upVector)
-		workspace.CurrentCamera.CFrame = freecamCFrame
+		if deltaX ~= 0 or deltaY ~= 0 then
+			-- Get current camera state
+			local currentCFrame = freecamCFrame
+			local cameraPos = currentCFrame.Position
+			local cameraLook = currentCFrame.LookVector
+			local cameraRight = currentCFrame.RightVector
+			local cameraUp = currentCFrame.UpVector
+			
+			-- HORIZONTAL ROTATION (around world Y) - unlimited
+			local yawAngle = -deltaX * self.Sensitivity * 0.0005
+			local yawRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), yawAngle)
+			
+			-- VERTICAL ROTATION (around camera RIGHT) - unlimited
+			local pitchAngle = -deltaY * self.Sensitivity * 0.0005
+			local pitchRotation = CFrame.fromAxisAngle(cameraRight, pitchAngle)
+			
+			-- Apply both rotations incrementally to camera orientation
+			-- This keeps camera position fixed while rotating the view
+			local rotatedCFrame = yawRotation * pitchRotation * CFrame.new(0, 0, 0, cameraLook.X, cameraUp.X, -cameraRight.X, cameraLook.Y, cameraUp.Y, -cameraRight.Y, cameraLook.Z, cameraUp.Z, -cameraRight.Z)
+			
+			-- Extract new look and up vectors
+			local newLookVector = rotatedCFrame.LookVector
+			local newUpVector = rotatedCFrame.UpVector
+			
+			-- Build new camera CFrame with same position but new orientation
+			freecamCFrame = CFrame.new(cameraPos, cameraPos + newLookVector) * CFrame.Angles(0, 0, -math.asin(math.clamp(newUpVector.Y, -1, 1)))
+			workspace.CurrentCamera.CFrame = freecamCFrame
+		end
 		
 		-- Update last mouse position
 		lastMouseX = currentMouseX
