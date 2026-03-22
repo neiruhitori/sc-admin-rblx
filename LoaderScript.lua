@@ -499,40 +499,39 @@ function FreecamController:StartFreecam()
 		
 		-- Update camera position with smooth movement
 		freecamCFrame = freecamCFrame + moveDirection
+		
+		-- UPDATE ROTATION SETIAP FRAME (jika right mouse pressed)
+		if rightMousePressed then
+			local mouse = player:GetMouse()
+			local currentMouseX = mouse.X
+			local currentMouseY = mouse.Y
+			
+			-- Calculate delta movement
+			local deltaX = currentMouseX - lastMouseX
+			local deltaY = currentMouseY - lastMouseY
+			
+			-- Update angles LANGSUNG
+			if deltaX ~= 0 or deltaY ~= 0 then
+				freecamYaw = freecamYaw + deltaX * 0.015
+				freecamPitch = freecamPitch + deltaY * 0.015
+				
+				-- Allow full vertical rotation (atas/bawah unlimited!)
+				freecamPitch = math.clamp(freecamPitch, -math.pi / 2 + 0.01, math.pi / 2 - 0.01)
+			end
+			
+			-- Update last mouse position
+			lastMouseX = currentMouseX
+			lastMouseY = currentMouseY
+		end
+		
+		-- BUILD CAMERA CFRAME setiap frame dengan position + rotation
+		local cameraPos = freecamCFrame.Position
+		freecamCFrame = CFrame.new(cameraPos) * CFrame.Angles(freecamPitch, freecamYaw, 0)
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (RIGHT-CLICK drag - DIRECT & SIMPLE)
-	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
-		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
-		
-		-- HANYA rotate jika right mouse button sedang ditekan
-		if not rightMousePressed then return end
-		
-		local mouse = player:GetMouse()
-		local currentMouseX = mouse.X
-		local currentMouseY = mouse.Y
-		
-		-- Calculate delta movement
-		local deltaX = currentMouseX - lastMouseX
-		local deltaY = currentMouseY - lastMouseY
-		
-		-- Direct angle update dari mouse delta
-		freecamYaw = freecamYaw + deltaX * 0.01
-		freecamPitch = freecamPitch + deltaY * 0.01
-		
-		-- Clamp pitch untuk prevent flip
-		freecamPitch = math.clamp(freecamPitch, -math.pi / 2.2, math.pi / 2.2)
-		
-		-- Build camera CFrame dengan CFrame.Angles (SIMPLE!)
-		local cameraPos = freecamCFrame.Position
-		freecamCFrame = CFrame.new(cameraPos) * CFrame.Angles(freecamPitch, freecamYaw, 0)
-		workspace.CurrentCamera.CFrame = freecamCFrame
-		
-		-- Update last mouse position
-		lastMouseX = currentMouseX
-		lastMouseY = currentMouseY
-	end)
+	-- REMOVE old mouse movement connection - tidak perlu lagi
+	-- freecamMouseConnection akan di-set ke nil
 	
 	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around (FULL FREEDOM). Press Shift+Z to exit.")
 end
@@ -547,10 +546,7 @@ function FreecamController:StopFreecam()
 		freecamConnection = nil
 	end
 	
-	if freecamMouseConnection then
-		freecamMouseConnection:Disconnect()
-		freecamMouseConnection = nil
-	end
+	-- No more separate mouse connection - update moved to RenderStepped
 	
 	if freecamCharacterFreezeConnection then
 		freecamCharacterFreezeConnection:Disconnect()
