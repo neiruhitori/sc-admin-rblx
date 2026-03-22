@@ -329,13 +329,14 @@ end)
 -- ============================================
 local FreecamController = {}
 FreecamController.Freecaming = false
-FreecamController.Speed = 50
-FreecamController.Sensitivity = 0.15
+FreecamController.Speed = 0.5
+FreecamController.Sensitivity = 0.5
 
 local freecamCamera = nil
 local freecamConnection = nil
 local freecamMouseConnection = nil
-local lastMousePos = nil
+local lastMouseX = 0
+local lastMouseY = 0
 local freecamCFrame = nil
 local freecamKeysPressed = {
 	Forward = false,
@@ -346,25 +347,65 @@ local freecamKeysPressed = {
 	Down = false,
 }
 
+local freecamLastCharacter = nil
+local freecamOriginalCFrame = nil
+local freecamCharacterFreezeConnection = nil
+
 function FreecamController:StartFreecam()
 	if self.Freecaming then return end
 	
 	self.Freecaming = true
 	local camera = workspace.CurrentCamera
+	local character = player.Character
 	
-	-- Save original camera state
-	freecamCamera = camera
+	if not character then return end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	
+	if not hrp then return end
+	
+	-- Store original character reference
+	freecamLastCharacter = character
+	freecamOriginalCFrame = hrp.CFrame
+	
+	-- FREEZE CHARACTER - prevent it from moving
+	if humanoid then
+		humanoid.PlatformStand = true
+		-- Disable all movement states
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+		humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+	end
+	
+	-- Start character position freeze loop
+	freecamCharacterFreezeConnection = RunService.Heartbeat:Connect(function()
+		if not self.Freecaming or not freecamLastCharacter then return end
+		
+		local char = freecamLastCharacter
+		local hrpPart = char:FindFirstChild("HumanoidRootPart")
+		if hrpPart then
+			-- Keep character in same position
+			hrpPart.CFrame = freecamOriginalCFrame
+			hrpPart.Velocity = Vector3.new(0, 0, 0)
+		end
+	end)
+	
+	-- Set camera to scriptable
+	camera.CameraType = Enum.CameraType.Scriptable
 	freecamCFrame = camera.CFrame
 	
-	-- Set camera to custom control
-	camera.CameraType = Enum.CameraType.Scriptable
-	
-	-- Initialize mouse position
+	-- Get initial mouse position for rotation
 	local mouse = player:GetMouse()
-	lastMousePos = mouse.Hit.Position
+	lastMouseX = mouse.X
+	lastMouseY = mouse.Y
 	
-	-- Movement loop
-	freecamConnection = RunService.Heartbeat:Connect(function()
+	-- Main movement & camera control loop
+	freecamConnection = RunService.RenderStepped:Connect(function()
 		if not self.Freecaming then return end
 		
 		local camera = workspace.CurrentCamera
@@ -395,33 +436,42 @@ function FreecamController:StartFreecam()
 			moveDirection = moveDirection.Unit * self.Speed
 		end
 		
-		-- Update camera position
-		freecamCFrame = freecamCFrame + moveDirection * RunService.Heartbeat:Wait()
+		-- Update camera position with smooth movement
+		freecamCFrame = freecamCFrame + moveDirection
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation
+	-- Mouse movement for camera rotation (RenderStepped for smoothness)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 		
 		local mouse = player:GetMouse()
-		local currentMousePos = mouse.Hit.Position
+		local currentMouseX = mouse.X
+		local currentMouseY = mouse.Y
 		
-		if lastMousePos then
-			local delta = (currentMousePos - lastMousePos) * self.Sensitivity
-			
-			-- Rotate camera based on mouse movement
-			local currentCFrame = freecamCFrame
-			local horizontalRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), -delta.X * 0.01)
-			local verticalRotation = CFrame.fromAxisAngle(currentCFrame.RightVector, -delta.Y * 0.01)
-			
-			freecamCFrame = (currentCFrame * horizontalRotation * verticalRotation)
-		end
+		-- Calculate delta
+		local deltaX = currentMouseX - lastMouseX
+		local deltaY = currentMouseY - lastMouseY
 		
-		lastMousePos = currentMousePos
+		-- Apply rotation (similar to Roblox Shift+P)
+		local currentCFrame = freecamCFrame
+		
+		-- Horizontal rotation (Y axis)
+		local horizontalRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), -deltaX * self.Sensitivity * 0.01)
+		
+		-- Vertical rotation (keep view angle constrained)
+		local verticalRotation = CFrame.fromAxisAngle(currentCFrame.RightVector, -deltaY * self.Sensitivity * 0.01)
+		
+		-- Apply rotations
+		freecamCFrame = currentCFrame * horizontalRotation * verticalRotation
+		workspace.CurrentCamera.CFrame = freecamCFrame
+		
+		-- Update last position
+		lastMouseX = currentMouseX
+		lastMouseY = currentMouseY
 	end)
 	
-	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around")
+	print("🎥 Freecam enabled! Controls: WASD + Space (up) + Shift (down), Mouse to look around. Press Shift+Z to exit.")
 end
 
 function FreecamController:StopFreecam()
@@ -439,9 +489,31 @@ function FreecamController:StopFreecam()
 		freecamMouseConnection = nil
 	end
 	
+	if freecamCharacterFreezeConnection then
+		freecamCharacterFreezeConnection:Disconnect()
+		freecamCharacterFreezeConnection = nil
+	end
+	
 	-- Restore camera to character
 	local camera = workspace.CurrentCamera
 	camera.CameraType = Enum.CameraType.Custom
+	
+	-- UnFreeze character
+	if freecamLastCharacter then
+		local humanoid = freecamLastCharacter:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.PlatformStand = false
+			-- Re-enable all movement states
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Climbing, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Landed, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Flying, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Jumping, true)
+			humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, true)
+			humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+		end
+		freecamLastCharacter = nil
+	end
 	
 	-- Reset keys
 	for key, _ in pairs(freecamKeysPressed) do
