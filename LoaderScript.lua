@@ -352,6 +352,10 @@ local freecamOriginalCFrame = nil
 local freecamCharacterFreezeConnection = nil
 local rightMousePressed = false
 
+-- FPS-style camera angles (Yaw & Pitch)
+local freecamYaw = 0
+local freecamPitch = 0
+
 -- Global mouse button tracking untuk freecam
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.UserInputType == Enum.UserInputType.MouseButton2 then
@@ -451,6 +455,11 @@ function FreecamController:StartFreecam()
 	camera.CameraType = Enum.CameraType.Scriptable
 	freecamCFrame = camera.CFrame
 	
+	-- Initialize angles dari current camera direction
+	local initialLook = freecamCFrame.LookVector
+	freecamYaw = math.atan2(initialLook.X, initialLook.Z)
+	freecamPitch = math.asin(math.clamp(initialLook.Y, -0.99, 0.99))
+	
 	-- Get initial mouse position for rotation
 	local mouse = player:GetMouse()
 	lastMouseX = mouse.X
@@ -493,7 +502,7 @@ function FreecamController:StartFreecam()
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (RIGHT-CLICK drag untuk rotate - FULLY FREE)
+	-- Mouse movement for camera rotation (RIGHT-CLICK drag - SIMPLE FPS-STYLE)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
 		
@@ -509,31 +518,35 @@ function FreecamController:StartFreecam()
 		local deltaY = currentMouseY - lastMouseY
 		
 		if deltaX ~= 0 or deltaY ~= 0 then
-			-- Get current camera state
-			local currentCFrame = freecamCFrame
-			local cameraPos = currentCFrame.Position
-			local cameraLook = currentCFrame.LookVector
-			local cameraRight = currentCFrame.RightVector
-			local cameraUp = currentCFrame.UpVector
+			-- Update angles SIMPLY dan DIRECTLY
+			freecamYaw = freecamYaw - deltaX * self.Sensitivity * 0.0003
+			freecamPitch = freecamPitch - deltaY * self.Sensitivity * 0.0003
 			
-			-- HORIZONTAL ROTATION (around world Y) - unlimited
-			local yawAngle = -deltaX * self.Sensitivity * 0.0005
-			local yawRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), yawAngle)
+			-- Clamp pitch untuk prevent camera flip (-89 to 89 degrees)
+			freecamPitch = math.clamp(freecamPitch, math.rad(-89), math.rad(89))
 			
-			-- VERTICAL ROTATION (around camera RIGHT) - unlimited
-			local pitchAngle = -deltaY * self.Sensitivity * 0.0005
-			local pitchRotation = CFrame.fromAxisAngle(cameraRight, pitchAngle)
+			-- BUILD LOOK VECTOR dari angles (simple spherical coordinates)
+			local cosPitch = math.cos(freecamPitch)
+			local sinPitch = math.sin(freecamPitch)
+			local cosYaw = math.cos(freecamYaw)
+			local sinYaw = math.sin(freecamYaw)
 			
-			-- Apply both rotations incrementally to camera orientation
-			-- This keeps camera position fixed while rotating the view
-			local rotatedCFrame = yawRotation * pitchRotation * CFrame.new(0, 0, 0, cameraLook.X, cameraUp.X, -cameraRight.X, cameraLook.Y, cameraUp.Y, -cameraRight.Y, cameraLook.Z, cameraUp.Z, -cameraRight.Z)
+			local newLookVector = Vector3.new(
+				sinYaw * cosPitch,
+				sinPitch,
+				cosYaw * cosPitch
+			).Unit
 			
-			-- Extract new look and up vectors
-			local newLookVector = rotatedCFrame.LookVector
-			local newUpVector = rotatedCFrame.UpVector
+			-- BUILD UP VECTOR (perpendicular ke look vector)
+			local upVector = Vector3.new(
+				-sinYaw * sinPitch,
+				cosPitch,
+				-cosYaw * sinPitch
+			).Unit
 			
-			-- Build new camera CFrame with same position but new orientation
-			freecamCFrame = CFrame.new(cameraPos, cameraPos + newLookVector) * CFrame.Angles(0, 0, -math.asin(math.clamp(newUpVector.Y, -1, 1)))
+			-- BUILD NEW CAMERA CFRAME dengan position tetap, direction baru
+			local cameraPos = freecamCFrame.Position
+			freecamCFrame = CFrame.new(cameraPos, cameraPos + newLookVector) * CFrame.Angles(0, 0, math.asin(math.clamp(upVector.X, -0.99, 0.99)))
 			workspace.CurrentCamera.CFrame = freecamCFrame
 		end
 		
