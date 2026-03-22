@@ -350,6 +350,20 @@ local freecamKeysPressed = {
 local freecamLastCharacter = nil
 local freecamOriginalCFrame = nil
 local freecamCharacterFreezeConnection = nil
+local rightMousePressed = false
+
+-- Global mouse button tracking untuk freecam
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		rightMousePressed = true
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+	if input.UserInputType == Enum.UserInputType.MouseButton2 then
+		rightMousePressed = false
+	end
+end)
 
 function FreecamController:StartFreecam()
 	if self.Freecaming then return end
@@ -442,9 +456,12 @@ function FreecamController:StartFreecam()
 		camera.CFrame = freecamCFrame
 	end)
 	
-	-- Mouse movement for camera rotation (FULL FREEDOM - Incremental rotation)
+	-- Mouse movement for camera rotation (RIGHT-CLICK drag untuk rotate)
 	freecamMouseConnection = UserInputService.InputChanged:Connect(function(input)
 		if not self.Freecaming or input.UserInputType ~= Enum.UserInputType.MouseMovement then return end
+		
+		-- HANYA rotate jika right mouse button sedang ditekan
+		if not rightMousePressed then return end
 		
 		local mouse = player:GetMouse()
 		local currentMouseX = mouse.X
@@ -461,11 +478,11 @@ function FreecamController:StartFreecam()
 		local cameraUp = currentCFrame.UpVector
 		
 		-- Apply horizontal rotation (around world UP axis Y)
-		-- This gives LEFT-RIGHT free rotation
+		-- Mouse LEFT-RIGHT = Camera rotate left-right
 		local horizontalRotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), -deltaX * self.Sensitivity * 0.001)
 		
 		-- Apply vertical rotation (around camera RIGHT axis)
-		-- This gives UP-DOWN free rotation
+		-- Mouse UP-DOWN = Camera muter atas-bawah
 		local verticalRotation = CFrame.fromAxisAngle(cameraRight, -deltaY * self.Sensitivity * 0.001)
 		
 		-- Combine rotations: apply around camera position (not world origin)
