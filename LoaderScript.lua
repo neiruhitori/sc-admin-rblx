@@ -614,6 +614,66 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 end
 
 -- ============================================
+-- OPTIMIZER MODULE
+-- ============================================
+local Optimizer = {}
+Optimizer.OptimizationEnabled = false
+
+function Optimizer:OptimizeAll()
+	if self.OptimizationEnabled then
+		return
+	end
+	
+	local processedCount = 0
+	
+	-- Function to optimize a single object
+	local function optimizeObject(obj)
+		-- Set CastShadow to false
+		if obj:IsA("BasePart") then
+			pcall(function()
+				obj.CastShadow = false
+				processedCount = processedCount + 1
+			end)
+		end
+		
+		-- Set RenderFidelity to Performance
+		if obj:IsA("BasePart") or obj:IsA("Model") or obj:IsA("Terrain") then
+			pcall(function()
+				if obj:FindFirstChildOfClass("Humanoid") == nil then
+					obj.RenderFidelity = Enum.RenderFidelity.Performance
+				end
+			end)
+		end
+	end
+	
+	-- Recursive function to traverse all children
+	local function recurseOptimize(parent)
+		for _, child in ipairs(parent:GetChildren()) do
+			optimizeObject(child)
+			recurseOptimize(child)
+		end
+	end
+	
+	-- Optimize Workspace
+	print("🔧 Starting workspace optimization...")
+	recurseOptimize(workspace)
+	
+	-- Optimize ReplicatedStorage
+	print("🔧 Optimizing ReplicatedStorage...")
+	recurseOptimize(game:GetService("ReplicatedStorage"))
+	
+	self.OptimizationEnabled = true
+	print("✅ Optimization complete! Processed ~" .. processedCount .. " parts")
+	return true, "🔧 Optimization complete! Graphics optimized - Reduced CastShadow & RenderFidelity"
+end
+
+function Optimizer:ResetOptimization()
+	self.OptimizationEnabled = false
+	print("⚠️ Optimization status reset")
+	return false, "⚠️ Optimization can be toggled again"
+end
+
+-- ============================================
 -- ADMIN GUI
 -- ============================================
 local TweenService = game:GetService("TweenService")
@@ -1559,6 +1619,23 @@ player.CharacterAdded:Connect(function(character)
 	if CommandExecutor.PlayerStatuses.god then
 		CommandExecutor:EnableGodMode()
 		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
+	end
+end)
+
+-- ============================================
+-- OPTIMIZER KEY BINDING (O KEY)
+-- ============================================
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	
+	-- O key for Optimizer
+	if input.KeyCode == Enum.KeyCode.O then
+		local success, message = Optimizer:OptimizeAll()
+		if success then
+			AdminGUI:ShowNotification(message, "success")
+		else
+			AdminGUI:ShowNotification("Optimization already active", "error")
+		end
 	end
 end)
 
