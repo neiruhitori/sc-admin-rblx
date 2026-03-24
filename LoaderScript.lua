@@ -791,79 +791,49 @@ function Optimizer:OptimizeAll()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
-	-- 10. WATER OPTIMIZATION (TERRAIN WATER - MAKE INVISIBLE)
+	-- 10. WATER OPTIMIZATION (TERRAIN WATER - CONTINUOUS CLEARING)
 	print("🔧 [POTATO MODE] Optimizing Water (Terrain)...")
 	local waterOptimized = 0
-	pcall(function()
-		local terrain = workspace.Terrain
-		if terrain then
-			print("   • Making terrain water invisible...")
-			
-			-- Method: Set all water to invisible by making it extremely transparent
-			-- Or by replacing water material with Air in large blocks
-			
-			-- First approach: Disable water rendering by setting it to air across the map
-			local attempts = 0
-			local maxAttempts = 20
+	
+	-- Start continuous water clearing loop
+	if not self.WaterClearingConnection then
+		self.WaterClearingConnection = RunService.RenderStepped:Connect(function()
+			if not self.PotatoModeEnabled then return end
 			
 			pcall(function()
-				-- Get terrain bounds
-				local terrainMin = terrain.MinimumPoint
-				local terrainMax = terrain.MaximumPoint
+				local terrain = workspace.Terrain
+				if not terrain then return end
 				
-				-- Calculate center and size
-				local terrainSize = terrainMax - terrainMin
-				local terrainCenter = terrainMin + (terrainSize / 2)
-				
-				-- Use massive FillBlock to clear water
-				-- Block from y bottom to y top
-				local bottomY = terrainMin.Y
-				local topY = terrainMax.Y
-				local centerXZ = Vector3.new(terrainCenter.X, 0, terrainCenter.Z)
-				
-				-- Fill multiple horizontal slices with air to maximize water clearing
-				for y = bottomY, topY, 100 do
-					local result = terrain:FillBall(
-						Vector3.new(terrainCenter.X, y, terrainCenter.Z),
-						500,
-						Enum.Material.Air
-					)
-					if result > 0 then
-						waterOptimized = waterOptimized + 1
-						attempts = attempts + 1
-					end
-				end
-			end)
-			
-			-- Second approach: Use Region3 to clear water more effectively
-			pcall(function()
+				-- Continuously clear water voxels from the map
+				-- This handles server sync by repeatedly clearing water
 				local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
 				region = region:ExpandToGrid(4)
 				
-				-- Try to read and clear water voxels directly
 				local materials, sizes = terrain:ReadVoxels(region, 4)
 				local size = materials.Size
+				local hasWater = false
 				
-				-- Replace water with solid material (concrete/stone) instead of air
-				local newMaterials = materials
+				-- Replace all water voxels with air
 				for x = 1, size.X do
 					for y = 1, size.Y do
 						for z = 1, size.Z do
 							if materials[x][y][z] == Enum.Material.Water then
-								newMaterials[x][y][z] = Enum.Material.Concrete
-								waterOptimized = waterOptimized + 1
+								materials[x][y][z] = Enum.Material.Air
+								hasWater = true
 							end
 						end
 					end
 				end
 				
-				-- Write back the modified voxels
-				terrain:WriteVoxels(region, 4, newMaterials, sizes)
+				-- Only write if we found water (reduces network traffic)
+				if hasWater then
+					terrain:WriteVoxels(region, 4, materials, sizes)
+				end
 			end)
-			
-			print("   • Terrain water material replaced/cleared - " .. waterOptimized .. " blocks modified")
-		end
-	end)
+		end)
+		waterOptimized = 1
+		print("   • Continuous water clearing ACTIVATED (runs every frame)")
+	end
 	
 	-- Handle water parts
 	print("🔧 [POTATO MODE] Checking for water parts...")
@@ -909,8 +879,8 @@ function Optimizer:OptimizeAll()
 	print("✅ [POTATO MODE] POTATO MODE ACTIVATED!")
 	print("   • Parts optimized: " .. optimizedParts)
 	print("   • Effects disabled: " .. disabledEffects)
-	print("   • Water optimized: " .. totalWater)
-	print("   • Total changes: " .. (totalOptimized + disabledEffects + totalWater))
+	print("   • Water clearing: CONTINUOUS (always clearing on this frame)")
+	print("   • Total changes: " .. (totalOptimized + disabledEffects))
 	
 	return true, "🥔 POTATO MODE ACTIVATED! ✅ " .. totalOptimized .. " parts optimized, " .. disabledEffects .. " effects disabled"
 end
