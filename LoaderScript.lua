@@ -791,38 +791,81 @@ function Optimizer:OptimizeAll()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
-	-- 10. WATER OPTIMIZATION (TERRAIN WATER)
+	-- 10. WATER OPTIMIZATION (TERRAIN WATER - MAKE INVISIBLE)
 	print("🔧 [POTATO MODE] Optimizing Water (Terrain)...")
 	local waterOptimized = 0
 	pcall(function()
 		local terrain = workspace.Terrain
 		if terrain then
-			print("   • Clearing terrain water material...")
+			print("   • Making terrain water invisible...")
 			
-			-- Method 1: Use a large fill operation to remove water
-			-- This works by filling areas with Air material
-			local maxAttempts = 50
-			for attempt = 1, maxAttempts do
-				-- Fill large sphere at different height levels
-				local cleared = pcall(function()
-					-- Get terrain bounds
-					local min = terrain.MinimumPoint
-					local max = terrain.MaximumPoint
-					
-					-- Clear from bottom up
-					local clearHeight = min.Y + (attempt * 50)
-					terrain:FillBall(Vector3.new(0, clearHeight, 0), 300, Enum.Material.Air)
-					waterOptimized = waterOptimized + 1
-				end)
+			-- Method: Set all water to invisible by making it extremely transparent
+			-- Or by replacing water material with Air in large blocks
+			
+			-- First approach: Disable water rendering by setting it to air across the map
+			local attempts = 0
+			local maxAttempts = 20
+			
+			pcall(function()
+				-- Get terrain bounds
+				local terrainMin = terrain.MinimumPoint
+				local terrainMax = terrain.MaximumPoint
 				
-				if not cleared then break end
-			end
+				-- Calculate center and size
+				local terrainSize = terrainMax - terrainMin
+				local terrainCenter = terrainMin + (terrainSize / 2)
+				
+				-- Use massive FillBlock to clear water
+				-- Block from y bottom to y top
+				local bottomY = terrainMin.Y
+				local topY = terrainMax.Y
+				local centerXZ = Vector3.new(terrainCenter.X, 0, terrainCenter.Z)
+				
+				-- Fill multiple horizontal slices with air to maximize water clearing
+				for y = bottomY, topY, 100 do
+					local result = terrain:FillBall(
+						Vector3.new(terrainCenter.X, y, terrainCenter.Z),
+						500,
+						Enum.Material.Air
+					)
+					if result > 0 then
+						waterOptimized = waterOptimized + 1
+						attempts = attempts + 1
+					end
+				end
+			end)
 			
-			print("   • Water voxels cleared - " .. waterOptimized .. " layers removed")
+			-- Second approach: Use Region3 to clear water more effectively
+			pcall(function()
+				local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
+				region = region:ExpandToGrid(4)
+				
+				-- Try to read and clear water voxels directly
+				local materials, sizes = terrain:ReadVoxels(region, 4)
+				local size = materials.Size
+				
+				-- Replace water with solid material (concrete/stone) instead of air
+				local newMaterials = materials
+				for x = 1, size.X do
+					for y = 1, size.Y do
+						for z = 1, size.Z do
+							if materials[x][y][z] == Enum.Material.Water then
+								newMaterials[x][y][z] = Enum.Material.Concrete
+								waterOptimized = waterOptimized + 1
+							end
+						end
+					end
+				end
+				
+				-- Write back the modified voxels
+				terrain:WriteVoxels(region, 4, newMaterials, sizes)
+			end)
+			
+			print("   • Terrain water material replaced/cleared - " .. waterOptimized .. " blocks modified")
 		end
 	end)
 	
-	-- Also handle water parts (visual water parts, not terrain)
+	-- Handle water parts
 	print("🔧 [POTATO MODE] Checking for water parts...")
 	local waterPartsOptimized = 0
 	pcall(function()
@@ -837,13 +880,13 @@ function Optimizer:OptimizeAll()
 					pcall(function()
 						if part:IsA("BasePart") then
 							local name = part.Name:lower()
-							-- Check if it's a water part
-							if name:find("water") or name:find("ocean") or name:find("sea") or name:find("fluid") then
-								-- Convert to solid flat appearance (NOT transparent)
-								part.Transparency = 0
-								part.Color = Color3.fromRGB(80, 100, 120) -- Flat grayish-blue
-								part.Material = Enum.Material.Concrete -- Flat, non-reflective
-								part.CanCollide = true
+							-- Check multiple water identifiers
+							if name:find("water") or name:find("ocean") or name:find("sea") or name:find("fluid") or 
+							   name:find("liquid") or name:find("pool") then
+								-- Make water completely hidden/solid
+								part.Transparency = 1 -- Completely invisible
+								part.CanCollide = false
+								part.Material = Enum.Material.Air
 								waterPartsOptimized = waterPartsOptimized + 1
 							end
 						end
@@ -856,7 +899,7 @@ function Optimizer:OptimizeAll()
 		
 		findWaterParts(workspace, 0)
 		if waterPartsOptimized > 0 then
-			print("   • Water parts found and flattened: " .. waterPartsOptimized)
+			print("   • Water parts hidden: " .. waterPartsOptimized)
 		end
 	end)
 	
