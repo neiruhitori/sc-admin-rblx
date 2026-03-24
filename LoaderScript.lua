@@ -636,13 +636,12 @@ function Optimizer:OptimizeAll()
 		if part:IsA("BasePart") then
 			pcall(function()
 				part.CastShadow = false
-				part.RenderFidelity = Enum.RenderFidelity.Performance
 				optimizedParts = optimizedParts + 1
 			end)
 		elseif part:IsA("Model") then
 			pcall(function()
 				if part:FindFirstChildOfClass("Humanoid") == nil then
-					part.RenderFidelity = Enum.RenderFidelity.Performance
+					part.CastShadow = false
 					optimizedModels = optimizedModels + 1
 				end
 			end)
@@ -723,7 +722,6 @@ function Optimizer:OptimizeAll()
 			local success, children = pcall(function() return lighting:GetChildren() end)
 			if success and children then
 				for _, obj in ipairs(children) do
-					optimizePart(obj)
 					pcall(function()
 						if obj:IsA("Light") or obj:IsA("BasePart") then
 							obj.CastShadow = false
