@@ -618,6 +618,11 @@ end
 -- ============================================
 local Optimizer = {}
 
+-- ============================================
+-- OPTIMIZER MODULE
+-- ============================================
+local Optimizer = {}
+
 function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Starting optimization...")
 	
@@ -626,32 +631,42 @@ function Optimizer:OptimizeAll()
 	
 	-- Helper function to optimize a single part
 	local function optimizePart(part)
+		if not part then return end
+		
 		if part:IsA("BasePart") then
 			pcall(function()
 				part.CastShadow = false
 				part.RenderFidelity = Enum.RenderFidelity.Performance
 				optimizedParts = optimizedParts + 1
 			end)
-		elseif part:IsA("Model") and part:FindFirstChildOfClass("Humanoid") == nil then
+		elseif part:IsA("Model") then
 			pcall(function()
-				part.RenderFidelity = Enum.RenderFidelity.Performance
-				optimizedModels = optimizedModels + 1
+				if part:FindFirstChildOfClass("Humanoid") == nil then
+					part.RenderFidelity = Enum.RenderFidelity.Performance
+					optimizedModels = optimizedModels + 1
+				end
 			end)
 		end
 	end
 	
 	-- Helper to recursively optimize all children with depth limit
 	local function deepOptimize(parent, depth)
+		if not parent then return end
 		depth = depth or 0
 		if depth > 50 then return end
 		
-		pcall(function()
-			local children = parent:GetChildren()
-			for _, child in ipairs(children) do
+		local success, children = pcall(function()
+			return parent:GetChildren()
+		end)
+		
+		if not success or not children then return end
+		
+		for _, child in ipairs(children) do
+			if child then
 				optimizePart(child)
 				deepOptimize(child, depth + 1)
 			end
-		end)
+		end
 	end
 	
 	-- 1. Workspace
@@ -665,7 +680,7 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing ReplicatedStorage...")
 	pcall(function()
 		local rs = game:GetService("ReplicatedStorage")
-		deepOptimize(rs)
+		if rs then deepOptimize(rs) end
 		print("✅ [OPTIMIZER] ReplicatedStorage optimized")
 	end)
 	
@@ -673,9 +688,13 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing ServerScriptService...")
 	pcall(function()
 		local sss = game:GetService("ServerScriptService")
-		local children = sss:GetChildren()
-		for _, obj in ipairs(children) do
-			optimizePart(obj)
+		if sss then
+			local success, children = pcall(function() return sss:GetChildren() end)
+			if success and children then
+				for _, obj in ipairs(children) do
+					optimizePart(obj)
+				end
+			end
 		end
 		print("✅ [OPTIMIZER] ServerScriptService optimized")
 	end)
@@ -684,7 +703,7 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing StarterPlayer...")
 	pcall(function()
 		local sp = game:GetService("StarterPlayer")
-		deepOptimize(sp)
+		if sp then deepOptimize(sp) end
 		print("✅ [OPTIMIZER] StarterPlayer optimized")
 	end)
 	
@@ -692,7 +711,7 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing StarterGui...")
 	pcall(function()
 		local sg = game:GetService("StarterGui")
-		deepOptimize(sg)
+		if sg then deepOptimize(sg) end
 		print("✅ [OPTIMIZER] StarterGui optimized")
 	end)
 	
@@ -700,14 +719,18 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing Lighting...")
 	pcall(function()
 		local lighting = game:GetService("Lighting")
-		local children = lighting:GetChildren()
-		for _, obj in ipairs(children) do
-			optimizePart(obj)
-			pcall(function()
-				if obj:IsA("Light") or obj:IsA("BasePart") then
-					obj.CastShadow = false
+		if lighting then
+			local success, children = pcall(function() return lighting:GetChildren() end)
+			if success and children then
+				for _, obj in ipairs(children) do
+					optimizePart(obj)
+					pcall(function()
+						if obj:IsA("Light") or obj:IsA("BasePart") then
+							obj.CastShadow = false
+						end
+					end)
 				end
-			end)
+			end
 		end
 		print("✅ [OPTIMIZER] Lighting optimized")
 	end)
@@ -726,22 +749,8 @@ function Optimizer:OptimizeAll()
 	print("🔧 [OPTIMIZER] Processing CoreGui...")
 	pcall(function()
 		local coregui = game:GetService("CoreGui")
-		deepOptimize(coregui)
+		if coregui then deepOptimize(coregui) end
 		print("✅ [OPTIMIZER] CoreGui optimized")
-	end)
-	
-	-- 9. Collections
-	print("🔧 [OPTIMIZER] Processing Collections...")
-	pcall(function()
-		local collections = game:GetService("CollectionService")
-		local allTags = collections:GetTags()
-		for _, tag in ipairs(allTags) do
-			local tagged = collections:GetTagged(tag)
-			for _, obj in ipairs(tagged) do
-				optimizePart(obj)
-			end
-		end
-		print("✅ [OPTIMIZER] Collections optimized")
 	end)
 	
 	local totalOptimized = optimizedParts + optimizedModels
