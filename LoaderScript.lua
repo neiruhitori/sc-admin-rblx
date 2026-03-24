@@ -791,12 +791,42 @@ function Optimizer:OptimizeAll()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
-	-- 10. WATER OPTIMIZATION
-	print("🔧 [POTATO MODE] Optimizing Water...")
+	-- 10. WATER OPTIMIZATION (TERRAIN WATER)
+	print("🔧 [POTATO MODE] Optimizing Water (Terrain)...")
 	local waterOptimized = 0
 	pcall(function()
-		-- Find all water-like parts (blue, cyan, or transparent)
-		local function findAndOptimizeWater(parent, depth)
+		local terrain = workspace.Terrain
+		if terrain then
+			print("   • Clearing terrain water material...")
+			
+			-- Method 1: Use a large fill operation to remove water
+			-- This works by filling areas with Air material
+			local maxAttempts = 50
+			for attempt = 1, maxAttempts do
+				-- Fill large sphere at different height levels
+				local cleared = pcall(function()
+					-- Get terrain bounds
+					local min = terrain.MinimumPoint
+					local max = terrain.MaximumPoint
+					
+					-- Clear from bottom up
+					local clearHeight = min.Y + (attempt * 50)
+					terrain:FillBall(Vector3.new(0, clearHeight, 0), 300, Enum.Material.Air)
+					waterOptimized = waterOptimized + 1
+				end)
+				
+				if not cleared then break end
+			end
+			
+			print("   • Water voxels cleared - " .. waterOptimized .. " layers removed")
+		end
+	end)
+	
+	-- Also handle water parts (visual water parts, not terrain)
+	print("🔧 [POTATO MODE] Checking for water parts...")
+	local waterPartsOptimized = 0
+	pcall(function()
+		local function findWaterParts(parent, depth)
 			if not parent or depth > 50 then return end
 			
 			local success, children = pcall(function() return parent:GetChildren() end)
@@ -804,49 +834,40 @@ function Optimizer:OptimizeAll()
 			
 			for _, part in ipairs(children) do
 				if part then
-					-- Check if it's a water part (usually blue/cyan colored)
 					pcall(function()
 						if part:IsA("BasePart") then
-							local r, g, b = part.Color.R, part.Color.G, part.Color.B
-							-- Detect blue/cyan colors (water-like)
-							if (b > 0.4 and g > 0.4 and r < 0.6) or part.Name:lower():find("water") then
-								-- Either hide or simplify water
-								part.Transparency = 0.9 -- Make nearly invisible (flat water effect)
-								part.CanCollide = false
-								part.Material = Enum.Material.Neon
-								waterOptimized = waterOptimized + 1
+							local name = part.Name:lower()
+							-- Check if it's a water part
+							if name:find("water") or name:find("ocean") or name:find("sea") or name:find("fluid") then
+								-- Convert to solid flat appearance (NOT transparent)
+								part.Transparency = 0
+								part.Color = Color3.fromRGB(80, 100, 120) -- Flat grayish-blue
+								part.Material = Enum.Material.Concrete -- Flat, non-reflective
+								part.CanCollide = true
+								waterPartsOptimized = waterPartsOptimized + 1
 							end
 						end
 					end)
 					
-					-- Recurse
-					findAndOptimizeWater(part, depth + 1)
+					findWaterParts(part, depth + 1)
 				end
 			end
 		end
 		
-		-- Optimize water in Workspace
-		findAndOptimizeWater(workspace, 0)
-		
-		-- Optimize terrain water if exists
-		pcall(function()
-			local terrain = workspace.Terrain
-			if terrain then
-				-- Get terrain size and reduce water rendering
-				terrain:FillBall(Vector3.new(0, 0, 0), 1, Enum.Material.Air)
-			end
-		end)
-		
-		print("✅ [POTATO MODE] Water optimized - " .. waterOptimized .. " water parts simplified")
+		findWaterParts(workspace, 0)
+		if waterPartsOptimized > 0 then
+			print("   • Water parts found and flattened: " .. waterPartsOptimized)
+		end
 	end)
 	
 	self.PotatoModeEnabled = true
 	local totalOptimized = optimizedParts
+	local totalWater = waterOptimized + waterPartsOptimized
 	print("✅ [POTATO MODE] POTATO MODE ACTIVATED!")
 	print("   • Parts optimized: " .. optimizedParts)
 	print("   • Effects disabled: " .. disabledEffects)
-	print("   • Water optimized: " .. waterOptimized)
-	print("   • Total changes: " .. (totalOptimized + disabledEffects + waterOptimized))
+	print("   • Water optimized: " .. totalWater)
+	print("   • Total changes: " .. (totalOptimized + disabledEffects + totalWater))
 	
 	return true, "🥔 POTATO MODE ACTIVATED! ✅ " .. totalOptimized .. " parts optimized, " .. disabledEffects .. " effects disabled"
 end
