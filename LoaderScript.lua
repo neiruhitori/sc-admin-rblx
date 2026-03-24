@@ -617,60 +617,85 @@ end
 -- OPTIMIZER MODULE
 -- ============================================
 local Optimizer = {}
-Optimizer.OptimizationEnabled = false
 
 function Optimizer:OptimizeAll()
-	if self.OptimizationEnabled then
-		return
-	end
+	print("🔧 DEBUG: Optimizer started...")
 	
-	local processedCount = 0
+	local processedParts = 0
+	local processedModels = 0
 	
 	-- Function to optimize a single object
 	local function optimizeObject(obj)
-		-- Set CastShadow to false
+		-- Optimize BaseParts (set CastShadow and RenderFidelity)
 		if obj:IsA("BasePart") then
 			pcall(function()
 				obj.CastShadow = false
-				processedCount = processedCount + 1
+				obj.RenderFidelity = Enum.RenderFidelity.Performance
+				processedParts = processedParts + 1
 			end)
 		end
 		
-		-- Set RenderFidelity to Performance
-		if obj:IsA("BasePart") or obj:IsA("Model") or obj:IsA("Terrain") then
+		-- Optimize Models
+		if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") == nil then
 			pcall(function()
-				if obj:FindFirstChildOfClass("Humanoid") == nil then
-					obj.RenderFidelity = Enum.RenderFidelity.Performance
-				end
+				obj.RenderFidelity = Enum.RenderFidelity.Performance
+				processedModels = processedModels + 1
 			end)
 		end
 	end
 	
-	-- Recursive function to traverse all children
-	local function recurseOptimize(parent)
-		for _, child in ipairs(parent:GetChildren()) do
-			optimizeObject(child)
-			recurseOptimize(child)
+	-- Recursive function to traverse all descendants
+	local function recurseOptimize(parent, depth)
+		depth = depth or 0
+		if depth > 100 then return end -- Prevent infinite recursion
+		
+		local success, children = pcall(function()
+			return parent:GetChildren()
+		end)
+		
+		if not success then return end
+		
+		for _, child in ipairs(children) do
+			if child then
+				optimizeObject(child)
+				recurseOptimize(child, depth + 1)
+			end
 		end
 	end
 	
 	-- Optimize Workspace
-	print("🔧 Starting workspace optimization...")
-	recurseOptimize(workspace)
+	print("🔧 Optimizing Workspace...")
+	pcall(function()
+		recurseOptimize(workspace)
+	end)
 	
 	-- Optimize ReplicatedStorage
 	print("🔧 Optimizing ReplicatedStorage...")
-	recurseOptimize(game:GetService("ReplicatedStorage"))
+	pcall(function()
+		recurseOptimize(game:GetService("ReplicatedStorage"))
+	end)
 	
-	self.OptimizationEnabled = true
-	print("✅ Optimization complete! Processed ~" .. processedCount .. " parts")
-	return true, "🔧 Optimization complete! Graphics optimized - Reduced CastShadow & RenderFidelity"
-end
-
-function Optimizer:ResetOptimization()
-	self.OptimizationEnabled = false
-	print("⚠️ Optimization status reset")
-	return false, "⚠️ Optimization can be toggled again"
+	-- Optimize ServerScriptService (if accessible)
+	print("🔧 Optimizing ServerScriptService...")
+	pcall(function()
+		recurseOptimize(game:GetService("ServerScriptService"))
+	end)
+	
+	-- Optimize Lighting
+	print("🔧 Optimizing Lighting...")
+	pcall(function()
+		for _, child in ipairs(game:GetService("Lighting"):GetChildren()) do
+			optimizeObject(child)
+		end
+	end)
+	
+	local totalProcessed = processedParts + processedModels
+	print("✅ Optimization complete!")
+	print("   • Parts optimized: " .. processedParts)
+	print("   • Models optimized: " .. processedModels)
+	print("   • Total: " .. totalProcessed)
+	
+	return true, "🔧 Optimization complete! ✅ " .. totalProcessed .. " objects optimized"
 end
 
 -- ============================================
@@ -1630,11 +1655,34 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	
 	-- O key for Optimizer
 	if input.KeyCode == Enum.KeyCode.O then
-		local success, message = Optimizer:OptimizeAll()
+		print("📍 O key pressed - Starting optimization...")
+		
+		local success, message = pcall(function()
+			return Optimizer:OptimizeAll()
+		end)
+		
 		if success then
-			AdminGUI:ShowNotification(message, "success")
+			local resultSuccess, resultMessage = message, "Optimization executed"
+			if type(message) == "table" then
+				resultSuccess = message[1]
+				resultMessage = message[2]
+			elseif type(message) == "boolean" then
+				resultSuccess = message
+			end
+			
+			print("✅ Optimizer returned: " .. tostring(resultSuccess) .. " - " .. tostring(resultMessage))
+			
+			-- Show notification if GUI is ready
+			if AdminGUI and AdminGUI.ShowNotification then
+				AdminGUI:ShowNotification(tostring(resultMessage), "success")
+			else
+				print("⚠️ AdminGUI not ready, but optimization still executed")
+			end
 		else
-			AdminGUI:ShowNotification("Optimization already active", "error")
+			print("❌ Optimizer error: " .. tostring(message))
+			if AdminGUI and AdminGUI.ShowNotification then
+				AdminGUI:ShowNotification("Error: " .. tostring(message), "error")
+			end
 		end
 	end
 end)
