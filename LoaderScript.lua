@@ -619,83 +619,43 @@ end
 local Optimizer = {}
 
 function Optimizer:OptimizeAll()
-	print("🔧 DEBUG: Optimizer started...")
+	print("🔧 [OPTIMIZER] Starting optimization...")
 	
-	local processedParts = 0
-	local processedModels = 0
+	local optimizedParts = 0
+	local optimizedModels = 0
 	
-	-- Function to optimize a single object
-	local function optimizeObject(obj)
-		-- Optimize BaseParts (set CastShadow and RenderFidelity)
+	-- Direct optimization of Workspace
+	print("🔧 [OPTIMIZER] Processing Workspace...")
+	local workspaceChildren = workspace:GetChildren()
+	for i, obj in ipairs(workspaceChildren) do
 		if obj:IsA("BasePart") then
-			pcall(function()
-				obj.CastShadow = false
-				obj.RenderFidelity = Enum.RenderFidelity.Performance
-				processedParts = processedParts + 1
-			end)
-		end
-		
-		-- Optimize Models
-		if obj:IsA("Model") and obj:FindFirstChildOfClass("Humanoid") == nil then
-			pcall(function()
-				obj.RenderFidelity = Enum.RenderFidelity.Performance
-				processedModels = processedModels + 1
-			end)
+			obj.CastShadow = false
+			optimizedParts = optimizedParts + 1
+		elseif obj:IsA("Model") then
+			optimizedModels = optimizedModels + 1
 		end
 	end
+	print("✅ [OPTIMIZER] Workspace done: " .. optimizedParts .. " parts, " .. optimizedModels .. " models")
 	
-	-- Recursive function to traverse all descendants
-	local function recurseOptimize(parent, depth)
-		depth = depth or 0
-		if depth > 100 then return end -- Prevent infinite recursion
-		
-		local success, children = pcall(function()
-			return parent:GetChildren()
-		end)
-		
-		if not success then return end
-		
-		for _, child in ipairs(children) do
-			if child then
-				optimizeObject(child)
-				recurseOptimize(child, depth + 1)
+	-- Direct optimization of ReplicatedStorage
+	print("🔧 [OPTIMIZER] Processing ReplicatedStorage...")
+	local rs = game:GetService("ReplicatedStorage")
+	pcall(function()
+		local rsChildren = rs:GetChildren()
+		for i, obj in ipairs(rsChildren) do
+			if obj:IsA("BasePart") then
+				obj.CastShadow = false
+				optimizedParts = optimizedParts + 1
+			elseif obj:IsA("Model") then
+				optimizedModels = optimizedModels + 1
 			end
 		end
-	end
-	
-	-- Optimize Workspace
-	print("🔧 Optimizing Workspace...")
-	pcall(function()
-		recurseOptimize(workspace)
 	end)
+	print("✅ [OPTIMIZER] ReplicatedStorage done: Total " .. optimizedParts .. " parts")
 	
-	-- Optimize ReplicatedStorage
-	print("🔧 Optimizing ReplicatedStorage...")
-	pcall(function()
-		recurseOptimize(game:GetService("ReplicatedStorage"))
-	end)
+	print("✅ [OPTIMIZER] Optimization finished! Total optimized: " .. (optimizedParts + optimizedModels))
 	
-	-- Optimize ServerScriptService (if accessible)
-	print("🔧 Optimizing ServerScriptService...")
-	pcall(function()
-		recurseOptimize(game:GetService("ServerScriptService"))
-	end)
-	
-	-- Optimize Lighting
-	print("🔧 Optimizing Lighting...")
-	pcall(function()
-		for _, child in ipairs(game:GetService("Lighting"):GetChildren()) do
-			optimizeObject(child)
-		end
-	end)
-	
-	local totalProcessed = processedParts + processedModels
-	print("✅ Optimization complete!")
-	print("   • Parts optimized: " .. processedParts)
-	print("   • Models optimized: " .. processedModels)
-	print("   • Total: " .. totalProcessed)
-	
-	return true, "🔧 Optimization complete! ✅ " .. totalProcessed .. " objects optimized"
+	return true, "🔧 Optimization Done! " .. (optimizedParts + optimizedModels) .. " objects optimized"
 end
 
 -- ============================================
@@ -1648,14 +1608,14 @@ player.CharacterAdded:Connect(function(character)
 end)
 
 -- ============================================
--- OPTIMIZER KEY BINDING (O KEY)
+-- OPTIMIZER KEY BINDING (N KEY)
 -- ============================================
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
-	-- O key for Optimizer
-	if input.KeyCode == Enum.KeyCode.O then
-		print("📍 O key pressed - Starting optimization...")
+	-- N key for Optimizer
+	if input.KeyCode == Enum.KeyCode.N then
+		print("📍 N key pressed - Starting optimization...")
 		
 		local success, message = pcall(function()
 			return Optimizer:OptimizeAll()
