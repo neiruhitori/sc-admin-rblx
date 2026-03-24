@@ -624,38 +624,171 @@ function Optimizer:OptimizeAll()
 	local optimizedParts = 0
 	local optimizedModels = 0
 	
-	-- Direct optimization of Workspace
+	-- Helper function to optimize a single part
+	local function optimizePart(part)
+		if part:IsA("BasePart") then
+			pcall(function()
+				part.CastShadow = false
+				part.RenderFidelity = Enum.RenderFidelity.Performance
+				optimizedParts = optimizedParts + 1
+			end)
+		elseif part:IsA("Model") and part:FindFirstChildOfClass("Humanoid") == nil then
+			pcall(function()
+				part.RenderFidelity = Enum.RenderFidelity.Performance
+				optimizedModels = optimizedModels + 1
+			end)
+		end
+	end
+	
+	-- Helper function to optimize service children
+	local function optimizeService(serviceName)
+		pcall(function()
+			local service = game:GetService(serviceName)
+			if service then
+				print("🔧 [OPTIMIZER] Processing " .. serviceName .. "...")
+				local children = service:GetChildren()
+				for _, obj in ipairs(children) do
+					optimizePart(obj)
+					-- Also process children of objects
+					local subChildren = pcall(function() return obj:GetChildren() end)
+					if subChildren then
+						for _, subObj in ipairs(subChildren) do
+							optimizePart(subObj)
+						end
+					end
+				end
+				print("✅ [OPTIMIZER] " .. serviceName .. " done")
+			end
+		end)
+	end
+	
+	-- 1. Workspace (all parts and models)
 	print("🔧 [OPTIMIZER] Processing Workspace...")
 	local workspaceChildren = workspace:GetChildren()
 	for i, obj in ipairs(workspaceChildren) do
-		if obj:IsA("BasePart") then
-			obj.CastShadow = false
-			optimizedParts = optimizedParts + 1
-		elseif obj:IsA("Model") then
-			optimizedModels = optimizedModels + 1
-		end
-	end
-	print("✅ [OPTIMIZER] Workspace done: " .. optimizedParts .. " parts, " .. optimizedModels .. " models")
-	
-	-- Direct optimization of ReplicatedStorage
-	print("🔧 [OPTIMIZER] Processing ReplicatedStorage...")
-	local rs = game:GetService("ReplicatedStorage")
-	pcall(function()
-		local rsChildren = rs:GetChildren()
-		for i, obj in ipairs(rsChildren) do
-			if obj:IsA("BasePart") then
-				obj.CastShadow = false
-				optimizedParts = optimizedParts + 1
-			elseif obj:IsA("Model") then
-				optimizedModels = optimizedModels + 1
+		optimizePart(obj)
+		-- Deep scan for nested objects
+		local subChildren = pcall(function() return obj:GetChildren() end)
+		if subChildren and subChildren[1] then
+			for _, subObj in ipairs(subChildren) do
+				optimizePart(subObj)
 			end
 		end
+	end
+	print("✅ [OPTIMIZER] Workspace: " .. optimizedParts .. " parts, " .. optimizedModels .. " models")
+	
+	-- 2. ReplicatedStorage
+	print("🔧 [OPTIMIZER] Processing ReplicatedStorage...")
+	pcall(function()
+		local rs = game:GetService("ReplicatedStorage")
+		local rsChildren = rs:GetChildren()
+		for i, obj in ipairs(rsChildren) do
+			optimizePart(obj)
+		end
+		print("✅ [OPTIMIZER] ReplicatedStorage done")
 	end)
-	print("✅ [OPTIMIZER] ReplicatedStorage done: Total " .. optimizedParts .. " parts")
 	
-	print("✅ [OPTIMIZER] Optimization finished! Total optimized: " .. (optimizedParts + optimizedModels))
+	-- 3. ServerScriptService
+	print("🔧 [OPTIMIZER] Processing ServerScriptService...")
+	pcall(function()
+		local sss = game:GetService("ServerScriptService")
+		local sssChildren = sss:GetChildren()
+		for i, obj in ipairs(sssChildren) do
+			optimizePart(obj)
+		end
+		print("✅ [OPTIMIZER] ServerScriptService done")
+	end)
 	
-	return true, "🔧 Optimization Done! " .. (optimizedParts + optimizedModels) .. " objects optimized"
+	-- 4. StarterPlayer
+	print("🔧 [OPTIMIZER] Processing StarterPlayer...")
+	pcall(function()
+		local sp = game:GetService("StarterPlayer")
+		local spChildren = sp:GetChildren()
+		for i, obj in ipairs(spChildren) do
+			if obj:IsA("Folder") then
+				local folderChildren = obj:GetChildren()
+				for _, subObj in ipairs(folderChildren) do
+					optimizePart(subObj)
+				end
+			else
+				optimizePart(obj)
+			end
+		end
+		print("✅ [OPTIMIZER] StarterPlayer done")
+	end)
+	
+	-- 5. StarterGui
+	print("🔧 [OPTIMIZER] Processing StarterGui...")
+	pcall(function()
+		local sg = game:GetService("StarterGui")
+		local sgChildren = sg:GetChildren()
+		for i, obj in ipairs(sgChildren) do
+			optimizePart(obj)
+		end
+		print("✅ [OPTIMIZER] StarterGui done")
+	end)
+	
+	-- 6. Lighting (optimize light properties)
+	print("🔧 [OPTIMIZER] Optimizing Lighting...")
+	pcall(function()
+		local lighting = game:GetService("Lighting")
+		local lightingChildren = lighting:GetChildren()
+		for _, obj in ipairs(lightingChildren) do
+			optimizePart(obj)
+			if obj:IsA("Light") or obj:IsA("Part") then
+				pcall(function()
+					obj.CastShadow = false
+				end)
+			end
+		end
+		print("✅ [OPTIMIZER] Lighting done")
+	end)
+	
+	-- 7. Terrain (if exists)
+	print("🔧 [OPTIMIZER] Processing Terrain...")
+	pcall(function()
+		local terrain = workspace.Terrain
+		if terrain then
+			terrain.CastShadow = false
+			print("✅ [OPTIMIZER] Terrain optimized")
+		end
+	end)
+	
+	-- 8. Collections (decorations, etc)
+	print("🔧 [OPTIMIZER] Processing Collections...")
+	pcall(function()
+		local collections = game:GetService("CollectionService")
+		if collections then
+			local allTags = collections:GetTags()
+			for _, tag in ipairs(allTags) do
+				local tagged = collections:GetTagged(tag)
+				for _, obj in ipairs(tagged) do
+					optimizePart(obj)
+				end
+			end
+			print("✅ [OPTIMIZER] Collections done")
+		end
+	end)
+	
+	-- 9. ScriptContext (safe optimization)
+	print("🔧 [OPTIMIZER] Processing CoreGui...")
+	pcall(function()
+		local coregui = game:GetService("CoreGui")
+		if coregui then
+			local children = coregui:GetChildren()
+			for _, obj in ipairs(children) do
+				optimizePart(obj)
+			end
+			print("✅ [OPTIMIZER] CoreGui done")
+		end
+	end)
+	
+	local totalOptimized = optimizedParts + optimizedModels
+	print("✅ [OPTIMIZER] Optimization finished! Total optimized: " .. totalOptimized)
+	print("   • Parts: " .. optimizedParts)
+	print("   • Models: " .. optimizedModels)
+	
+	return true, "🔧 Optimization Done! ✅ " .. totalOptimized .. " assets optimized"
 end
 
 -- ============================================
