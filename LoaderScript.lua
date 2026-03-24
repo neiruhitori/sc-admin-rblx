@@ -791,12 +791,62 @@ function Optimizer:OptimizeAll()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
+	-- 10. WATER OPTIMIZATION
+	print("🔧 [POTATO MODE] Optimizing Water...")
+	local waterOptimized = 0
+	pcall(function()
+		-- Find all water-like parts (blue, cyan, or transparent)
+		local function findAndOptimizeWater(parent, depth)
+			if not parent or depth > 50 then return end
+			
+			local success, children = pcall(function() return parent:GetChildren() end)
+			if not success or not children then return end
+			
+			for _, part in ipairs(children) do
+				if part then
+					-- Check if it's a water part (usually blue/cyan colored)
+					pcall(function()
+						if part:IsA("BasePart") then
+							local r, g, b = part.Color.R, part.Color.G, part.Color.B
+							-- Detect blue/cyan colors (water-like)
+							if (b > 0.4 and g > 0.4 and r < 0.6) or part.Name:lower():find("water") then
+								-- Either hide or simplify water
+								part.Transparency = 0.9 -- Make nearly invisible (flat water effect)
+								part.CanCollide = false
+								part.Material = Enum.Material.Neon
+								waterOptimized = waterOptimized + 1
+							end
+						end
+					end)
+					
+					-- Recurse
+					findAndOptimizeWater(part, depth + 1)
+				end
+			end
+		end
+		
+		-- Optimize water in Workspace
+		findAndOptimizeWater(workspace, 0)
+		
+		-- Optimize terrain water if exists
+		pcall(function()
+			local terrain = workspace.Terrain
+			if terrain then
+				-- Get terrain size and reduce water rendering
+				terrain:FillBall(Vector3.new(0, 0, 0), 1, Enum.Material.Air)
+			end
+		end)
+		
+		print("✅ [POTATO MODE] Water optimized - " .. waterOptimized .. " water parts simplified")
+	end)
+	
 	self.PotatoModeEnabled = true
 	local totalOptimized = optimizedParts
 	print("✅ [POTATO MODE] POTATO MODE ACTIVATED!")
 	print("   • Parts optimized: " .. optimizedParts)
 	print("   • Effects disabled: " .. disabledEffects)
-	print("   • Total changes: " .. (totalOptimized + disabledEffects))
+	print("   • Water optimized: " .. waterOptimized)
+	print("   • Total changes: " .. (totalOptimized + disabledEffects + waterOptimized))
 	
 	return true, "🥔 POTATO MODE ACTIVATED! ✅ " .. totalOptimized .. " parts optimized, " .. disabledEffects .. " effects disabled"
 end
