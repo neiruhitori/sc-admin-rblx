@@ -1562,6 +1562,8 @@ playerListContainer.ClipsDescendants = true
 playerListContainer.ZIndex = 100
 playerListContainer.Parent = playerSelectorFrame
 
+print("[AdminGUI] PlayerListContainer created")
+
 local listContainerCorner = Instance.new("UICorner")
 listContainerCorner.CornerRadius = UDim.new(0, 6)
 listContainerCorner.Parent = playerListContainer
@@ -1604,17 +1606,27 @@ playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(1, -10, 1, -45)
 playerListFrame.Position = UDim2.new(0, 5, 0, 40)
 playerListFrame.BackgroundTransparency = 1
+playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Debug: make visible
 playerListFrame.BorderSizePixel = 0
-playerListFrame.ScrollBarThickness = 4
+playerListFrame.ScrollBarThickness = 6
 playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+playerListFrame.ScrollingEnabled = true
+playerListFrame.Visible = true
+playerListFrame.ClipsDescendants = false
 playerListFrame.ZIndex = 101
 playerListFrame.Parent = playerListContainer
 
 local listLayout = Instance.new("UIListLayout")
+listLayout.Name = "ListLayout"
 listLayout.SortOrder = Enum.SortOrder.Name
 listLayout.Padding = UDim.new(0, 2)
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 listLayout.Parent = playerListFrame
+
+print("[AdminGUI] PlayerListFrame created with UIListLayout")
 
 -- ============================================
 -- CONTENT SECTIONS (FOR EACH TAB)
@@ -2008,12 +2020,14 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.Font = Enum.Font.Gotham
 		playerButton.TextXAlignment = Enum.TextXAlignment.Left
 		playerButton.TextYAlignment = Enum.TextYAlignment.Top
+		playerButton.TextWrapped = true
 		playerButton.AutoButtonColor = false
 		playerButton.ClipsDescendants = false
+		playerButton.Visible = true
 		playerButton.ZIndex = 102
 		playerButton.Parent = playerListFrame
 		
-		print("[AdminGUI] Button created and parented for " .. plr.Name .. ", Text: " .. playerButton.Text)
+		print("[AdminGUI] Button created for " .. plr.Name .. ", Size: " .. tostring(playerButton.Size) .. ", Visible: " .. tostring(playerButton.Visible))
 		
 		-- Store DisplayName as attribute for search
 		playerButton:SetAttribute("DisplayName", plr.DisplayName)
@@ -2043,9 +2057,28 @@ function AdminGUI:UpdatePlayerList()
 		end)
 		
 		playerButton.MouseEnter:Connect(function()
-			playerButton.BackgroundColor3 = AdminConfig.Theme.Accent
+			-- Check if currently highlighted by search
+			if playerButton.BackgroundColor3 == Color3.fromRGB(0, 120, 200) then
+				playerButton.BackgroundColor3 = Color3.fromRGB(0, 150, 230) -- Lighter blue for hover
+			else
+				playerButton.BackgroundColor3 = AdminConfig.Theme.Accent
+			end
 		end)
 		playerButton.MouseLeave:Connect(function()
+			-- Restore appropriate color based on search state
+			local searchText = searchBox.Text:lower()
+			if searchText ~= "" then
+				local displayName = playerButton:GetAttribute("DisplayName")
+				local username = playerButton:GetAttribute("Username")
+				if displayName and username then
+					local displayLower = displayName:lower()
+					local usernameLower = username:lower()
+					if displayLower:find(searchText, 1, true) or usernameLower:find(searchText, 1, true) then
+						playerButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Restore highlight
+						return
+					end
+				end
+			end
 			playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		end)
 	end
@@ -2218,12 +2251,7 @@ playerDropdown.MouseButton1Click:Connect(function()
 		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
 		
-		-- Show all players initially
-		for _, button in ipairs(playerListFrame:GetChildren()) do
-			if button:IsA("TextButton") then
-				button.Visible = true
-			end
-		end
+		print("[AdminGUI] Dropdown opened with " .. #Players:GetPlayers() .. " players")
 		
 		local targetHeight = math.min(#Players:GetPlayers() * 52 + 80, 320) -- +80 for search box, 52 per player (50 + 2 spacing)
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
@@ -2233,6 +2261,7 @@ playerDropdown.MouseButton1Click:Connect(function()
 			{Size = UDim2.new(1, -80, 0, targetHeight)}
 		)
 		tween:Play()
+		
 		-- Focus on search box after animation
 		spawn(function()
 			wait(0.25)
@@ -2283,49 +2312,89 @@ resetButton.MouseLeave:Connect(function()
 	resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
 end)
 
--- Search functionality (search by DisplayName OR Username)
+-- Search functionality (highlight and scroll to match, all players always visible)
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	local searchText = searchBox.Text:lower()
+	print("[AdminGUI] Search text: '" .. searchText .. "'")
 	
-	-- Filter player buttons
+	local matchCount = 0
+	local firstMatch = nil
+	
+	-- Highlight matching players
 	for _, button in ipairs(playerListFrame:GetChildren()) do
-		if button:IsA("TextButton") and button.Name ~= "Self" then
+		if button:IsA("TextButton") then
 			local displayName = button:GetAttribute("DisplayName")
 			local username = button:GetAttribute("Username")
+			local isMatch = false
 			
-			if displayName and username then
-				local displayLower = displayName:lower()
-				local usernameLower = username:lower()
-				
-				-- Match if search text is empty OR found in DisplayName OR Username
-				if searchText == "" or 
-				   displayLower:find(searchText, 1, true) or 
-				   usernameLower:find(searchText, 1, true) then
-					button.Visible = true
-				else
-					button.Visible = false
-				end
+			if searchText == "" then
+				-- Empty search - reset all to normal
+				button.BackgroundColor3 = AdminConfig.Theme.Primary
 			else
-				-- Fallback for Self button or buttons without attributes
-				local buttonName = button.Name:lower()
-				if searchText == "" or buttonName:find(searchText, 1, true) then
-					button.Visible = true
+				-- Check if matches
+				if displayName and username then
+					local displayLower = displayName:lower()
+					local usernameLower = username:lower()
+					
+					if displayLower:find(searchText, 1, true) or usernameLower:find(searchText, 1, true) then
+						isMatch = true
+					end
+				elseif button.Name ~= "Self" then
+					local buttonName = button.Name:lower()
+					if buttonName:find(searchText, 1, true) then
+						isMatch = true
+					end
+				end
+				
+				-- Highlight if match
+				if isMatch then
+					button.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Highlight blue
+					matchCount = matchCount + 1
+					if not firstMatch then
+						firstMatch = button
+					end
 				else
-					button.Visible = false
+					button.BackgroundColor3 = AdminConfig.Theme.Primary
 				end
 			end
-		end
+			end
+	end
+	
+	-- Auto scroll to first match
+	if firstMatch and searchText ~= "" then
+		local targetPosition = firstMatch.AbsolutePosition.Y - playerListFrame.AbsolutePosition.Y
+		playerListFrame.CanvasPosition = Vector2.new(0, math.max(0, targetPosition - 10))
+		print("[AdminGUI] Found " .. matchCount .. " matches, scrolled to first match: " .. firstMatch.Name)
+	elseif searchText == "" then
+		-- Reset scroll to top
+		playerListFrame.CanvasPosition = Vector2.new(0, 0)
+		print("[AdminGUI] Search cleared, reset to top")
+	else
+		print("[AdminGUI] No matches found for: '" .. searchText .. "'")
 	end
 end)
 
 -- Search box keyboard shortcuts
 searchBox.FocusLost:Connect(function(enterPressed)
 	if enterPressed and playerListContainer.Visible then
-		-- Enter pressed - select first visible player
-		for _, button in ipairs(playerListFrame:GetChildren()) do
-			if button:IsA("TextButton") and button.Visible and button.Name ~= "Self" then
-				button.MouseButton1Click:Fire()
-				break
+		local searchText = searchBox.Text:lower()
+		if searchText ~= "" then
+			-- Enter pressed - select first highlighted player
+			for _, button in ipairs(playerListFrame:GetChildren()) do
+				if button:IsA("TextButton") and button.Name ~= "Self" then
+					local displayName = button:GetAttribute("DisplayName")
+					local username = button:GetAttribute("Username")
+					
+					if displayName and username then
+						local displayLower = displayName:lower()
+						local usernameLower = username:lower()
+						
+						if displayLower:find(searchText, 1, true) or usernameLower:find(searchText, 1, true) then
+							button.MouseButton1Click:Fire()
+							break
+						end
+					end
+				end
 			end
 		end
 	end
