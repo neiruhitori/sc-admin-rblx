@@ -25,7 +25,8 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.1 - ULTRA VISIBLE BUTTONS (BLUE)")
+print("📌 VERSION: v3.2 - YELLOW DROPDOWN BUTTON (UNMISSABLE!)")
+print("     LOOK FOR BRIGHT YELLOW BUTTON AT TOP!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1463,8 +1464,9 @@ local resetButton = Instance.new("TextButton")
 resetButton.Name = "ResetButton"
 resetButton.Size = UDim2.new(0, 60, 0, 35)
 resetButton.Position = UDim2.new(0, 5, 0, 5)
-resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-resetButton.BorderSizePixel = 0
+resetButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Bright red
+resetButton.BorderSizePixel = 2
+resetButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 resetButton.Text = "♻️"
 resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 resetButton.TextSize = 16
@@ -1476,50 +1478,38 @@ local resetCorner = Instance.new("UICorner")
 resetCorner.CornerRadius = UDim.new(0, 6)
 resetCorner.Parent = resetButton
 
--- Player dropdown (middle-left)
+-- Player dropdown (ULTRA VISIBLE - BRIGHT YELLOW)
 local playerDropdown = Instance.new("TextButton")
 playerDropdown.Name = "PlayerDropdown"
 playerDropdown.Size = UDim2.new(1, -250, 0, 35)
 playerDropdown.Position = UDim2.new(0, 70, 0, 5)
-playerDropdown.BackgroundColor3 = AdminConfig.Theme.Primary
-playerDropdown.BorderSizePixel = 0
-playerDropdown.Text = "Me (Self)"
-playerDropdown.TextColor3 = AdminConfig.Theme.Text
-playerDropdown.TextSize = 13
+playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- BRIGHT YELLOW!
+playerDropdown.BackgroundTransparency = 0
+playerDropdown.BorderSizePixel = 3
+playerDropdown.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
+playerDropdown.Text = "    ▼ SELECT PLAYER (CLICK HERE!) ▼"
+playerDropdown.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
+playerDropdown.TextSize = 14
 playerDropdown.Font = Enum.Font.GothamBold
-playerDropdown.TextXAlignment = Enum.TextXAlignment.Left
+playerDropdown.TextXAlignment = Enum.TextXAlignment.Center
 playerDropdown.ZIndex = 2
 playerDropdown.Parent = playerSelectorFrame
 
 local dropdownCorner = Instance.new("UICorner")
-dropdownCorner.CornerRadius = UDim.new(0, 6)
+dropdownCorner.CornerRadius = UDim.new(0, 8)
 dropdownCorner.Parent = playerDropdown
 
-local dropdownPadding = Instance.new("UIPadding")
-dropdownPadding.PaddingLeft = UDim.new(0, 10)
-dropdownPadding.Parent = playerDropdown
-
-local dropdownArrow = Instance.new("TextLabel")
-dropdownArrow.Size = UDim2.new(0, 30, 1, 0)
-dropdownArrow.Position = UDim2.new(1, -30, 0, 0)
-dropdownArrow.BackgroundTransparency = 1
-dropdownArrow.Text = "▼"
-dropdownArrow.TextColor3 = AdminConfig.Theme.Text
-dropdownArrow.TextSize = 12
-dropdownArrow.Font = Enum.Font.GothamBold
-dropdownArrow.ZIndex = 2
-dropdownArrow.Parent = playerDropdown
-
--- Go To button (right of dropdown)
+-- Go To button (BRIGHT GREEN)
 local gotoButton = Instance.new("TextButton")
 gotoButton.Name = "GotoButton"
 gotoButton.Size = UDim2.new(0, 80, 0, 35)
 gotoButton.Position = UDim2.new(1, -165, 0, 5)
-gotoButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-gotoButton.BorderSizePixel = 0
+gotoButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Bright green
+gotoButton.BorderSizePixel = 2
+gotoButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 gotoButton.Text = "📍 Go"
-gotoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-gotoButton.TextSize = 13
+gotoButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
+gotoButton.TextSize = 14
 gotoButton.Font = Enum.Font.GothamBold
 gotoButton.ZIndex = 2
 gotoButton.Parent = playerSelectorFrame
@@ -1528,15 +1518,16 @@ local gotoCorner = Instance.new("UICorner")
 gotoCorner.CornerRadius = UDim.new(0, 6)
 gotoCorner.Parent = gotoButton
 
--- Refresh button (rightmost)
+-- Refresh button (BRIGHT CYAN)
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
 refreshButton.Size = UDim2.new(0, 75, 0, 35)
 refreshButton.Position = UDim2.new(1, -75, 0, 5)
-refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
-refreshButton.BorderSizePixel = 0
+refreshButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255) -- Bright cyan
+refreshButton.BorderSizePixel = 2
+refreshButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 refreshButton.Text = "🔄"
-refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+refreshButton.TextColor3 = Color3.fromRGB(0, 0, 0)
 refreshButton.TextSize = 16
 refreshButton.Font = Enum.Font.GothamBold
 refreshButton.ZIndex = 2
@@ -1948,7 +1939,7 @@ function AdminGUI:UpdatePlayerList()
 	
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
-		playerDropdown.Text = "Me (Self)"
+		playerDropdown.Text = "    ▼ SELECT PLAYER (CLICK HERE!) ▼"
 		playerListContainer.Visible = false
 	end)
 	
@@ -1988,11 +1979,11 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
 			-- Show display name in dropdown if different
-			if plr.DisplayName ~= plr.Name then
-				playerDropdown.Text = plr.DisplayName .. " (@" .. plr.Name .. ")"
-			else
-				playerDropdown.Text = plr.Name
-			end
+		if plr.DisplayName ~= plr.Name then
+			playerDropdown.Text = "    ▼ " .. plr.DisplayName .. " (@" .. plr.Name .. ") ▼"
+		else
+			playerDropdown.Text = "    ▼ " .. plr.Name .. " ▼"
+		end
 			playerListContainer.Visible = false
 			playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		end)
@@ -2202,25 +2193,32 @@ gotoButton.MouseButton1Click:Connect(function()
 end)
 
 -- Add hover effects for action buttons
+playerDropdown.MouseEnter:Connect(function()
+	playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 220, 50) -- Lighter yellow
+end)
+playerDropdown.MouseLeave:Connect(function()
+	playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- Back to bright yellow
+end)
+
 gotoButton.MouseEnter:Connect(function()
-	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 230, 120)
+	gotoButton.BackgroundColor3 = Color3.fromRGB(50, 255, 150) -- Lighter green
 end)
 gotoButton.MouseLeave:Connect(function()
-	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Back to bright green
 end)
 
 refreshButton.MouseEnter:Connect(function()
-	refreshButton.BackgroundColor3 = Color3.fromRGB(0, 190, 255)
+	refreshButton.BackgroundColor3 = Color3.fromRGB(50, 220, 255) -- Lighter cyan
 end)
 refreshButton.MouseLeave:Connect(function()
-	refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
+	refreshButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255) -- Back to bright cyan
 end)
 
 resetButton.MouseEnter:Connect(function()
-	resetButton.BackgroundColor3 = Color3.fromRGB(255, 160, 20)
+	resetButton.BackgroundColor3 = Color3.fromRGB(255, 150, 150) -- Lighter red
 end)
 resetButton.MouseLeave:Connect(function()
-	resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+	resetButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Back to bright red
 end)
 
 -- ESC key to close dropdown
