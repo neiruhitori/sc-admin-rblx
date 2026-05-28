@@ -25,9 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.4 - NEON RAINBOW BUTTONS (YELLOW SELF + CYAN PLAYERS!)")
-print("     🌈 BUTTON SELF = KUNING, BORDER HIJAU | BUTTON PLAYERS = CYAN, BORDER MAGENTA!")
-print("     🔴 KOTAK MERAH DI TENGAH LAYAR HARUS ADA BUTTON WARNA-WARNI!")
+print("📌 VERSION: v3.5 - SIMPLE FRAME (NO SCROLLING!)")
+print("     🟢 GANTI ScrollingFrame → Simple Frame dengan background HIJAU!")
+print("     🟡 Button SELF = KUNING | Buttons PLAYERS = CYAN!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1561,26 +1561,25 @@ local containerCorner = Instance.new("UICorner")
 containerCorner.CornerRadius = UDim.new(0, 8)
 containerCorner.Parent = playerListContainer
 
--- Player list scrolling frame - VISIBLE BACKGROUND
-local playerListFrame = Instance.new("ScrollingFrame")
+-- Player list frame - SIMPLE FRAME (NO SCROLLING FOR NOW!)
+local playerListFrame = Instance.new("Frame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(1, -10, 1, -10)
 playerListFrame.Position = UDim2.new(0, 5, 0, 5)
-playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Lighter gray
+playerListFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- BRIGHT GREEN untuk testing!
 playerListFrame.BackgroundTransparency = 0
-playerListFrame.BorderSizePixel = 0
-playerListFrame.ScrollBarThickness = 6
-playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
-playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-playerListFrame.ScrollingEnabled = true
-playerListFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+playerListFrame.BorderSizePixel = 3
+playerListFrame.BorderColor3 = Color3.fromRGB(255, 255, 0) -- Yellow border
 playerListFrame.ZIndex = 201 -- Higher than container
+playerListFrame.ClipsDescendants = false -- DON'T clip!
 playerListFrame.Parent = playerListContainer
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 3)
+listLayout.FillDirection = Enum.FillDirection.Vertical
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 listLayout.Parent = playerListFrame
 
 -- ============================================
