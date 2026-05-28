@@ -25,7 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.3 - SIMPLE LIST (NO SEARCH)")
+print("📌 VERSION: 2024-05-28 v2.4 - DEBUG + CLIPSOFF")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1560,7 +1560,7 @@ playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListContainer.BorderSizePixel = 1
 playerListContainer.BorderColor3 = Color3.fromRGB(80, 80, 80)
 playerListContainer.Visible = false
-playerListContainer.ClipsDescendants = true
+playerListContainer.ClipsDescendants = false
 playerListContainer.ZIndex = 100
 playerListContainer.Parent = playerSelectorFrame
 
@@ -1928,12 +1928,14 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
+	print("[UPDATE] UpdatePlayerList called")
 	-- Clear existing buttons (but keep UIListLayout!)
 	for _, child in ipairs(playerListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
 		end
 	end
+	print("[UPDATE] Creating buttons for " .. #Players:GetPlayers() .. " players")
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
@@ -1950,6 +1952,8 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.ZIndex = 102
 	selfButton.LayoutOrder = 0  -- Force Self to be first
 	selfButton.Parent = playerListFrame
+	
+	print("[UPDATE] Self button created and parented")
 	
 	local selfCorner = Instance.new("UICorner")
 	selfCorner.CornerRadius = UDim.new(0, 4)
@@ -1996,6 +2000,10 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
+		if buttonIndex == 1 then
+			print("[UPDATE] First player button created: " .. plr.Name)
+		end
+		
 		buttonIndex = buttonIndex + 1
 		
 		local pCorner = Instance.new("UICorner")
@@ -2028,6 +2036,7 @@ function AdminGUI:UpdatePlayerList()
 			playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		end)
 	end
+	print("[UPDATE] UpdatePlayerList completed - Total buttons: " .. (buttonIndex))
 end
 
 function AdminGUI:ExecuteCommand(command, requiresInput)
@@ -2191,16 +2200,36 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
+	print("\n[DROPDOWN] Button clicked!")
 	playerListContainer.Visible = not playerListContainer.Visible
+	print("[DROPDOWN] Container Visible: " .. tostring(playerListContainer.Visible))
 	
 	if playerListContainer.Visible then
+		print("[DROPDOWN] Updating player list...")
 		AdminGUI:UpdatePlayerList()
 		
 		local playerCount = #Players:GetPlayers() + 1 -- +1 for Self
 		local targetHeight = math.min(playerCount * 51 + 20, 400)
 		local targetWidth = 200
 		
+		print("[DROPDOWN] Setting container size: " .. targetWidth .. "x" .. targetHeight)
 		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
+		
+		task.wait()
+		print("[DROPDOWN] Container AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
+		print("[DROPDOWN] Frame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		
+		-- Count buttons
+		local buttonCount = 0
+		for _, child in ipairs(playerListFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				buttonCount = buttonCount + 1
+				if buttonCount <= 2 then
+					print("[DROPDOWN] Button '" .. child.Name .. "' - Size: " .. tostring(child.Size) .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize))
+				end
+			end
+		end
+		print("[DROPDOWN] Total buttons: " .. buttonCount)
 	else
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end
