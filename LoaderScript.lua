@@ -25,9 +25,10 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v4.1 - Adjusted player list position & height!")
-print("     ✅ Position: 15px gap below dropdown (was 5px)")
-print("     ✅ Max height: 300px (was 450px)")
+print("📌 VERSION: v4.7 - Potato Mode UI Button!")
+print("     ✅ UI button for Potato Mode (no keyboard shortcut)")
+print("     ✅ Click ON/OFF in Utility tab")
+print("     ✅ Status indicator & visual feedback")
 
 -- ============================================
 -- CONFIG MODULE
@@ -572,7 +573,8 @@ CommandExecutor.PlayerStatuses = {
 	fly = false,
 	infinitejump = false,
 	god = false,
-	antiafk = false
+	antiafk = false,
+	potato = false
 }
 CommandExecutor.GodModeConnections = {}
 
@@ -1757,6 +1759,7 @@ teleportInfoCorner.Parent = teleportInfo
 local systemSection = createSection(utilityPage, "🔧 System", 1)
 createCommandButton(systemSection, "Respawn", "🔄", "respawn", 1, false)
 createCommandButton(systemSection, "Anti-AFK", "⏰", "antiafk", 2, true)
+createCommandButton(systemSection, "Potato Mode", "🥔", "potato", 3, true)
 
 -- Notification Frame
 local notificationFrame = Instance.new("Frame")
@@ -2381,6 +2384,82 @@ connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
 
+-- Potato Mode button - Custom handler (not a chat command)
+local potatoButton = nil
+for _, page in pairs(AdminGUI.TabPages) do
+	for _, section in ipairs(page:GetChildren()) do
+		if section:IsA("Frame") then
+			local buttonsContainer = section:FindFirstChild("ButtonsContainer")
+			if buttonsContainer then
+				local button = buttonsContainer:FindFirstChild("potato")
+				if button and button:IsA("TextButton") then
+					potatoButton = button
+					break
+				end
+			end
+		end
+	end
+	if potatoButton then break end
+end
+
+if potatoButton then
+	potatoButton.MouseButton1Click:Connect(function()
+		local success, result = pcall(function()
+			return Optimizer:TogglePotato()
+		end)
+		
+		if success then
+			local isEnabled = result
+			CommandExecutor.PlayerStatuses.potato = isEnabled
+			
+			-- Update button visual
+			local statusLabel = potatoButton:FindFirstChild("Status")
+			if statusLabel then
+				statusLabel.Text = isEnabled and "ON" or "OFF"
+				statusLabel.TextColor3 = isEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(150, 150, 150)
+			end
+			
+			-- Update button background
+			potatoButton.BackgroundColor3 = isEnabled and AdminConfig.Theme.Accent or AdminConfig.Theme.Primary
+			
+			-- Show notification
+			if AdminGUI and AdminGUI.ShowNotification then
+				if isEnabled then
+					AdminGUI:ShowNotification("🥔 POTATO MODE ON! FPS boost active", "success")
+				else
+					AdminGUI:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", "info")
+				end
+			end
+		else
+			warn("❌ Potato Mode error: " .. tostring(result))
+			if AdminGUI and AdminGUI.ShowNotification then
+				AdminGUI:ShowNotification("Error: " .. tostring(result), "error")
+			end
+		end
+	end)
+	
+	-- Hover effects
+	potatoButton.MouseEnter:Connect(function()
+		if not CommandExecutor.PlayerStatuses.potato then
+			TweenService:Create(
+				potatoButton,
+				TweenInfo.new(0.2),
+				{BackgroundColor3 = AdminConfig.Theme.Accent}
+			):Play()
+		end
+	end)
+	
+	potatoButton.MouseLeave:Connect(function()
+		if not CommandExecutor.PlayerStatuses.potato then
+			TweenService:Create(
+				potatoButton,
+				TweenInfo.new(0.2),
+				{BackgroundColor3 = AdminConfig.Theme.Primary}
+			):Play()
+		end
+	end)
+end
+
 local dragging = false
 local dragInput
 local dragStart
@@ -2424,46 +2503,6 @@ player.CharacterAdded:Connect(function(character)
 	if CommandExecutor.PlayerStatuses.god then
 		CommandExecutor:EnableGodMode()
 		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
-	end
-end)
-
--- ============================================
--- OPTIMIZER KEY BINDING (N KEY)
--- ============================================
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	
-	-- N key for Optimizer (TOGGLE)
-	if input.KeyCode == Enum.KeyCode.N then
-		print("📍 N key pressed - Toggling Potato Mode...")
-		
-		local success, result = pcall(function()
-			return Optimizer:TogglePotato()
-		end)
-		
-		if success then
-			local isEnabled = result
-			local statusText = isEnabled and "ON" or "OFF"
-			local notifType = isEnabled and "success" or "info"
-			
-			print("✅ Potato Mode toggled: " .. statusText)
-			
-			-- Show notification if GUI is ready
-			if AdminGUI and AdminGUI.ShowNotification then
-				if isEnabled then
-					AdminGUI:ShowNotification("🥔 POTATO MODE ON! FPS boost active", notifType)
-				else
-					AdminGUI:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", notifType)
-				end
-			else
-				print("⚠️ AdminGUI not ready, but potato mode toggled")
-			end
-		else
-			print("❌ Optimizer error: " .. tostring(result))
-			if AdminGUI and AdminGUI.ShowNotification then
-				AdminGUI:ShowNotification("Error: " .. tostring(result), "error")
-			end
-		end
 	end
 end)
 
