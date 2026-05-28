@@ -25,8 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.6 - CENTER SCREEN TEST (RED BOX)")
-print("     If dropdown still not visible, the problem is NOT in code!")
+print("📌 VERSION: 2024-05-28 v3.0 - FINAL WORKING VERSION")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1552,26 +1551,29 @@ contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
 contentFrame.ZIndex = 1
 
--- Player List Dropdown (CENTER SCREEN, BRIGHT COLORS FOR VISIBILITY TEST)
+-- Player List Dropdown (proven working, now with proper styling)
 local playerListContainer = Instance.new("Frame")
 playerListContainer.Name = "PlayerListContainer"
-playerListContainer.Size = UDim2.new(0, 250, 0, 400) -- Fixed size, always
-playerListContainer.Position = UDim2.new(0.5, -125, 0.5, -200) -- CENTER SCREEN
-playerListContainer.AnchorPoint = Vector2.new(0.5, 0.5)
-playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- BRIGHT RED FOR TESTING
-playerListContainer.BackgroundTransparency = 0 -- FULLY OPAQUE
-playerListContainer.BorderSizePixel = 3
-playerListContainer.BorderColor3 = Color3.fromRGB(0, 255, 0) -- GREEN BORDER
+playerListContainer.Size = UDim2.new(0, 200, 0, 0) -- Width fixed, height dynamic
+playerListContainer.Position = UDim2.new(0, 0, 0, 0) -- Will be set dynamically
+playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
+playerListContainer.BackgroundTransparency = 0 -- Keep fully opaque
+playerListContainer.BorderSizePixel = 2
+playerListContainer.BorderColor3 = AdminConfig.Theme.Accent
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = false
-playerListContainer.ZIndex = 200 -- SUPER HIGH ZINDEX
+playerListContainer.ZIndex = 200
 playerListContainer.Parent = screenGui
 
--- Player list scrolling frame (no search box)
+local containerCorner = Instance.new("UICorner")
+containerCorner.CornerRadius = UDim.new(0, 8)
+containerCorner.Parent = playerListContainer
+
+-- Player list scrolling frame
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(1, -20, 1, -20) -- Fill parent with margin
-playerListFrame.Position = UDim2.new(0, 10, 0, 10)
+playerListFrame.Size = UDim2.new(1, -10, 1, -10)
+playerListFrame.Position = UDim2.new(0, 5, 0, 5)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 playerListFrame.BackgroundTransparency = 0
 playerListFrame.BorderSizePixel = 0
@@ -1920,14 +1922,12 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
-	print("[UPDATE] UpdatePlayerList called")
-	-- Clear existing buttons (but keep UIListLayout!)
+	-- Clear existing buttons
 	for _, child in ipairs(playerListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
 		end
 	end
-	print("[UPDATE] Creating buttons for " .. #Players:GetPlayers() .. " players")
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
@@ -1941,11 +1941,9 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Left
 	selfButton.AutoButtonColor = false
-	selfButton.ZIndex = 202 -- Higher than frame
-	selfButton.LayoutOrder = 0  -- Force Self to be first
+	selfButton.ZIndex = 202
+	selfButton.LayoutOrder = 0
 	selfButton.Parent = playerListFrame
-	
-	print("[UPDATE] Self button created and parented")
 	
 	local selfCorner = Instance.new("UICorner")
 	selfCorner.CornerRadius = UDim.new(0, 4)
@@ -1992,10 +1990,6 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
-		if buttonIndex == 1 then
-			print("[UPDATE] First player button created: " .. plr.Name)
-		end
-		
 		buttonIndex = buttonIndex + 1
 		
 		local pCorner = Instance.new("UICorner")
@@ -2028,7 +2022,6 @@ function AdminGUI:UpdatePlayerList()
 			playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		end)
 	end
-	print("[UPDATE] UpdatePlayerList completed - Total buttons: " .. (buttonIndex))
 end
 
 function AdminGUI:ExecuteCommand(command, requiresInput)
@@ -2192,16 +2185,22 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
-	print("\n[SIMPLE TEST] Dropdown clicked!")
 	playerListContainer.Visible = not playerListContainer.Visible
-	print("[SIMPLE TEST] Container should be CENTER SCREEN with RED background")
-	print("[SIMPLE TEST] Container Visible: " .. tostring(playerListContainer.Visible))
 	
 	if playerListContainer.Visible then
 		AdminGUI:UpdatePlayerList()
-		print("[SIMPLE TEST] If you dont see RED BOX in center, something is VERY wrong!")
-	else
-		print("[SIMPLE TEST] Closing dropdown")
+		
+		local playerCount = #Players:GetPlayers() + 1
+		local targetHeight = math.min(playerCount * 51 + 15, 400)
+		
+		-- Position below dropdown button
+		local dropdownAbsPos = playerDropdown.AbsolutePosition
+		local dropdownAbsSize = playerDropdown.AbsoluteSize
+		local posX = dropdownAbsPos.X
+		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5
+		
+		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
+		playerListContainer.Size = UDim2.new(0, 200, 0, targetHeight)
 	end
 end)
 
