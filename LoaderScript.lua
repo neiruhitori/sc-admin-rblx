@@ -25,9 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.5 - SIMPLE FRAME (NO SCROLLING!)")
-print("     🟢 GANTI ScrollingFrame → Simple Frame dengan background HIJAU!")
-print("     🟡 Button SELF = KUNING | Buttons PLAYERS = CYAN!")
+print("📌 VERSION: v3.6 - FIXED: Frame HIJAU tetap HIJAU (ga di-override)!")
+print("     🟢 Frame background GREEN tetap | Border RED | ZIndex 210!")
+print("     🟡 Buttons: YELLOW (Self) + CYAN (Players) | ZIndex 215!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1564,23 +1564,32 @@ containerCorner.Parent = playerListContainer
 -- Player list frame - SIMPLE FRAME (NO SCROLLING FOR NOW!)
 local playerListFrame = Instance.new("Frame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(1, -10, 1, -10)
+playerListFrame.Size = UDim2.new(0, 210, 0, 440) -- ABSOLUTE SIZE!
 playerListFrame.Position = UDim2.new(0, 5, 0, 5)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- BRIGHT GREEN untuk testing!
 playerListFrame.BackgroundTransparency = 0
-playerListFrame.BorderSizePixel = 3
-playerListFrame.BorderColor3 = Color3.fromRGB(255, 255, 0) -- Yellow border
-playerListFrame.ZIndex = 201 -- Higher than container
+playerListFrame.BorderSizePixel = 5
+playerListFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- RED border untuk contrast!
+playerListFrame.ZIndex = 210 -- VERY HIGH ZIndex!
 playerListFrame.ClipsDescendants = false -- DON'T clip!
+playerListFrame.Visible = true -- FORCE VISIBLE!
+print("🟢 Frame HIJAU will be created with:")
+print("   Size: 210x440 | Position: 5,5 | ZIndex: 210")
+task.wait(0.05)
 playerListFrame.Parent = playerListContainer
+task.wait(0.05)
+print("✅ Frame HIJAU created! Parent:", playerListFrame.Parent.Name)
+print("   AbsoluteSize:", playerListFrame.AbsoluteSize)
+print("   AbsolutePosition:", playerListFrame.AbsolutePosition)
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 3)
+listLayout.Padding = UDim.new(0, 5) -- Bigger padding untuk testing
 listLayout.FillDirection = Enum.FillDirection.Vertical
-listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
+listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 listLayout.Parent = playerListFrame
+print("📐 UIListLayout created in Frame!")
 
 -- ============================================
 -- CONTENT SECTIONS (FOR EACH TAB)
@@ -1938,11 +1947,11 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Center
 	selfButton.AutoButtonColor = false
-	selfButton.ZIndex = 202
+	selfButton.ZIndex = 215 -- HIGHER than frame!
 	selfButton.LayoutOrder = 0
 	selfButton.Visible = true -- FORCE VISIBLE!
 	selfButton.Parent = playerListFrame
-	print("✅ Self button created! AbsSize:", selfButton.AbsoluteSize)
+	print("✅ Self button created! AbsSize:", selfButton.AbsoluteSize, "ZIndex:", selfButton.ZIndex)
 	
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
@@ -1984,9 +1993,10 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextXAlignment = Enum.TextXAlignment.Center
 		playerButton.TextYAlignment = Enum.TextYAlignment.Center
 		playerButton.TextWrapped = true
+		playerButton.ZIndex = 215 -- HIGHER than frame!
 		playerButton.Parent = playerListFrame
 		
-		print("  ✅ Button created! AbsSize:", playerButton.AbsoluteSize)
+		print("  ✅ Button created! AbsSize:", playerButton.AbsoluteSize, "ZIndex:", playerButton.ZIndex)
 		
 		buttonIndex = buttonIndex + 1
 		
@@ -2192,7 +2202,7 @@ playerDropdown.MouseButton1Click:Connect(function()
 		playerListContainer.Position = UDim2.new(0, centerX, 0, centerY)
 		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
 		playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- RED
-		playerListFrame.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Light red
+		-- playerListFrame.BackgroundColor3 stays GREEN (jangan diubah!)
 		
 		print("📍 Container SET DULU: Position X=", centerX, "Y=", centerY)
 		print("📏 Container SET DULU: Size 220x" .. targetHeight)
@@ -2204,27 +2214,15 @@ playerDropdown.MouseButton1Click:Connect(function()
 		print("🔄 Memanggil UpdatePlayerList()...")
 		AdminGUI:UpdatePlayerList()
 		
-		-- EMERGENCY TEST: Create a button DIRECTLY in container (bypass ScrollingFrame)
-		print("\n🚨 EMERGENCY TEST: Bikin button LANGSUNG di container (bypass ScrollingFrame)!")
-		local testButton = Instance.new("TextButton")
-		testButton.Name = "EMERGENCY_TEST"
-		testButton.Size = UDim2.new(0, 200, 0, 60)
-		testButton.Position = UDim2.new(0, 10, 0, 10) -- Top-left corner
-		testButton.BackgroundColor3 = Color3.fromRGB(255, 0, 255) -- BRIGHT MAGENTA!
-		testButton.BackgroundTransparency = 0
-		testButton.BorderSizePixel = 5
-		testButton.BorderColor3 = Color3.fromRGB(255, 255, 0) -- YELLOW BORDER!
-		testButton.Text = "TEST BUTTON\n(SHOULD BE VISIBLE!)"
-		testButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- WHITE
-		testButton.TextSize = 16
-		testButton.Font = Enum.Font.GothamBold
-		testButton.TextWrapped = true
-		testButton.ZIndex = 205 -- HIGHER than everything!
-		testButton.Visible = true
-		testButton.Parent = playerListContainer -- DIRECTLY to container!
-		print("✅ Test button created in CONTAINER (not frame)!")
-		print("   Position:", testButton.AbsolutePosition, "Size:", testButton.AbsoluteSize)
-		print("✅ AbsoluteSize:", playerListContainer.AbsoluteSize)
+		-- Check frame after buttons created
+		task.wait(0.1)
+		print("\n✅ FINAL CHECK:")
+		print("   Frame Visible:", playerListFrame.Visible)
+		print("   Frame Parent:", playerListFrame.Parent.Name)
+		print("   Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
+		print("   Frame AbsolutePosition:", playerListFrame.AbsolutePosition)
+		print("   Frame ZIndex:", playerListFrame.ZIndex)
+		print("   Frame BackgroundTransparency:", playerListFrame.BackgroundTransparency)
 		print("✅ Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
 		
 		-- Wait and check if buttons actually exist
@@ -2238,10 +2236,6 @@ playerDropdown.MouseButton1Click:Connect(function()
 		end
 		print("📊 Total Buttons in Frame:", buttonCount)
 		
-		-- Check frame canvas size
-		print("🎨 Frame CanvasSize:", playerListFrame.CanvasSize)
-		print("🎨 Frame AbsoluteCanvasSize:", playerListFrame.AbsoluteCanvasSize)
-		
 		-- Check if UIListLayout is working
 		for _, child in ipairs(playerListFrame:GetChildren()) do
 			if child:IsA("UIListLayout") then
@@ -2249,9 +2243,9 @@ playerDropdown.MouseButton1Click:Connect(function()
 			end
 		end
 	else
-		-- Reset colors when closed
-		playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-		playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		-- Container hidden (don't reset colors during testing!)
+		-- playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		-- playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 		print("❌ Container DISEMBUNYIKAN")
 	end
 end)
