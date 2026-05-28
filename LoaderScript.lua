@@ -25,8 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.2 - YELLOW DROPDOWN BUTTON (UNMISSABLE!)")
-print("     LOOK FOR BRIGHT YELLOW BUTTON AT TOP!")
+print("📌 VERSION: v3.3 - RED BOX PLAYER LIST (CENTER SCREEN TEST!)")
+print("     🔴 KLIK BUTTON KUNING → LIST MUNCUL DI TENGAH LAYAR DENGAN KOTAK MERAH!")
+print("     🔴 KALAU GA KELIATAN = ADA MASALAH BESAR!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1913,13 +1914,18 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
+	print("\n🔄 === UpdatePlayerList() DIPANGGIL ===")
 	-- Clear existing buttons
+	local deletedCount = 0
 	for _, child in ipairs(playerListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
+			deletedCount = deletedCount + 1
 		end
 	end
+	print("🗑️ Menghapus", deletedCount, "button lama")
 	
+	print("➕ Membuat button SELF...")
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
 	selfButton.Size = UDim2.new(0, 200, 0, 40) -- FULL WIDTH of frame
@@ -1950,8 +1956,12 @@ function AdminGUI:UpdatePlayerList()
 		selfButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Back to bright blue
 	end)
 	
+	local allPlayers = Players:GetPlayers()
+	print("👥 Total Players di Game:", #allPlayers)
+	
 	local buttonIndex = 1
-	for _, plr in ipairs(Players:GetPlayers()) do
+	for _, plr in ipairs(allPlayers) do
+		print("➕ Membuat button untuk:", plr.DisplayName, "(@" .. plr.Name .. ")")
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
 		playerButton.Size = UDim2.new(0, 200, 0, 50) -- FULL WIDTH
@@ -1995,6 +2005,9 @@ function AdminGUI:UpdatePlayerList()
 			playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Back to steel blue
 		end)
 	end
+	
+	print("\n✅ === UpdatePlayerList() SELESAI ===")
+	print("📊 Total Button Dibuat:", buttonIndex, "(Self + Players)")
 end
 
 function AdminGUI:ExecuteCommand(command, requiresInput)
@@ -2158,21 +2171,50 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
+	print("\n🔥 DROPDOWN DIKLIK!")
 	playerListContainer.Visible = not playerListContainer.Visible
+	print("📌 Container Visible:", playerListContainer.Visible)
 	
 	if playerListContainer.Visible then
+		-- ULTRA VISIBLE TEST - WARNA MERAH TERANG!
+		playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- BRIGHT RED untuk testing!
+		playerListFrame.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Light red
+		
+		print("🔄 Memanggil UpdatePlayerList()...")
 		AdminGUI:UpdatePlayerList()
 		
 		local playerCount = #Players:GetPlayers() + 1
+		print("👥 Jumlah Player Total (termasuk Self):", playerCount)
 		local targetHeight = math.min(playerCount * 53 + 20, 450) -- Taller buttons need more space
 		
-		local dropdownAbsPos = playerDropdown.AbsolutePosition
-		local dropdownAbsSize = playerDropdown.AbsoluteSize
-		local posX = dropdownAbsPos.X
-		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5
+		-- TEMPORARY: Position at CENTER SCREEN for testing visibility!
+		local screenSize = workspace.CurrentCamera.ViewportSize
+		local centerX = screenSize.X / 2 - 110 -- Center horizontally (110 = half of 220 width)
+		local centerY = screenSize.Y / 2 - (targetHeight / 2) -- Center vertically
 		
-		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
+		playerListContainer.Position = UDim2.new(0, centerX, 0, centerY)
 		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
+		
+		print("📍 Container Position: CENTER SCREEN at X=", centerX, "Y=", centerY)
+		print("📏 Container Size: 220x" .. targetHeight)
+		print("✅ AbsoluteSize:", playerListContainer.AbsoluteSize)
+		print("✅ Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
+		
+		-- Wait and check if buttons actually exist
+		task.wait(0.1)
+		local buttonCount = 0
+		for _, child in ipairs(playerListFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				buttonCount = buttonCount + 1
+				print("  🔘 Button:", child.Name, "Size:", child.AbsoluteSize, "Pos:", child.AbsolutePosition)
+			end
+		end
+		print("📊 Total Buttons in Frame:", buttonCount)
+	else
+		-- Reset colors when closed
+		playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+		playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+		print("❌ Container DISEMBUNYIKAN")
 	end
 end)
 
