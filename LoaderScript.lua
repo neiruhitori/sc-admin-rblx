@@ -25,9 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v4.0 - SUPER SIMPLE! Buttons langsung di ScrollingFrame!")
-print("     ✅ NO WRAPPER FRAME! ScrollingFrame + UIListLayout + Buttons!")
-print("     ✅ FIXED: TogglePanel ga hide frame lagi!")
+print("📌 VERSION: v4.1 - Adjusted player list position & height!")
+print("     ✅ Position: 15px gap below dropdown (was 5px)")
+print("     ✅ Max height: 300px (was 450px)")
 
 -- ============================================
 -- CONFIG MODULE
@@ -2158,13 +2158,13 @@ playerDropdown.MouseButton1Click:Connect(function()
 		AdminGUI:UpdatePlayerList()
 		
 		local playerCount = #Players:GetPlayers() + 1
-		local targetHeight = math.min(playerCount * 53 + 20, 450)
+		local targetHeight = math.min(playerCount * 53 + 20, 300) -- Reduced max height
 		
 		-- Position below dropdown button
 		local dropdownAbsPos = playerDropdown.AbsolutePosition
 		local dropdownAbsSize = playerDropdown.AbsoluteSize
 		local posX = dropdownAbsPos.X
-		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5
+		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 15 -- Moved down more
 		
 		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
 		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
