@@ -1443,34 +1443,43 @@ characterPage.Visible = true
 AdminGUI.ActiveTab = "Character"
 
 -- Player Selector (moved to top of content area, above pages)
+-- New layout: [Reset] [Player Dropdown▼] [Go To] [Refresh]
 local playerSelectorFrame = Instance.new("Frame")
 playerSelectorFrame.Name = "PlayerSelector"
 playerSelectorFrame.Size = UDim2.new(1, -195, 0, 45)
 playerSelectorFrame.Position = UDim2.new(0, 185, 0, 90)
 playerSelectorFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerSelectorFrame.BorderSizePixel = 0
-playerSelectorFrame.ZIndex = 2
+playerSelectorFrame.ZIndex = 1
 playerSelectorFrame.Parent = mainFrame
 
 local selectorCorner = Instance.new("UICorner")
 selectorCorner.CornerRadius = UDim.new(0, 8)
 selectorCorner.Parent = playerSelectorFrame
 
-local selectorLabel = Instance.new("TextLabel")
-selectorLabel.Size = UDim2.new(0, 80, 1, 0)
-selectorLabel.Position = UDim2.new(0, 10, 0, 0)
-selectorLabel.BackgroundTransparency = 1
-selectorLabel.Text = "Target:"
-selectorLabel.TextColor3 = AdminConfig.Theme.Text
-selectorLabel.TextSize = 13
-selectorLabel.Font = Enum.Font.Gotham
-selectorLabel.TextXAlignment = Enum.TextXAlignment.Left
-selectorLabel.Parent = playerSelectorFrame
+-- Reset button (leftmost)
+local resetButton = Instance.new("TextButton")
+resetButton.Name = "ResetButton"
+resetButton.Size = UDim2.new(0, 60, 0, 35)
+resetButton.Position = UDim2.new(0, 5, 0, 5)
+resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+resetButton.BorderSizePixel = 0
+resetButton.Text = "♻️"
+resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+resetButton.TextSize = 16
+resetButton.Font = Enum.Font.GothamBold
+resetButton.ZIndex = 2
+resetButton.Parent = playerSelectorFrame
 
+local resetCorner = Instance.new("UICorner")
+resetCorner.CornerRadius = UDim.new(0, 6)
+resetCorner.Parent = resetButton
+
+-- Player dropdown (middle-left)
 local playerDropdown = Instance.new("TextButton")
 playerDropdown.Name = "PlayerDropdown"
-playerDropdown.Size = UDim2.new(1, -260, 0, 35)
-playerDropdown.Position = UDim2.new(0, 85, 0, 5)
+playerDropdown.Size = UDim2.new(1, -250, 0, 35)
+playerDropdown.Position = UDim2.new(0, 70, 0, 5)
 playerDropdown.BackgroundColor3 = AdminConfig.Theme.Primary
 playerDropdown.BorderSizePixel = 0
 playerDropdown.Text = "Me (Self)"
@@ -1478,6 +1487,7 @@ playerDropdown.TextColor3 = AdminConfig.Theme.Text
 playerDropdown.TextSize = 13
 playerDropdown.Font = Enum.Font.GothamBold
 playerDropdown.TextXAlignment = Enum.TextXAlignment.Left
+playerDropdown.ZIndex = 2
 playerDropdown.Parent = playerSelectorFrame
 
 local dropdownCorner = Instance.new("UICorner")
@@ -1496,63 +1506,110 @@ dropdownArrow.Text = "▼"
 dropdownArrow.TextColor3 = AdminConfig.Theme.Text
 dropdownArrow.TextSize = 12
 dropdownArrow.Font = Enum.Font.GothamBold
+dropdownArrow.ZIndex = 2
 dropdownArrow.Parent = playerDropdown
 
+-- Go To button (right of dropdown)
+local gotoButton = Instance.new("TextButton")
+gotoButton.Name = "GotoButton"
+gotoButton.Size = UDim2.new(0, 80, 0, 35)
+gotoButton.Position = UDim2.new(1, -165, 0, 5)
+gotoButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+gotoButton.BorderSizePixel = 0
+gotoButton.Text = "📍 Go"
+gotoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+gotoButton.TextSize = 13
+gotoButton.Font = Enum.Font.GothamBold
+gotoButton.ZIndex = 2
+gotoButton.Parent = playerSelectorFrame
+
+local gotoCorner = Instance.new("UICorner")
+gotoCorner.CornerRadius = UDim.new(0, 6)
+gotoCorner.Parent = gotoButton
+
+-- Refresh button (rightmost)
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
-refreshButton.Size = UDim2.new(0, 70, 0, 35)
-refreshButton.Position = UDim2.new(1, -155, 0, 5)
+refreshButton.Size = UDim2.new(0, 75, 0, 35)
+refreshButton.Position = UDim2.new(1, -75, 0, 5)
 refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
 refreshButton.BorderSizePixel = 0
 refreshButton.Text = "🔄"
 refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-refreshButton.TextSize = 14
+refreshButton.TextSize = 16
 refreshButton.Font = Enum.Font.GothamBold
+refreshButton.ZIndex = 2
 refreshButton.Parent = playerSelectorFrame
 
 local refreshCorner = Instance.new("UICorner")
 refreshCorner.CornerRadius = UDim.new(0, 6)
 refreshCorner.Parent = refreshButton
 
--- Reset button (next to refresh)
-local resetButton = Instance.new("TextButton")
-resetButton.Name = "ResetButton"
-resetButton.Size = UDim2.new(0, 70, 0, 35)
-resetButton.Position = UDim2.new(1, -75, 0, 5)
-resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
-resetButton.BorderSizePixel = 0
-resetButton.Text = "♻️"
-resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-resetButton.TextSize = 14
-resetButton.Font = Enum.Font.GothamBold
-resetButton.Parent = playerSelectorFrame
-
-local resetCorner = Instance.new("UICorner")
-resetCorner.CornerRadius = UDim.new(0, 6)
-resetCorner.Parent = resetButton
-
 -- Adjust content frame position to be below player selector
 contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
+contentFrame.ZIndex = 1
 
--- Player List Dropdown
+-- Player List Dropdown with Search (like select2)
+local playerListContainer = Instance.new("Frame")
+playerListContainer.Name = "PlayerListContainer"
+playerListContainer.Size = UDim2.new(0, 0, 0, 0)
+playerListContainer.Position = UDim2.new(0, 70, 0, 45)
+playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
+playerListContainer.BorderSizePixel = 0
+playerListContainer.Visible = false
+playerListContainer.ClipsDescendants = true
+playerListContainer.ZIndex = 100
+playerListContainer.Parent = playerSelectorFrame
+
+local listContainerCorner = Instance.new("UICorner")
+listContainerCorner.CornerRadius = UDim.new(0, 6)
+listContainerCorner.Parent = playerListContainer
+
+local listContainerPadding = Instance.new("UIPadding")
+listContainerPadding.PaddingTop = UDim.new(0, 5)
+listContainerPadding.PaddingBottom = UDim.new(0, 5)
+listContainerPadding.PaddingLeft = UDim.new(0, 5)
+listContainerPadding.PaddingRight = UDim.new(0, 5)
+listContainerPadding.Parent = playerListContainer
+
+-- Search box
+local searchBox = Instance.new("TextBox")
+searchBox.Name = "SearchBox"
+searchBox.Size = UDim2.new(1, -10, 0, 30)
+searchBox.Position = UDim2.new(0, 5, 0, 5)
+searchBox.BackgroundColor3 = AdminConfig.Theme.Primary
+searchBox.BorderSizePixel = 0
+searchBox.Text = ""
+searchBox.PlaceholderText = "🔍 Search player..."
+searchBox.TextColor3 = AdminConfig.Theme.Text
+searchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+searchBox.TextSize = 12
+searchBox.Font = Enum.Font.Gotham
+searchBox.ClearTextOnFocus = false
+searchBox.ZIndex = 101
+searchBox.Parent = playerListContainer
+
+local searchCorner = Instance.new("UICorner")
+searchCorner.CornerRadius = UDim.new(0, 6)
+searchCorner.Parent = searchBox
+
+local searchPadding = Instance.new("UIPadding")
+searchPadding.PaddingLeft = UDim.new(0, 8)
+searchPadding.Parent = searchBox
+
+-- Player list scrolling frame
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(0, 0, 0, 0)
-playerListFrame.Position = UDim2.new(0, 85, 0, 50)
-playerListFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
+playerListFrame.Size = UDim2.new(1, -10, 1, -45)
+playerListFrame.Position = UDim2.new(0, 5, 0, 40)
+playerListFrame.BackgroundTransparency = 1
 playerListFrame.BorderSizePixel = 0
-playerListFrame.Visible = false
 playerListFrame.ScrollBarThickness = 4
 playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-playerListFrame.ClipsDescendants = true
-playerListFrame.ZIndex = 10
-playerListFrame.Parent = playerSelectorFrame
-
-local listCorner = Instance.new("UICorner")
-listCorner.CornerRadius = UDim.new(0, 6)
-listCorner.Parent = playerListFrame
+playerListFrame.ZIndex = 101
+playerListFrame.Parent = playerListContainer
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.Name
@@ -1685,8 +1742,23 @@ createCommandButton(flyingSection, "Fly Mode", "🚀", "fly", 1, true)
 createCommandButton(flyingSection, "Fly Speed", "⚡", "flyspeed", 2, false)
 
 -- TELEPORT TAB
-local teleportSection = createSection(teleportPage, "🌐 Player Teleport", 1)
-createCommandButton(teleportSection, "Go To Player", "📍", "goto", 1, false)
+local teleportInfo = Instance.new("TextLabel")
+teleportInfo.Name = "TeleportInfo"
+teleportInfo.Size = UDim2.new(1, 0, 0, 60)
+teleportInfo.BackgroundColor3 = AdminConfig.Theme.Secondary
+teleportInfo.BorderSizePixel = 0
+teleportInfo.Text = "📍 Use the player selector at the top\nSelect a player and click 'Go' button"
+teleportInfo.TextColor3 = AdminConfig.Theme.Text
+teleportInfo.TextSize = 13
+teleportInfo.Font = Enum.Font.Gotham
+teleportInfo.TextWrapped = true
+teleportInfo.TextYAlignment = Enum.TextYAlignment.Center
+teleportInfo.LayoutOrder = 1
+teleportInfo.Parent = teleportPage
+
+local teleportInfoCorner = Instance.new("UICorner")
+teleportInfoCorner.CornerRadius = UDim.new(0, 8)
+teleportInfoCorner.Parent = teleportInfo
 
 -- UTILITY TAB
 local systemSection = createSection(utilityPage, "🔧 System", 1)
@@ -1891,7 +1963,7 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.TextSize = 13
 	selfButton.Font = Enum.Font.Gotham
 	selfButton.TextXAlignment = Enum.TextXAlignment.Left
-	selfButton.ZIndex = 6
+	selfButton.ZIndex = 102
 	selfButton.Parent = playerListFrame
 	
 	local selfCorner = Instance.new("UICorner")
@@ -1905,7 +1977,15 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
 		playerDropdown.Text = "Me (Self)"
-		playerListFrame.Visible = false
+		playerListContainer.Visible = false
+		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
+	end)
+	
+	selfButton.MouseEnter:Connect(function()
+		selfButton.BackgroundColor3 = AdminConfig.Theme.Accent
+	end)
+	selfButton.MouseLeave:Connect(function()
+		selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
 	end)
 	
 	for _, plr in ipairs(Players:GetPlayers()) do
@@ -1919,7 +1999,7 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextSize = 13
 		playerButton.Font = Enum.Font.Gotham
 		playerButton.TextXAlignment = Enum.TextXAlignment.Left
-		playerButton.ZIndex = 6
+		playerButton.ZIndex = 102
 		playerButton.Parent = playerListFrame
 		
 		local pCorner = Instance.new("UICorner")
@@ -1933,7 +2013,8 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
 			playerDropdown.Text = plr.Name
-			playerListFrame.Visible = false
+			playerListContainer.Visible = false
+			playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		end)
 		
 		playerButton.MouseEnter:Connect(function()
@@ -2106,20 +2187,24 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
-	playerListFrame.Visible = not playerListFrame.Visible
+	playerListContainer.Visible = not playerListContainer.Visible
 	
-	if playerListFrame.Visible then
+	if playerListContainer.Visible then
+		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
-		local targetHeight = math.min(#Players:GetPlayers() * 32 + 32, 200)
-		playerListFrame.Size = UDim2.new(0, 0, 0, 0)
+		local targetHeight = math.min(#Players:GetPlayers() * 32 + 80, 250) -- +80 for search box
+		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		local tween = TweenService:Create(
-			playerListFrame,
+			playerListContainer,
 			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Size = UDim2.new(0, playerDropdown.AbsoluteSize.X, 0, targetHeight)}
+			{Size = UDim2.new(1, -80, 0, targetHeight)}
 		)
 		tween:Play()
+		-- Focus on search box
+		task.wait(0.2)
+		searchBox:CaptureFocus()
 	else
-		playerListFrame.Size = UDim2.new(0, 0, 0, 0)
+		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end
 end)
 
@@ -2134,41 +2219,88 @@ resetButton.MouseButton1Click:Connect(function()
 	AdminGUI:ExecuteCommand("reset", false)
 end)
 
+-- Goto button
+gotoButton.MouseButton1Click:Connect(function()
+	AdminGUI:ExecuteCommand("goto", false)
+end)
+
+-- Add hover effects for action buttons
+gotoButton.MouseEnter:Connect(function()
+	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 230, 120)
+end)
+gotoButton.MouseLeave:Connect(function()
+	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+end)
+
+refreshButton.MouseEnter:Connect(function()
+	refreshButton.BackgroundColor3 = Color3.fromRGB(0, 190, 255)
+end)
+refreshButton.MouseLeave:Connect(function()
+	refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
+end)
+
+resetButton.MouseEnter:Connect(function()
+	resetButton.BackgroundColor3 = Color3.fromRGB(255, 160, 20)
+end)
+resetButton.MouseLeave:Connect(function()
+	resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
+end)
+
+-- Search functionality
+searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	local searchText = searchBox.Text:lower()
+	
+	-- Filter player buttons
+	for _, button in ipairs(playerListFrame:GetChildren()) do
+		if button:IsA("TextButton") then
+			local playerName = button.Name:lower()
+			if searchText == "" or playerName:find(searchText, 1, true) then
+				button.Visible = true
+			else
+				button.Visible = false
+			end
+		end
+	end
+end)
+
 local function connectCommandButton(buttonName, command, requiresInput)
-	for _, category in ipairs(commandsContainer:GetChildren()) do
-		if category:IsA("Frame") then
-			local buttonsFrame = category:FindFirstChild("Buttons")
-			if buttonsFrame then
-				local button = buttonsFrame:FindFirstChild(buttonName)
-				if button and button:IsA("TextButton") then
-					button.MouseButton1Click:Connect(function()
-						AdminGUI:ExecuteCommand(command, requiresInput)
-					end)
-					
-					-- Hover effect (but maintain toggle color if active)
-					button.MouseEnter:Connect(function()
-						local isToggleActive = CommandExecutor.PlayerStatuses[command]
-						if not isToggleActive then
+	-- Search in all pages for the button
+	for _, page in pairs(AdminGUI.TabPages) do
+		for _, section in ipairs(page:GetChildren()) do
+			if section:IsA("Frame") then
+				local buttonsContainer = section:FindFirstChild("ButtonsContainer")
+				if buttonsContainer then
+					local button = buttonsContainer:FindFirstChild(buttonName)
+					if button and button:IsA("TextButton") then
+						button.MouseButton1Click:Connect(function()
+							AdminGUI:ExecuteCommand(command, requiresInput)
+						end)
+						
+						-- Hover effect (but maintain toggle color if active)
+						button.MouseEnter:Connect(function()
+							local isToggleActive = CommandExecutor.PlayerStatuses[command]
+							if not isToggleActive then
+								TweenService:Create(
+									button,
+									TweenInfo.new(0.2),
+									{BackgroundColor3 = AdminConfig.Theme.Accent}
+								):Play()
+							end
+						end)
+						button.MouseLeave:Connect(function()
+							local isToggleActive = CommandExecutor.PlayerStatuses[command]
+							local targetColor = AdminConfig.Theme.Primary
+							if isToggleActive then
+								targetColor = Color3.fromRGB(25, 60, 25) -- Dark green for active
+							end
 							TweenService:Create(
 								button,
 								TweenInfo.new(0.2),
-								{BackgroundColor3 = AdminConfig.Theme.Accent}
+								{BackgroundColor3 = targetColor}
 							):Play()
-						end
-					end)
-					button.MouseLeave:Connect(function()
-						local isToggleActive = CommandExecutor.PlayerStatuses[command]
-						local targetColor = AdminConfig.Theme.Primary
-						if isToggleActive then
-							targetColor = Color3.fromRGB(25, 60, 25) -- Dark green for active
-						end
-						TweenService:Create(
-							button,
-							TweenInfo.new(0.2),
-							{BackgroundColor3 = targetColor}
-						):Play()
-					end)
-					break
+						end)
+						return -- Found and connected
+					end
 				end
 			end
 		end
@@ -2184,7 +2316,53 @@ for tabName, button in pairs(AdminGUI.TabButtons) do
 	button.MouseButton1Click:Connect(function()
 		switchTab(tabName)
 	end)
+	
+	-- Add hover effect for tabs
+	button.MouseEnter:Connect(function()
+		if AdminGUI.ActiveTab ~= tabName then
+			TweenService:Create(
+				button,
+				TweenInfo.new(0.2),
+				{BackgroundColor3 = Color3.fromRGB(70, 70, 70)}
+			):Play()
+		end
+	end)
+	
+	button.MouseLeave:Connect(function()
+		if AdminGUI.ActiveTab ~= tabName then
+			TweenService:Create(
+				button,
+				TweenInfo.new(0.2),
+				{BackgroundColor3 = Color3.fromRGB(50, 50, 50)}
+			):Play()
+		end
+	end)
 end
+
+-- Close player list dropdown when clicking outside
+UserInputService.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		if playerListContainer.Visible then
+			-- Check if click is outside the dropdown and player selector
+			local mousePos = UserInputService:GetMouseLocation()
+			local dropdownPos = playerListContainer.AbsolutePosition
+			local dropdownSize = playerListContainer.AbsoluteSize
+			local selectorPos = playerSelectorFrame.AbsolutePosition
+			local selectorSize = playerSelectorFrame.AbsoluteSize
+			
+			local clickInDropdown = mousePos.X >= dropdownPos.X and mousePos.X <= dropdownPos.X + dropdownSize.X and
+									mousePos.Y >= dropdownPos.Y and mousePos.Y <= dropdownPos.Y + dropdownSize.Y
+			
+			local clickInSelector = mousePos.X >= selectorPos.X and mousePos.X <= selectorPos.X + selectorSize.X and
+									mousePos.Y >= selectorPos.Y and mousePos.Y <= selectorPos.Y + selectorSize.Y
+			
+			if not clickInDropdown and not clickInSelector then
+				playerListContainer.Visible = false
+				playerListContainer.Size = UDim2.new(0, 0, 0, 0)
+			end
+		end
+	end
+end)
 
 -- ============================================
 -- CONNECT COMMAND BUTTONS TO ACTIONS
@@ -2196,7 +2374,6 @@ connectCommandButton("infinitejump", "infinitejump", false)
 connectCommandButton("god", "god", false)
 connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
-connectCommandButton("goto", "goto", false)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
 
