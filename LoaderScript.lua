@@ -1581,7 +1581,7 @@ searchBox.Position = UDim2.new(0, 5, 0, 5)
 searchBox.BackgroundColor3 = AdminConfig.Theme.Primary
 searchBox.BorderSizePixel = 0
 searchBox.Text = ""
-searchBox.PlaceholderText = "🔍 Search player..."
+searchBox.PlaceholderText = "🔍 Search by name or username..."
 searchBox.TextColor3 = AdminConfig.Theme.Text
 searchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 searchBox.TextSize = 12
@@ -1990,17 +1990,17 @@ function AdminGUI:UpdatePlayerList()
 	
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local playerButton = Instance.new("TextButton")
-		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(1, -10, 0, 30)
+		playerButton.Name = plr.Name -- Store username as Name
+		playerButton.Size = UDim2.new(1, -10, 0, 45) -- Increased height for 2 lines
 		playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		playerButton.BorderSizePixel = 0
-		playerButton.Text = plr.Name
-		playerButton.TextColor3 = AdminConfig.Theme.Text
-		playerButton.TextSize = 13
-		playerButton.Font = Enum.Font.Gotham
-		playerButton.TextXAlignment = Enum.TextXAlignment.Left
+		playerButton.Text = "" -- Empty text, using labels instead
 		playerButton.ZIndex = 102
 		playerButton.Parent = playerListFrame
+		
+		-- Store DisplayName as attribute for search
+		playerButton:SetAttribute("DisplayName", plr.DisplayName)
+		playerButton:SetAttribute("Username", plr.Name)
 		
 		local pCorner = Instance.new("UICorner")
 		pCorner.CornerRadius = UDim.new(0, 4)
@@ -2008,11 +2008,49 @@ function AdminGUI:UpdatePlayerList()
 		
 		local pPadding = Instance.new("UIPadding")
 		pPadding.PaddingLeft = UDim.new(0, 10)
+		pPadding.PaddingRight = UDim.new(0, 10)
+		pPadding.PaddingTop = UDim.new(0, 4)
+		pPadding.PaddingBottom = UDim.new(0, 4)
 		pPadding.Parent = playerButton
+		
+		-- DisplayName label (top line)
+		local displayLabel = Instance.new("TextLabel")
+		displayLabel.Name = "DisplayName"
+		displayLabel.Size = UDim2.new(1, 0, 0, 16)
+		displayLabel.Position = UDim2.new(0, 0, 0, 2)
+		displayLabel.BackgroundTransparency = 1
+		displayLabel.Text = plr.DisplayName
+		displayLabel.TextColor3 = AdminConfig.Theme.Text
+		displayLabel.TextSize = 14
+		displayLabel.Font = Enum.Font.GothamBold
+		displayLabel.TextXAlignment = Enum.TextXAlignment.Left
+		displayLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		displayLabel.ZIndex = 103
+		displayLabel.Parent = playerButton
+		
+		-- Username label (bottom line)
+		local usernameLabel = Instance.new("TextLabel")
+		usernameLabel.Name = "Username"
+		usernameLabel.Size = UDim2.new(1, 0, 0, 14)
+		usernameLabel.Position = UDim2.new(0, 0, 0, 20)
+		usernameLabel.BackgroundTransparency = 1
+		usernameLabel.Text = "@" .. plr.Name
+		usernameLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7) -- Slightly dimmed
+		usernameLabel.TextSize = 11
+		usernameLabel.Font = Enum.Font.Gotham
+		usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		usernameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+		usernameLabel.ZIndex = 103
+		usernameLabel.Parent = playerButton
 		
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
-			playerDropdown.Text = plr.Name
+			-- Show display name in dropdown if different
+			if plr.DisplayName ~= plr.Name then
+				playerDropdown.Text = plr.DisplayName .. " (@" .. plr.Name .. ")"
+			else
+				playerDropdown.Text = plr.Name
+			end
 			playerListContainer.Visible = false
 			playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		end)
@@ -2192,7 +2230,15 @@ playerDropdown.MouseButton1Click:Connect(function()
 	if playerListContainer.Visible then
 		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
-		local targetHeight = math.min(#Players:GetPlayers() * 32 + 80, 250) -- +80 for search box
+		
+		-- Show all players initially
+		for _, button in ipairs(playerListFrame:GetChildren()) do
+			if button:IsA("TextButton") then
+				button.Visible = true
+			end
+		end
+		
+		local targetHeight = math.min(#Players:GetPlayers() * 47 + 80, 300) -- +80 for search box, 47 per player (45 + 2 spacing)
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		local tween = TweenService:Create(
 			playerListContainer,
@@ -2200,9 +2246,13 @@ playerDropdown.MouseButton1Click:Connect(function()
 			{Size = UDim2.new(1, -80, 0, targetHeight)}
 		)
 		tween:Play()
-		-- Focus on search box
-		task.wait(0.2)
-		searchBox:CaptureFocus()
+		-- Focus on search box after animation
+		spawn(function()
+			wait(0.25)
+			if playerListContainer.Visible then
+				searchBox:CaptureFocus()
+			end
+		end)
 	else
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end
@@ -2246,20 +2296,60 @@ resetButton.MouseLeave:Connect(function()
 	resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
 end)
 
--- Search functionality
+-- Search functionality (search by DisplayName OR Username)
 searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	local searchText = searchBox.Text:lower()
 	
 	-- Filter player buttons
 	for _, button in ipairs(playerListFrame:GetChildren()) do
-		if button:IsA("TextButton") then
-			local playerName = button.Name:lower()
-			if searchText == "" or playerName:find(searchText, 1, true) then
-				button.Visible = true
+		if button:IsA("TextButton") and button.Name ~= "Self" then
+			local displayName = button:GetAttribute("DisplayName")
+			local username = button:GetAttribute("Username")
+			
+			if displayName and username then
+				local displayLower = displayName:lower()
+				local usernameLower = username:lower()
+				
+				-- Match if search text is empty OR found in DisplayName OR Username
+				if searchText == "" or 
+				   displayLower:find(searchText, 1, true) or 
+				   usernameLower:find(searchText, 1, true) then
+					button.Visible = true
+				else
+					button.Visible = false
+				end
 			else
-				button.Visible = false
+				-- Fallback for Self button or buttons without attributes
+				local buttonName = button.Name:lower()
+				if searchText == "" or buttonName:find(searchText, 1, true) then
+					button.Visible = true
+				else
+					button.Visible = false
+				end
 			end
 		end
+	end
+end)
+
+-- Search box keyboard shortcuts
+searchBox.FocusLost:Connect(function(enterPressed)
+	if enterPressed and playerListContainer.Visible then
+		-- Enter pressed - select first visible player
+		for _, button in ipairs(playerListFrame:GetChildren()) do
+			if button:IsA("TextButton") and button.Visible and button.Name ~= "Self" then
+				button.MouseButton1Click:Fire()
+				break
+			end
+		end
+	end
+end)
+
+-- ESC key to close dropdown
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.KeyCode == Enum.KeyCode.Escape and playerListContainer.Visible then
+		playerListContainer.Visible = false
+		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
+		searchBox:ReleaseFocus()
 	end
 end)
 
