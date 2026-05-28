@@ -25,7 +25,8 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.5 - ABSOLUTE POSITION FIX")
+print("📌 VERSION: 2024-05-28 v2.6 - CENTER SCREEN TEST (RED BOX)")
+print("     If dropdown still not visible, the problem is NOT in code!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1551,37 +1552,28 @@ contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
 contentFrame.ZIndex = 1
 
--- Player List Dropdown (parented to screenGui to avoid clipping)
+-- Player List Dropdown (CENTER SCREEN, BRIGHT COLORS FOR VISIBILITY TEST)
 local playerListContainer = Instance.new("Frame")
 playerListContainer.Name = "PlayerListContainer"
-playerListContainer.Size = UDim2.new(0, 0, 0, 0)
-playerListContainer.Position = UDim2.new(0, 0, 0, 0) -- Will be set dynamically
-playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
-playerListContainer.BorderSizePixel = 1
-playerListContainer.BorderColor3 = Color3.fromRGB(80, 80, 80)
+playerListContainer.Size = UDim2.new(0, 250, 0, 400) -- Fixed size, always
+playerListContainer.Position = UDim2.new(0.5, -125, 0.5, -200) -- CENTER SCREEN
+playerListContainer.AnchorPoint = Vector2.new(0.5, 0.5)
+playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- BRIGHT RED FOR TESTING
+playerListContainer.BackgroundTransparency = 0 -- FULLY OPAQUE
+playerListContainer.BorderSizePixel = 3
+playerListContainer.BorderColor3 = Color3.fromRGB(0, 255, 0) -- GREEN BORDER
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = false
-playerListContainer.ZIndex = 100
-playerListContainer.Parent = screenGui  -- Parent to screenGui, not playerSelectorFrame!
-
-local listContainerCorner = Instance.new("UICorner")
-listContainerCorner.CornerRadius = UDim.new(0, 6)
-listContainerCorner.Parent = playerListContainer
-
-local listContainerPadding = Instance.new("UIPadding")
-listContainerPadding.PaddingTop = UDim.new(0, 5)
-listContainerPadding.PaddingBottom = UDim.new(0, 5)
-listContainerPadding.PaddingLeft = UDim.new(0, 5)
-listContainerPadding.PaddingRight = UDim.new(0, 5)
-listContainerPadding.Parent = playerListContainer
+playerListContainer.ZIndex = 200 -- SUPER HIGH ZINDEX
+playerListContainer.Parent = screenGui
 
 -- Player list scrolling frame (no search box)
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(0, 190, 1, -10) -- Full height minus padding
-playerListFrame.Position = UDim2.new(0, 5, 0, 5)
-playerListFrame.BackgroundTransparency = 0.95
+playerListFrame.Size = UDim2.new(1, -20, 1, -20) -- Fill parent with margin
+playerListFrame.Position = UDim2.new(0, 10, 0, 10)
 playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+playerListFrame.BackgroundTransparency = 0
 playerListFrame.BorderSizePixel = 0
 playerListFrame.ScrollBarThickness = 6
 playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
@@ -1589,7 +1581,7 @@ playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 playerListFrame.ScrollingEnabled = true
 playerListFrame.ScrollingDirection = Enum.ScrollingDirection.Y
-playerListFrame.ZIndex = 101
+playerListFrame.ZIndex = 201 -- Higher than container
 playerListFrame.Parent = playerListContainer
 
 local listLayout = Instance.new("UIListLayout")
@@ -1949,7 +1941,7 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Left
 	selfButton.AutoButtonColor = false
-	selfButton.ZIndex = 102
+	selfButton.ZIndex = 202 -- Higher than frame
 	selfButton.LayoutOrder = 0  -- Force Self to be first
 	selfButton.Parent = playerListFrame
 	
@@ -1986,7 +1978,7 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.BorderSizePixel = 1
 		playerButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
 		playerButton.AutoButtonColor = false
-		playerButton.ZIndex = 102
+		playerButton.ZIndex = 202 -- Higher than frame
 		playerButton.LayoutOrder = buttonIndex  -- Ensure consistent ordering
 		
 		-- Multi-line text: DisplayName on top, Username on bottom
@@ -2200,48 +2192,16 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
-	print("\n[DROPDOWN] Button clicked!")
+	print("\n[SIMPLE TEST] Dropdown clicked!")
 	playerListContainer.Visible = not playerListContainer.Visible
-	print("[DROPDOWN] Container Visible: " .. tostring(playerListContainer.Visible))
+	print("[SIMPLE TEST] Container should be CENTER SCREEN with RED background")
+	print("[SIMPLE TEST] Container Visible: " .. tostring(playerListContainer.Visible))
 	
 	if playerListContainer.Visible then
-		print("[DROPDOWN] Updating player list...")
 		AdminGUI:UpdatePlayerList()
-		
-		local playerCount = #Players:GetPlayers() + 1 -- +1 for Self
-		local targetHeight = math.min(playerCount * 51 + 20, 400)
-		local targetWidth = 200
-		
-		-- Calculate absolute position below playerDropdown
-		local dropdownAbsPos = playerDropdown.AbsolutePosition
-		local dropdownAbsSize = playerDropdown.AbsoluteSize
-		local posX = dropdownAbsPos.X
-		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5 -- 5px gap
-		
-		print("[DROPDOWN] Dropdown position: " .. tostring(dropdownAbsPos))
-		print("[DROPDOWN] Setting container at: " .. posX .. ", " .. posY)
-		print("[DROPDOWN] Setting container size: " .. targetWidth .. "x" .. targetHeight)
-		
-		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
-		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
-		
-		task.wait()
-		print("[DROPDOWN] Container AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
-		print("[DROPDOWN] Frame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
-		
-		-- Count buttons
-		local buttonCount = 0
-		for _, child in ipairs(playerListFrame:GetChildren()) do
-			if child:IsA("TextButton") then
-				buttonCount = buttonCount + 1
-				if buttonCount <= 2 then
-					print("[DROPDOWN] Button '" .. child.Name .. "' - Size: " .. tostring(child.Size) .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize))
-				end
-			end
-		end
-		print("[DROPDOWN] Total buttons: " .. buttonCount)
+		print("[SIMPLE TEST] If you dont see RED BOX in center, something is VERY wrong!")
 	else
-		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
+		print("[SIMPLE TEST] Closing dropdown")
 	end
 end)
 
