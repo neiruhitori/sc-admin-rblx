@@ -1139,7 +1139,7 @@ function Optimizer:OptimizeAll()
 	print("   • Water clearing: CONTINUOUS (always clearing on this frame)")
 	print("   • Total changes: " .. (totalOptimized + disabledEffects))
 	
-	return true, "🥔 POTATO MODE ACTIVATED! ✅ " .. totalOptimized .. " parts optimized, " .. disabledEffects .. " effects disabled"
+	return true, "🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects .. " Water:CONTINUOUS"
 end
 
 -- ============================================
@@ -1210,6 +1210,7 @@ mainFrame.Position = UDim2.new(0.5, -375, 0.5, -250)
 mainFrame.BackgroundColor3 = AdminConfig.Theme.Primary
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
+mainFrame.ZIndex = 10
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner")
@@ -1554,8 +1555,7 @@ playerListContainer.BorderSizePixel = 2
 playerListContainer.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Blue border
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = true
-playerListContainer.ZIndex = 250
-playerListContainer.Modal = true
+playerListContainer.ZIndex = 100
 playerListContainer.Active = true
 playerListContainer.ScrollBarThickness = 8
 playerListContainer.ScrollBarImageColor3 = Color3.fromRGB(0, 170, 255)
@@ -1931,7 +1931,7 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Center
 	selfButton.AutoButtonColor = false
-	selfButton.ZIndex = 251
+	selfButton.ZIndex = 101
 	selfButton.LayoutOrder = 0
 	selfButton.Parent = playerListContainer
 	
@@ -1963,7 +1963,7 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.BorderSizePixel = 2
 		playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 		playerButton.AutoButtonColor = false
-		playerButton.ZIndex = 251
+		playerButton.ZIndex = 101
 		playerButton.LayoutOrder = buttonIndex
 		
 		-- Multi-line text

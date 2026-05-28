@@ -78,6 +78,11 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/neiruhitori/sc-admin-
     📍 Goto player - ;goto
     🔄 Respawn - ;respawn
     ⏰ Anti-AFK 24/7 - ;antiafk
+    🥔 Potato Mode (FPS boost) - N key
+       • Optimize all parts (remove shadows, simple materials)
+       • Clear water terrain (continuous)
+       • Disable lighting effects & particles
+       • Best for low-end devices
     
     ⚡ FITUR Violence District (vd.lua):
     🖱️ Cursor Unlock - K key

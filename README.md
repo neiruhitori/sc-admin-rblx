@@ -51,12 +51,21 @@ Admin commands dengan UI panel:
 - 📍 **Goto Player** - `;goto` - Teleport ke player (pilih di UI)
 - 🔄 **Respawn** - `;respawn` - Reset character
 - ⏰ **Anti-AFK** - `;antiafk` - Aktif 24/7, no auto-kick
+- 🥔 **Potato Mode** - `N key` - FPS boost untuk low-end devices
 
 **UI Features:**
 - Tombol ⚙️ floating di layar
 - Toggle buttons dengan status ON/OFF
 - Player selection dropdown
 - Draggable panel
+
+**Potato Mode Details (N key):**
+- 🥔 Optimize semua parts: SmoothPlastic material, no shadows
+- 💧 Clear terrain water: Continuous clearing setiap frame
+- 💡 Disable lighting: Flat appearance, no shadows
+- ✨ Disable particles: No smoke, fire, sparkles
+- 🌊 Hide water parts: Transparency 100%, no collision
+- 📊 **Best for**: Low-end PC, boost FPS 2-3x
 
 ## ⚡ Fitur Violence District (vd.lua)
 
@@ -170,6 +179,14 @@ loadstring(game:HttpGet("URL/LoaderScript.lua"))()
 
 ## 📝 Changelog
 
+### v4.5 - Potato Mode Fix & Admin Panel Fix
+- ✅ FIXED: Admin command buttons tidak bisa diklik (Modal property removed)
+- ✅ FIXED: Potato Mode (N key) tidak terdokumentasi - sekarang tercantum
+- ✅ Potato Mode features: Parts optimization, water clearing, lighting disable
+- ✅ ZIndex hierarchy adjusted: mainFrame(10), dropdown(100), buttons(101)
+- ✅ Improved notification message for Potato Mode activation
+- ✅ Full documentation added for N key feature in template & README
+
 ### v4.4 - Dropdown Player Selection Fix
 - ✅ Fixed click detection issue: Modal=true untuk prevent click-through
 - ✅ Active=true untuk proper input handling
@@ -208,7 +225,7 @@ loadstring(game:HttpGet("URL/LoaderScript.lua"))()
 
 **By:** NB - Nobody Comunity  
 **Discord:** https://discord.gg/xHrJaSgy  
-**Version:** v4.4 - Dropdown Fixed
+**Version:** v4.5 - Potato Mode Fixed
 
 ## 📜 License
 
