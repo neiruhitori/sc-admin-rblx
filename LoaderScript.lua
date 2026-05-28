@@ -25,7 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.2 - LAYOUT ORDER FIX")
+print("📌 VERSION: 2024-05-28 v2.3 - SIMPLE LIST (NO SEARCH)")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1575,36 +1575,11 @@ listContainerPadding.PaddingLeft = UDim.new(0, 5)
 listContainerPadding.PaddingRight = UDim.new(0, 5)
 listContainerPadding.Parent = playerListContainer
 
--- Search box
-local searchBox = Instance.new("TextBox")
-searchBox.Name = "SearchBox"
-searchBox.Size = UDim2.new(1, -10, 0, 30)
-searchBox.Position = UDim2.new(0, 5, 0, 5)
-searchBox.BackgroundColor3 = AdminConfig.Theme.Primary
-searchBox.BorderSizePixel = 0
-searchBox.Text = ""
-searchBox.PlaceholderText = "🔍 Search by username..."
-searchBox.TextColor3 = AdminConfig.Theme.Text
-searchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
-searchBox.TextSize = 12
-searchBox.Font = Enum.Font.Gotham
-searchBox.ClearTextOnFocus = false
-searchBox.ZIndex = 101
-searchBox.Parent = playerListContainer
-
-local searchCorner = Instance.new("UICorner")
-searchCorner.CornerRadius = UDim.new(0, 6)
-searchCorner.Parent = searchBox
-
-local searchPadding = Instance.new("UIPadding")
-searchPadding.PaddingLeft = UDim.new(0, 8)
-searchPadding.Parent = searchBox
-
--- Player list scrolling frame
+-- Player list scrolling frame (no search box)
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(0, 190, 1, -45) -- Fixed width to contain 180px buttons
-playerListFrame.Position = UDim2.new(0, 5, 0, 40)
+playerListFrame.Size = UDim2.new(0, 190, 1, -10) -- Full height minus padding
+playerListFrame.Position = UDim2.new(0, 5, 0, 5)
 playerListFrame.BackgroundTransparency = 0.95
 playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 playerListFrame.BorderSizePixel = 0
@@ -1953,16 +1928,12 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
-	print("[V2] UpdatePlayerList started")
-	
 	-- Clear existing buttons (but keep UIListLayout!)
 	for _, child in ipairs(playerListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
 		end
 	end
-	
-	print("[V2] Creating buttons for " .. #Players:GetPlayers() .. " players")
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
@@ -2025,10 +1996,6 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
-		-- Store username for search
-		playerButton:SetAttribute("Username", plr.Name)
-		playerButton:SetAttribute("DisplayName", plr.DisplayName)
-		
 		buttonIndex = buttonIndex + 1
 		
 		local pCorner = Instance.new("UICorner")
@@ -2055,26 +2022,9 @@ function AdminGUI:UpdatePlayerList()
 		end)
 		
 		playerButton.MouseEnter:Connect(function()
-			-- Check if currently highlighted by search
-			if playerButton.BackgroundColor3 == Color3.fromRGB(0, 120, 200) then
-				playerButton.BackgroundColor3 = Color3.fromRGB(0, 150, 230) -- Lighter blue for hover
-			else
-				playerButton.BackgroundColor3 = AdminConfig.Theme.Accent
-			end
+			playerButton.BackgroundColor3 = AdminConfig.Theme.Accent
 		end)
 		playerButton.MouseLeave:Connect(function()
-			-- Restore appropriate color based on search state
-			local searchText = searchBox.Text:lower()
-			if searchText ~= "" then
-				local username = playerButton:GetAttribute("Username")
-				if username then
-					local usernameLower = username:lower()
-					if usernameLower:find(searchText, 1, true) then
-						playerButton.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Restore highlight
-						return
-					end
-				end
-			end
 			playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		end)
 	end
@@ -2244,48 +2194,13 @@ playerDropdown.MouseButton1Click:Connect(function()
 	playerListContainer.Visible = not playerListContainer.Visible
 	
 	if playerListContainer.Visible then
-		print("\n[NEW CODE V2] Dropdown clicked - Opening...")
-		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
 		
-		local playerCount = #Players:GetPlayers()
-		local targetHeight = math.min(playerCount * 51 + 80, 320)
-		local targetWidth = 200 -- Fixed width
+		local playerCount = #Players:GetPlayers() + 1 -- +1 for Self
+		local targetHeight = math.min(playerCount * 51 + 20, 400)
+		local targetWidth = 200
 		
-		print("[V2] Target size: " .. targetWidth .. "x" .. targetHeight)
-		print("[V2] Container BEFORE resize - AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
-		print("[V2] Frame BEFORE resize - AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
-		
-		-- Set full size immediately (no tween for now to debug)
 		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
-		print("[V2] Container size SET to: " .. tostring(playerListContainer.Size))
-		
-		-- Wait a frame for render
-		task.wait()
-		
-		-- Check rendering
-		print("[V2] ===== AFTER RENDER =====")
-		print("[V2] Container AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
-		print("[V2] Container Visible: " .. tostring(playerListContainer.Visible))
-		print("[V2] Container Position: " .. tostring(playerListContainer.Position))
-		print("[V2] Container AbsolutePosition: " .. tostring(playerListContainer.AbsolutePosition))
-		print("[V2] Frame Size: " .. tostring(playerListFrame.Size))
-		print("[V2] Frame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
-		print("[V2] Frame AbsolutePosition: " .. tostring(playerListFrame.AbsolutePosition))
-		
-		local buttonCount = 0
-		for _, child in ipairs(playerListFrame:GetChildren()) do
-			if child:IsA("TextButton") then
-				buttonCount = buttonCount + 1
-				if buttonCount <= 3 then -- Only show first 3 buttons
-					print("[V2] Button '" .. child.Name .. "' - Size: " .. tostring(child.Size) .. " | AbsoluteSize: " .. tostring(child.AbsoluteSize) .. " | AbsolutePosition: " .. tostring(child.AbsolutePosition))
-				end
-			end
-		end
-		print("[V2] Total buttons created: " .. buttonCount .. "\n")
-		
-		-- Focus on search box
-		searchBox:CaptureFocus()
 	else
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end
@@ -2329,77 +2244,11 @@ resetButton.MouseLeave:Connect(function()
 	resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
 end)
 
--- Search functionality (search by username only, highlight matches)
-searchBox:GetPropertyChangedSignal("Text"):Connect(function()
-	local searchText = searchBox.Text:lower()
-	local matchCount = 0
-	local firstMatch = nil
-	
-	-- Highlight matching players (search by username only)
-	for _, button in ipairs(playerListFrame:GetChildren()) do
-		if button:IsA("TextButton") and button.Name ~= "Self" then
-			local username = button:GetAttribute("Username")
-			
-			if searchText == "" then
-				-- Empty search - reset all to normal
-				button.BackgroundColor3 = AdminConfig.Theme.Primary
-			elseif username then
-				local usernameLower = username:lower()
-				
-				-- Check if username matches
-				if usernameLower:find(searchText, 1, true) then
-					button.BackgroundColor3 = Color3.fromRGB(0, 120, 200) -- Highlight blue
-					matchCount = matchCount + 1
-					if not firstMatch then
-						firstMatch = button
-					end
-				else
-					button.BackgroundColor3 = AdminConfig.Theme.Primary
-				end
-			end
-		end
-	end
-	
-	-- Auto scroll to first match
-	if firstMatch and searchText ~= "" then
-		local targetPosition = firstMatch.AbsolutePosition.Y - playerListFrame.AbsolutePosition.Y
-		playerListFrame.CanvasPosition = Vector2.new(0, math.max(0, targetPosition - 10))
-	elseif searchText == "" then
-		-- Reset scroll to top
-		playerListFrame.CanvasPosition = Vector2.new(0, 0)
-	end
-end)
-
--- Search box keyboard shortcuts
-searchBox.FocusLost:Connect(function(enterPressed)
-	if enterPressed and playerListContainer.Visible then
-		local searchText = searchBox.Text:lower()
-		if searchText ~= "" then
-			-- Enter pressed - select first highlighted player
-			for _, button in ipairs(playerListFrame:GetChildren()) do
-				if button:IsA("TextButton") and button.Name ~= "Self" then
-					local username = button:GetAttribute("Username")
-					
-					if username then
-						local usernameLower = username:lower()
-						
-						if usernameLower:find(searchText, 1, true) then
-							button.MouseButton1Click:Fire()
-							break
-						end
-					end
-				end
-			end
-		end
-	end
-end)
-
 -- ESC key to close dropdown
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if input.KeyCode == Enum.KeyCode.Escape and playerListContainer.Visible then
 		playerListContainer.Visible = false
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
-		searchBox:ReleaseFocus()
 	end
 end)
 
