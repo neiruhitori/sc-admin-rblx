@@ -25,9 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.6 - FIXED: Frame HIJAU tetap HIJAU (ga di-override)!")
-print("     🟢 Frame background GREEN tetap | Border RED | ZIndex 210!")
-print("     🟡 Buttons: YELLOW (Self) + CYAN (Players) | ZIndex 215!")
+print("📌 VERSION: v4.0 - SUPER SIMPLE! Buttons langsung di ScrollingFrame!")
+print("     ✅ NO WRAPPER FRAME! ScrollingFrame + UIListLayout + Buttons!")
+print("     ✅ FIXED: TogglePanel ga hide frame lagi!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1479,20 +1479,20 @@ local resetCorner = Instance.new("UICorner")
 resetCorner.CornerRadius = UDim.new(0, 6)
 resetCorner.Parent = resetButton
 
--- Player dropdown (ULTRA VISIBLE - BRIGHT YELLOW)
+-- Player dropdown button
 local playerDropdown = Instance.new("TextButton")
 playerDropdown.Name = "PlayerDropdown"
 playerDropdown.Size = UDim2.new(1, -250, 0, 35)
 playerDropdown.Position = UDim2.new(0, 70, 0, 5)
-playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- BRIGHT YELLOW!
+playerDropdown.BackgroundColor3 = AdminConfig.Theme.Primary
 playerDropdown.BackgroundTransparency = 0
-playerDropdown.BorderSizePixel = 3
-playerDropdown.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
-playerDropdown.Text = "    ▼ SELECT PLAYER (CLICK HERE!) ▼"
-playerDropdown.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
-playerDropdown.TextSize = 14
-playerDropdown.Font = Enum.Font.GothamBold
-playerDropdown.TextXAlignment = Enum.TextXAlignment.Center
+playerDropdown.BorderSizePixel = 1
+playerDropdown.BorderColor3 = AdminConfig.Theme.Accent
+playerDropdown.Text = "    ▼ Select Player"
+playerDropdown.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerDropdown.TextSize = 13
+playerDropdown.Font = Enum.Font.Gotham
+playerDropdown.TextXAlignment = Enum.TextXAlignment.Left
 playerDropdown.ZIndex = 2
 playerDropdown.Parent = playerSelectorFrame
 
@@ -1500,17 +1500,17 @@ local dropdownCorner = Instance.new("UICorner")
 dropdownCorner.CornerRadius = UDim.new(0, 8)
 dropdownCorner.Parent = playerDropdown
 
--- Go To button (BRIGHT GREEN)
+-- Go To button
 local gotoButton = Instance.new("TextButton")
 gotoButton.Name = "GotoButton"
 gotoButton.Size = UDim2.new(0, 80, 0, 35)
 gotoButton.Position = UDim2.new(1, -165, 0, 5)
-gotoButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Bright green
-gotoButton.BorderSizePixel = 2
-gotoButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+gotoButton.BackgroundColor3 = AdminConfig.Theme.Accent
+gotoButton.BorderSizePixel = 1
+gotoButton.BorderColor3 = AdminConfig.Theme.Accent
 gotoButton.Text = "📍 Go"
-gotoButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- Black text
-gotoButton.TextSize = 14
+gotoButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+gotoButton.TextSize = 13
 gotoButton.Font = Enum.Font.GothamBold
 gotoButton.ZIndex = 2
 gotoButton.Parent = playerSelectorFrame
@@ -1519,16 +1519,16 @@ local gotoCorner = Instance.new("UICorner")
 gotoCorner.CornerRadius = UDim.new(0, 6)
 gotoCorner.Parent = gotoButton
 
--- Refresh button (BRIGHT CYAN)
+-- Refresh button
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
 refreshButton.Size = UDim2.new(0, 75, 0, 35)
 refreshButton.Position = UDim2.new(1, -75, 0, 5)
-refreshButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255) -- Bright cyan
-refreshButton.BorderSizePixel = 2
-refreshButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
+refreshButton.BorderSizePixel = 1
+refreshButton.BorderColor3 = AdminConfig.Theme.Accent
 refreshButton.Text = "🔄"
-refreshButton.TextColor3 = Color3.fromRGB(0, 0, 0)
+refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 refreshButton.TextSize = 16
 refreshButton.Font = Enum.Font.GothamBold
 refreshButton.ZIndex = 2
@@ -1543,53 +1543,36 @@ contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
 contentFrame.ZIndex = 1
 
--- Player List Dropdown - ULTRA VISIBLE VERSION
-local playerListContainer = Instance.new("Frame")
+-- Player List Container - SUPER SIMPLE VERSION!
+local playerListContainer = Instance.new("ScrollingFrame")
 playerListContainer.Name = "PlayerListContainer"
 playerListContainer.Size = UDim2.new(0, 220, 0, 0)
 playerListContainer.Position = UDim2.new(0, 0, 0, 0)
-playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark gray
+playerListContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 45) -- Dark gray
 playerListContainer.BackgroundTransparency = 0
-playerListContainer.BorderSizePixel = 3
-playerListContainer.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Bright blue border
+playerListContainer.BorderSizePixel = 2
+playerListContainer.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Blue border
 playerListContainer.Visible = false
-playerListContainer.ClipsDescendants = false
+playerListContainer.ClipsDescendants = true
 playerListContainer.ZIndex = 200
+playerListContainer.ScrollBarThickness = 6
+playerListContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+playerListContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
 playerListContainer.Parent = screenGui
 
 local containerCorner = Instance.new("UICorner")
-containerCorner.CornerRadius = UDim.new(0, 8)
+containerCorner.CornerRadius = UDim.new(0, 6)
 containerCorner.Parent = playerListContainer
 
--- Player list frame - SIMPLE FRAME (NO SCROLLING FOR NOW!)
-local playerListFrame = Instance.new("Frame")
-playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(0, 210, 0, 440) -- ABSOLUTE SIZE!
-playerListFrame.Position = UDim2.new(0, 5, 0, 5)
-playerListFrame.BackgroundColor3 = Color3.fromRGB(0, 255, 0) -- BRIGHT GREEN untuk testing!
-playerListFrame.BackgroundTransparency = 0
-playerListFrame.BorderSizePixel = 5
-playerListFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- RED border untuk contrast!
-playerListFrame.ZIndex = 210 -- VERY HIGH ZIndex!
-playerListFrame.ClipsDescendants = false -- DON'T clip!
-playerListFrame.Visible = true -- FORCE VISIBLE!
-print("🟢 Frame HIJAU will be created with:")
-print("   Size: 210x440 | Position: 5,5 | ZIndex: 210")
-task.wait(0.05)
-playerListFrame.Parent = playerListContainer
-task.wait(0.05)
-print("✅ Frame HIJAU created! Parent:", playerListFrame.Parent.Name)
-print("   AbsoluteSize:", playerListFrame.AbsoluteSize)
-print("   AbsolutePosition:", playerListFrame.AbsolutePosition)
-
+-- UIListLayout directly in container (NO WRAPPER FRAME!)
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-listLayout.Padding = UDim.new(0, 5) -- Bigger padding untuk testing
+listLayout.Padding = UDim.new(0, 5)
 listLayout.FillDirection = Enum.FillDirection.Vertical
 listLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-listLayout.Parent = playerListFrame
-print("📐 UIListLayout created in Frame!")
+listLayout.Parent = playerListContainer
+print("✅ PlayerListContainer created as ScrollingFrame with UIListLayout!")
 
 -- ============================================
 -- CONTENT SECTIONS (FOR EACH TAB)
@@ -1904,7 +1887,7 @@ end
 function AdminGUI:TogglePanel()
 	self.IsOpen = not self.IsOpen
 	mainFrame.Visible = self.IsOpen
-	playerListFrame.Visible = false
+	playerListContainer.Visible = false -- Hide dropdown when panel toggles
 	
 	if self.IsOpen then
 		mainFrame.Size = UDim2.new(0, 0, 0, 0)
@@ -1922,40 +1905,34 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
-	print("\n🔄 === UpdatePlayerList() DIPANGGIL ===")
 	-- Clear existing buttons
-	local deletedCount = 0
-	for _, child in ipairs(playerListFrame:GetChildren()) do
+	for _, child in ipairs(playerListContainer:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
-			deletedCount = deletedCount + 1
 		end
 	end
-	print("🗑️ Menghapus", deletedCount, "button lama")
 	
-	print("➕ Membuat button SELF...")
+	-- Add "Self" button at top
 	local selfButton = Instance.new("TextButton")
-	selfButton.Name = "Self"
-	selfButton.Size = UDim2.new(0, 200, 0, 40) -- FULL WIDTH of frame
-	selfButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0) -- BRIGHT YELLOW!
+	selfButton.Name = "SelfButton"
+	selfButton.Size = UDim2.new(0, 200, 0, 40)
+	selfButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Bright blue
 	selfButton.BackgroundTransparency = 0
-	selfButton.BorderSizePixel = 5
-	selfButton.BorderColor3 = Color3.fromRGB(0, 255, 0) -- GREEN BORDER!
-	selfButton.Text = "ME (SELF)"
-	selfButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- BLACK text
-	selfButton.TextSize = 18
+	selfButton.BorderSizePixel = 1
+	selfButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+	selfButton.Text = "Me (Self)"
+	selfButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+	selfButton.TextSize = 14
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Center
 	selfButton.AutoButtonColor = false
-	selfButton.ZIndex = 215 -- HIGHER than frame!
+	selfButton.ZIndex = 201
 	selfButton.LayoutOrder = 0
-	selfButton.Visible = true -- FORCE VISIBLE!
-	selfButton.Parent = playerListFrame
-	print("✅ Self button created! AbsSize:", selfButton.AbsoluteSize, "ZIndex:", selfButton.ZIndex)
+	selfButton.Parent = playerListContainer
 	
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
-		playerDropdown.Text = "    ▼ SELECT PLAYER (CLICK HERE!) ▼"
+		playerDropdown.Text = "    ▼ Select Player"
 		playerListContainer.Visible = false
 	end)
 	
@@ -1967,49 +1944,42 @@ function AdminGUI:UpdatePlayerList()
 	end)
 	
 	local allPlayers = Players:GetPlayers()
-	print("👥 Total Players di Game:", #allPlayers)
 	
 	local buttonIndex = 1
 	for _, plr in ipairs(allPlayers) do
-		print("➕ Membuat button untuk:", plr.DisplayName, "(@" .. plr.Name .. ")")
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(0, 200, 0, 50) -- FULL WIDTH
-		playerButton.BackgroundColor3 = Color3.fromRGB(0, 255, 255) -- BRIGHT CYAN!
+		playerButton.Size = UDim2.new(0, 200, 0, 50)
+		playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Steel blue
 		playerButton.BackgroundTransparency = 0
-		playerButton.BorderSizePixel = 3
-		playerButton.BorderColor3 = Color3.fromRGB(255, 0, 255) -- MAGENTA BORDER!
+		playerButton.BorderSizePixel = 1
+		playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 		playerButton.AutoButtonColor = false
-		playerButton.ZIndex = 202
+		playerButton.ZIndex = 201
 		playerButton.LayoutOrder = buttonIndex
-		playerButton.Visible = true -- FORCE VISIBLE!
 		
 		-- Multi-line text
 		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
 		playerButton.Text = buttonText
-		playerButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- BLACK TEXT!
-		playerButton.TextSize = 14
-		playerButton.Font = Enum.Font.GothamBold
+		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		playerButton.TextSize = 13
+		playerButton.Font = Enum.Font.Gotham
 		playerButton.TextXAlignment = Enum.TextXAlignment.Center
 		playerButton.TextYAlignment = Enum.TextYAlignment.Center
 		playerButton.TextWrapped = true
-		playerButton.ZIndex = 215 -- HIGHER than frame!
-		playerButton.Parent = playerListFrame
-		
-		print("  ✅ Button created! AbsSize:", playerButton.AbsoluteSize, "ZIndex:", playerButton.ZIndex)
+		playerButton.Parent = playerListContainer
 		
 		buttonIndex = buttonIndex + 1
 		
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
 			-- Show display name in dropdown if different
-		if plr.DisplayName ~= plr.Name then
-			playerDropdown.Text = "    ▼ " .. plr.DisplayName .. " (@" .. plr.Name .. ") ▼"
-		else
-			playerDropdown.Text = "    ▼ " .. plr.Name .. " ▼"
-		end
+			if plr.DisplayName ~= plr.Name then
+				playerDropdown.Text = "    ▼ " .. plr.DisplayName .. " (@" .. plr.Name .. ")"
+			else
+				playerDropdown.Text = "    ▼ " .. plr.Name
+			end
 			playerListContainer.Visible = false
-			playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		end)
 		
 		playerButton.MouseEnter:Connect(function()
@@ -2019,9 +1989,6 @@ function AdminGUI:UpdatePlayerList()
 			playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Back to steel blue
 		end)
 	end
-	
-	print("\n✅ === UpdatePlayerList() SELESAI ===")
-	print("📊 Total Button Dibuat:", buttonIndex, "(Self + Players)")
 end
 
 function AdminGUI:ExecuteCommand(command, requiresInput)
@@ -2185,68 +2152,22 @@ discordButton.MouseButton1Click:Connect(function()
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
-	print("\n🔥 DROPDOWN DIKLIK!")
 	playerListContainer.Visible = not playerListContainer.Visible
-	print("📌 Container Visible:", playerListContainer.Visible)
 	
 	if playerListContainer.Visible then
-		local playerCount = #Players:GetPlayers() + 1
-		print("👥 Jumlah Player Total (termasuk Self):", playerCount)
-		local targetHeight = math.min(playerCount * 53 + 20, 450)
-		
-		-- SET SIZE AND POSITION FIRST!
-		local screenSize = workspace.CurrentCamera.ViewportSize
-		local centerX = screenSize.X / 2 - 110
-		local centerY = screenSize.Y / 2 - (targetHeight / 2)
-		
-		playerListContainer.Position = UDim2.new(0, centerX, 0, centerY)
-		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
-		playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- RED
-		-- playerListFrame.BackgroundColor3 stays GREEN (jangan diubah!)
-		
-		print("📍 Container SET DULU: Position X=", centerX, "Y=", centerY)
-		print("📏 Container SET DULU: Size 220x" .. targetHeight)
-		
-		-- WAIT for render
-		task.wait(0.05)
-		
-		-- NOW create buttons
-		print("🔄 Memanggil UpdatePlayerList()...")
 		AdminGUI:UpdatePlayerList()
 		
-		-- Check frame after buttons created
-		task.wait(0.1)
-		print("\n✅ FINAL CHECK:")
-		print("   Frame Visible:", playerListFrame.Visible)
-		print("   Frame Parent:", playerListFrame.Parent.Name)
-		print("   Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
-		print("   Frame AbsolutePosition:", playerListFrame.AbsolutePosition)
-		print("   Frame ZIndex:", playerListFrame.ZIndex)
-		print("   Frame BackgroundTransparency:", playerListFrame.BackgroundTransparency)
-		print("✅ Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
+		local playerCount = #Players:GetPlayers() + 1
+		local targetHeight = math.min(playerCount * 53 + 20, 450)
 		
-		-- Wait and check if buttons actually exist
-		task.wait(0.1)
-		local buttonCount = 0
-		for _, child in ipairs(playerListFrame:GetChildren()) do
-			if child:IsA("TextButton") then
-				buttonCount = buttonCount + 1
-				print("  🔘 Button:", child.Name, "Size:", child.AbsoluteSize, "Pos:", child.AbsolutePosition, "Visible:", child.Visible)
-			end
-		end
-		print("📊 Total Buttons in Frame:", buttonCount)
+		-- Position below dropdown button
+		local dropdownAbsPos = playerDropdown.AbsolutePosition
+		local dropdownAbsSize = playerDropdown.AbsoluteSize
+		local posX = dropdownAbsPos.X
+		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5
 		
-		-- Check if UIListLayout is working
-		for _, child in ipairs(playerListFrame:GetChildren()) do
-			if child:IsA("UIListLayout") then
-				print("📐 UIListLayout found! AbsoluteContentSize:", child.AbsoluteContentSize)
-			end
-		end
-	else
-		-- Container hidden (don't reset colors during testing!)
-		-- playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-		-- playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-		print("❌ Container DISEMBUNYIKAN")
+		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
+		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
 	end
 end)
 
@@ -2268,24 +2189,24 @@ end)
 
 -- Add hover effects for action buttons
 playerDropdown.MouseEnter:Connect(function()
-	playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 220, 50) -- Lighter yellow
+	playerDropdown.BackgroundColor3 = Color3.fromRGB(55, 55, 55)
 end)
 playerDropdown.MouseLeave:Connect(function()
-	playerDropdown.BackgroundColor3 = Color3.fromRGB(255, 200, 0) -- Back to bright yellow
+	playerDropdown.BackgroundColor3 = AdminConfig.Theme.Primary
 end)
 
 gotoButton.MouseEnter:Connect(function()
-	gotoButton.BackgroundColor3 = Color3.fromRGB(50, 255, 150) -- Lighter green
+	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 end)
 gotoButton.MouseLeave:Connect(function()
-	gotoButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100) -- Back to bright green
+	gotoButton.BackgroundColor3 = AdminConfig.Theme.Accent
 end)
 
 refreshButton.MouseEnter:Connect(function()
-	refreshButton.BackgroundColor3 = Color3.fromRGB(50, 220, 255) -- Lighter cyan
+	refreshButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
 end)
 refreshButton.MouseLeave:Connect(function()
-	refreshButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255) -- Back to bright cyan
+	refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
 end)
 
 resetButton.MouseEnter:Connect(function()
