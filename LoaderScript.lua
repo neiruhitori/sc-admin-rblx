@@ -1,7 +1,7 @@
 --[[
 	===============================================
 	   ADMIN SCRIPT LOADER - CLIENT SIDE ONLY
-	   By: TwoHand Comunity
+	   By: NB - Nobody Comunity
 	   Discord: https://discord.gg/xHrJaSgy
 	   
 	   🔓 PUBLIC ACCESS - No admin check required!
@@ -1236,7 +1236,7 @@ local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -160, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "⚙️ TwoHand Comunity - Admin Panel"
+titleLabel.Text = "⚙️ NB - Nobody Comunity - Admin Panel"
 titleLabel.TextColor3 = AdminConfig.Theme.Text
 titleLabel.TextSize = 18
 titleLabel.Font = Enum.Font.GothamBold
@@ -1293,7 +1293,7 @@ local watermarkText = Instance.new("TextLabel")
 watermarkText.Size = UDim2.new(1, -20, 1, 0)
 watermarkText.Position = UDim2.new(0, 10, 0, 0)
 watermarkText.BackgroundTransparency = 1
-watermarkText.Text = "⚙️ Made by TwoHand Comunity | discord.gg/xHrJaSgy"
+watermarkText.Text = "⚙️ Made by NB - Nobody Comunity | discord.gg/xHrJaSgy"
 watermarkText.TextColor3 = AdminConfig.Theme.Text
 watermarkText.TextSize = 12
 watermarkText.Font = Enum.Font.Gotham
@@ -1953,6 +1953,10 @@ function AdminGUI:UpdatePlayerList()
 		end
 	end
 	
+	print("[AdminGUI] Updating player list...")
+	local playerCount = #Players:GetPlayers()
+	print("[AdminGUI] Found " .. playerCount .. " players")
+	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
 	selfButton.Size = UDim2.new(1, -10, 0, 30)
@@ -1989,14 +1993,27 @@ function AdminGUI:UpdatePlayerList()
 	end)
 	
 	for _, plr in ipairs(Players:GetPlayers()) do
+		print("[AdminGUI] Creating button for player: " .. plr.Name .. " (DisplayName: " .. plr.DisplayName .. ")")
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name -- Store username as Name
-		playerButton.Size = UDim2.new(1, -10, 0, 45) -- Increased height for 2 lines
+		playerButton.Size = UDim2.new(1, -10, 0, 50) -- Increased height for 2 lines
 		playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		playerButton.BorderSizePixel = 0
-		playerButton.Text = "" -- Empty text, using labels instead
+		
+		-- Multi-line text: DisplayName on top, Username on bottom
+		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
+		playerButton.Text = buttonText
+		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+		playerButton.TextSize = 12
+		playerButton.Font = Enum.Font.Gotham
+		playerButton.TextXAlignment = Enum.TextXAlignment.Left
+		playerButton.TextYAlignment = Enum.TextYAlignment.Top
+		playerButton.AutoButtonColor = false
+		playerButton.ClipsDescendants = false
 		playerButton.ZIndex = 102
 		playerButton.Parent = playerListFrame
+		
+		print("[AdminGUI] Button created and parented for " .. plr.Name .. ", Text: " .. playerButton.Text)
 		
 		-- Store DisplayName as attribute for search
 		playerButton:SetAttribute("DisplayName", plr.DisplayName)
@@ -2009,39 +2026,9 @@ function AdminGUI:UpdatePlayerList()
 		local pPadding = Instance.new("UIPadding")
 		pPadding.PaddingLeft = UDim.new(0, 10)
 		pPadding.PaddingRight = UDim.new(0, 10)
-		pPadding.PaddingTop = UDim.new(0, 4)
-		pPadding.PaddingBottom = UDim.new(0, 4)
+		pPadding.PaddingTop = UDim.new(0, 8)
+		pPadding.PaddingBottom = UDim.new(0, 8)
 		pPadding.Parent = playerButton
-		
-		-- DisplayName label (top line)
-		local displayLabel = Instance.new("TextLabel")
-		displayLabel.Name = "DisplayName"
-		displayLabel.Size = UDim2.new(1, 0, 0, 16)
-		displayLabel.Position = UDim2.new(0, 0, 0, 2)
-		displayLabel.BackgroundTransparency = 1
-		displayLabel.Text = plr.DisplayName
-		displayLabel.TextColor3 = AdminConfig.Theme.Text
-		displayLabel.TextSize = 14
-		displayLabel.Font = Enum.Font.GothamBold
-		displayLabel.TextXAlignment = Enum.TextXAlignment.Left
-		displayLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		displayLabel.ZIndex = 103
-		displayLabel.Parent = playerButton
-		
-		-- Username label (bottom line)
-		local usernameLabel = Instance.new("TextLabel")
-		usernameLabel.Name = "Username"
-		usernameLabel.Size = UDim2.new(1, 0, 0, 14)
-		usernameLabel.Position = UDim2.new(0, 0, 0, 20)
-		usernameLabel.BackgroundTransparency = 1
-		usernameLabel.Text = "@" .. plr.Name
-		usernameLabel.TextColor3 = Color3.new(0.7, 0.7, 0.7) -- Slightly dimmed
-		usernameLabel.TextSize = 11
-		usernameLabel.Font = Enum.Font.Gotham
-		usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
-		usernameLabel.TextTruncate = Enum.TextTruncate.AtEnd
-		usernameLabel.ZIndex = 103
-		usernameLabel.Parent = playerButton
 		
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
@@ -2221,7 +2208,7 @@ discordButton.MouseButton1Click:Connect(function()
 	else
 		AdminGUI:ShowNotification("Discord: discord.gg/xHrJaSgy", "info")
 	end
-	print("TwoHand Comunity Discord: " .. discordLink)
+	print("NB - Nobody Comunity Discord: " .. discordLink)
 end)
 
 playerDropdown.MouseButton1Click:Connect(function()
@@ -2238,7 +2225,7 @@ playerDropdown.MouseButton1Click:Connect(function()
 			end
 		end
 		
-		local targetHeight = math.min(#Players:GetPlayers() * 47 + 80, 300) -- +80 for search box, 47 per player (45 + 2 spacing)
+		local targetHeight = math.min(#Players:GetPlayers() * 52 + 80, 320) -- +80 for search box, 52 per player (50 + 2 spacing)
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		local tween = TweenService:Create(
 			playerListContainer,
@@ -4134,7 +4121,7 @@ print("⚡ Violence District loaded - K (Cursor), J (ESP+E/SPACE/LMB Interactabl
 print("✅ Admin Script Loaded Successfully!")
 print("👤 Username: " .. player.Name)
 print("🔓 Access: PUBLIC (No admin check for executor version)")
-AdminGUI:ShowNotification("TwoHand Comunity Admin Script Loaded!\nAll features unlocked!", "success")
+AdminGUI:ShowNotification("NB - Nobody Comunity Admin Script Loaded!\nAll features unlocked!", "success")
 
 print("\n📌 How to use:")
 print("   • Click the ⚙️ floating button to open admin panel")
