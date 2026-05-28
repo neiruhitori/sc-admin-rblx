@@ -25,7 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.4 - DEBUG + CLIPSOFF")
+print("📌 VERSION: 2024-05-28 v2.5 - ABSOLUTE POSITION FIX")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1551,18 +1551,18 @@ contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
 contentFrame.ZIndex = 1
 
--- Player List Dropdown with Search (like select2)
+-- Player List Dropdown (parented to screenGui to avoid clipping)
 local playerListContainer = Instance.new("Frame")
 playerListContainer.Name = "PlayerListContainer"
 playerListContainer.Size = UDim2.new(0, 0, 0, 0)
-playerListContainer.Position = UDim2.new(0, 70, 0, 45)
+playerListContainer.Position = UDim2.new(0, 0, 0, 0) -- Will be set dynamically
 playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListContainer.BorderSizePixel = 1
 playerListContainer.BorderColor3 = Color3.fromRGB(80, 80, 80)
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = false
 playerListContainer.ZIndex = 100
-playerListContainer.Parent = playerSelectorFrame
+playerListContainer.Parent = screenGui  -- Parent to screenGui, not playerSelectorFrame!
 
 local listContainerCorner = Instance.new("UICorner")
 listContainerCorner.CornerRadius = UDim.new(0, 6)
@@ -2212,7 +2212,17 @@ playerDropdown.MouseButton1Click:Connect(function()
 		local targetHeight = math.min(playerCount * 51 + 20, 400)
 		local targetWidth = 200
 		
+		-- Calculate absolute position below playerDropdown
+		local dropdownAbsPos = playerDropdown.AbsolutePosition
+		local dropdownAbsSize = playerDropdown.AbsoluteSize
+		local posX = dropdownAbsPos.X
+		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5 -- 5px gap
+		
+		print("[DROPDOWN] Dropdown position: " .. tostring(dropdownAbsPos))
+		print("[DROPDOWN] Setting container at: " .. posX .. ", " .. posY)
 		print("[DROPDOWN] Setting container size: " .. targetWidth .. "x" .. targetHeight)
+		
+		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
 		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
 		
 		task.wait()
