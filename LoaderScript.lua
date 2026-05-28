@@ -875,6 +875,38 @@ end
 -- ============================================
 local Optimizer = {}
 Optimizer.PotatoModeEnabled = false
+Optimizer.WaterClearingConnection = nil
+
+function Optimizer:TogglePotato()
+	self.PotatoModeEnabled = not self.PotatoModeEnabled
+	
+	if self.PotatoModeEnabled then
+		-- Activate Potato Mode
+		self:OptimizeAll()
+	else
+		-- Deactivate Potato Mode
+		self:DisablePotato()
+	end
+	
+	return self.PotatoModeEnabled
+end
+
+function Optimizer:DisablePotato()
+	print("💯 [POTATO MODE] Disabling Potato Mode...")
+	
+	-- Stop water clearing loop
+	if self.WaterClearingConnection then
+		self.WaterClearingConnection:Disconnect()
+		self.WaterClearingConnection = nil
+		print("   • Water clearing loop stopped")
+	end
+	
+	self.PotatoModeEnabled = false
+	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
+	print("   • Note: Some changes (materials, shadows) are permanent until respawn")
+	
+	return false, "💯 POTATO MODE OFF (water loop stopped)"
+end
 
 function Optimizer:OptimizeAll()
 	print("🥔 [POTATO MODE] Starting optimization...")
@@ -2401,35 +2433,35 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
-	-- N key for Optimizer
+	-- N key for Optimizer (TOGGLE)
 	if input.KeyCode == Enum.KeyCode.N then
-		print("📍 N key pressed - Starting optimization...")
+		print("📍 N key pressed - Toggling Potato Mode...")
 		
-		local success, message = pcall(function()
-			return Optimizer:OptimizeAll()
+		local success, result = pcall(function()
+			return Optimizer:TogglePotato()
 		end)
 		
 		if success then
-			local resultSuccess, resultMessage = message, "Optimization executed"
-			if type(message) == "table" then
-				resultSuccess = message[1]
-				resultMessage = message[2]
-			elseif type(message) == "boolean" then
-				resultSuccess = message
-			end
+			local isEnabled = result
+			local statusText = isEnabled and "ON" or "OFF"
+			local notifType = isEnabled and "success" or "info"
 			
-			print("✅ Optimizer returned: " .. tostring(resultSuccess) .. " - " .. tostring(resultMessage))
+			print("✅ Potato Mode toggled: " .. statusText)
 			
 			-- Show notification if GUI is ready
 			if AdminGUI and AdminGUI.ShowNotification then
-				AdminGUI:ShowNotification(tostring(resultMessage), "success")
+				if isEnabled then
+					AdminGUI:ShowNotification("🥔 POTATO MODE ON! FPS boost active", notifType)
+				else
+					AdminGUI:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", notifType)
+				end
 			else
-				print("⚠️ AdminGUI not ready, but optimization still executed")
+				print("⚠️ AdminGUI not ready, but potato mode toggled")
 			end
 		else
-			print("❌ Optimizer error: " .. tostring(message))
+			print("❌ Optimizer error: " .. tostring(result))
 			if AdminGUI and AdminGUI.ShowNotification then
-				AdminGUI:ShowNotification("Error: " .. tostring(message), "error")
+				AdminGUI:ShowNotification("Error: " .. tostring(result), "error")
 			end
 		end
 	end

@@ -78,10 +78,10 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/neiruhitori/sc-admin-
     📍 Goto player - ;goto
     🔄 Respawn - ;respawn
     ⏰ Anti-AFK 24/7 - ;antiafk
-    🥔 Potato Mode (FPS boost) - N key
-       • Optimize all parts (remove shadows, simple materials)
-       • Clear water terrain (continuous)
-       • Disable lighting effects & particles
+    🥔 Potato Mode (FPS boost) - N key (TOGGLE)
+       • Press N to toggle ON/OFF
+       • ON: Optimize parts, clear water, disable effects
+       • OFF: Stop water clearing loop
        • Best for low-end devices
     
     ⚡ FITUR Violence District (vd.lua):
@@ -91,5 +91,6 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/neiruhitori/sc-admin-
     🎯 Crosshair + Range Marks - H key
     📷 Camera Zoom Unlock - G key
     ⚡ Speed Boost + Auto Shift - L key
+    🥔 Potato Mode (FPS boost) - N key (SAME as admin)
     
 ]]

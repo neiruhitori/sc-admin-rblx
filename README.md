@@ -51,7 +51,7 @@ Admin commands dengan UI panel:
 - 📍 **Goto Player** - `;goto` - Teleport ke player (pilih di UI)
 - 🔄 **Respawn** - `;respawn` - Reset character
 - ⏰ **Anti-AFK** - `;antiafk` - Aktif 24/7, no auto-kick
-- 🥔 **Potato Mode** - `N key` - FPS boost untuk low-end devices
+- 🥔 **Potato Mode** - `N key` - FPS boost (TOGGLE ON/OFF)
 
 **UI Features:**
 - Tombol ⚙️ floating di layar
@@ -59,13 +59,17 @@ Admin commands dengan UI panel:
 - Player selection dropdown
 - Draggable panel
 
-**Potato Mode Details (N key):**
+**Potato Mode Details (N key - TOGGLE):**
+- 🥔 **Press N to toggle** ON/OFF (not one-time activation)
+- 🟢 **ON**: Optimize parts, clear water, disable effects, continuous FPS boost
+- 🔴 **OFF**: Stop water clearing loop (materials/shadows stay until respawn)
 - 🥔 Optimize semua parts: SmoothPlastic material, no shadows
-- 💧 Clear terrain water: Continuous clearing setiap frame
+- 💧 Clear terrain water: Continuous clearing setiap frame (while ON)
 - 💡 Disable lighting: Flat appearance, no shadows
 - ✨ Disable particles: No smoke, fire, sparkles
 - 🌊 Hide water parts: Transparency 100%, no collision
 - 📊 **Best for**: Low-end PC, boost FPS 2-3x
+- ⚠️ **Available in BOTH**: LoaderScript.lua AND vd.lua (same key, same behavior)
 
 ## ⚡ Fitur Violence District (vd.lua)
 
@@ -79,14 +83,7 @@ Module terpisah dengan advanced features:
 | 🎯 Crosshair | `H` | Range marks: 30m/60m/90m+ |
 | 📷 Camera Zoom | `G` | Free scroll zoom + look around |
 | ⚡ Speed Boost | `L` | Speed 20 + Auto hold Shift |
-
-**ESP Features Detail:**
-- Player ESP: Red highlight + yellow outline
-- Name tags: DisplayName + @Username
-- Interactable objects: E/SPACE/LMB indicators
-- Pallet traps: Orange markers (very visible)
-- Distance: All ESP visible up to 2000 studs
-
+| 🥔 Potato Mode | `N` | FPS boost (SAME as LoaderScript) |
 **UI Features:**
 - Tombol ⚡ floating di layar (biru)
 - Feature cards dengan status ON/OFF
@@ -179,6 +176,15 @@ loadstring(game:HttpGet("URL/LoaderScript.lua"))()
 
 ## 📝 Changelog
 
+### v4.6 - Potato Mode Toggle & VD Integration
+- ✅ Potato Mode sekarang TOGGLE ON/OFF (bukan one-time activation)
+- ✅ Press N: Toggle potato mode (ON = optimize, OFF = stop water loop)
+- ✅ Potato Mode tersedia di VD (vd.lua) - SAME implementation
+- ✅ Both LoaderScript & vd.lua dapat toggle potato mode independently
+- ✅ DisablePotato function: Stop water clearing loop saat OFF
+- ✅ Visual feedback: "POTATO MODE ON" atau "POTATO MODE OFF"
+- ✅ Documentation updated: EXECUTOR_TEMPLATE.lua & README.md
+
 ### v4.5 - Potato Mode Fix & Admin Panel Fix
 - ✅ FIXED: Admin command buttons tidak bisa diklik (Modal property removed)
 - ✅ FIXED: Potato Mode (N key) tidak terdokumentasi - sekarang tercantum
@@ -225,7 +231,7 @@ loadstring(game:HttpGet("URL/LoaderScript.lua"))()
 
 **By:** NB - Nobody Comunity  
 **Discord:** https://discord.gg/xHrJaSgy  
-**Version:** v4.5 - Potato Mode Fixed
+**Version:** v4.6 - Potato Toggle
 
 ## 📜 License
 

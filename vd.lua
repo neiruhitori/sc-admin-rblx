@@ -75,6 +75,8 @@ UtilityGUI.GeneratorKeywords = {
 UtilityGUI.PalletESPHighlights = {}
 UtilityGUI.PalletESPEnabled = false
 UtilityGUI.PalletESPConnection = nil
+UtilityGUI.PotatoModeEnabled = false
+UtilityGUI.WaterClearingConnection = nil
 
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
@@ -565,7 +567,307 @@ function UtilityGUI:EnableFastGeneratorCreation()
 	end
 end
 
--- ==================== FEATURE 1: CURSOR UNLOCK ====================
+-- ==================== FEATURE 8: POTATO MODE (OPTIMIZER) ====================
+
+function UtilityGUI:TogglePotato()
+	self.PotatoModeEnabled = not self.PotatoModeEnabled
+	
+	if self.PotatoModeEnabled then
+		-- Activate Potato Mode
+		self:OptimizeAll()
+	else
+		-- Deactivate Potato Mode
+		self:DisablePotato()
+	end
+	
+	self:NotifyToggle("Potato Mode", self.PotatoModeEnabled)
+end
+
+function UtilityGUI:OptimizeAll()
+	print("🥔 [POTATO MODE] Starting optimization...")
+	
+	local optimizedParts = 0
+	local disabledEffects = 0
+	
+	-- Helper function to optimize a single part
+	local function optimizePart(part)
+		if not part then return end
+		
+		if part:IsA("BasePart") then
+			pcall(function()
+				part.CastShadow = false
+				-- Simplify material to basic
+				part.Material = Enum.Material.SmoothPlastic
+				optimizedParts = optimizedParts + 1
+			end)
+		elseif part:IsA("Model") then
+			pcall(function()
+				if part:FindFirstChildOfClass("Humanoid") == nil then
+					part.CastShadow = false
+					optimizedParts = optimizedParts + 1
+				end
+			end)
+		end
+		
+		-- Disable particle effects
+		if part:IsA("ParticleEmitter") or part:FindFirstChildOfClass("ParticleEmitter") then
+			pcall(function()
+				if part:IsA("ParticleEmitter") then
+					part.Enabled = false
+					disabledEffects = disabledEffects + 1
+				else
+					for _, emitter in ipairs(part:FindFirstChildOfClass("ParticleEmitter"):Ancestors()) do
+						if emitter:IsA("ParticleEmitter") then
+							emitter.Enabled = false
+							disabledEffects = disabledEffects + 1
+						end
+					end
+				end
+			end)
+		end
+	end
+	
+	-- Helper to recursively optimize all children with depth limit
+	local function deepOptimize(parent, depth)
+		if not parent then return end
+		depth = depth or 0
+		if depth > 50 then return end
+		
+		local success, children = pcall(function()
+			return parent:GetChildren()
+		end)
+		
+		if not success or not children then return end
+		
+		for _, child in ipairs(children) do
+			if child then
+				optimizePart(child)
+				deepOptimize(child, depth + 1)
+			end
+		end
+	end
+	
+	-- 1. Workspace
+	print("🔧 [POTATO MODE] Processing Workspace...")
+	pcall(function()
+		deepOptimize(workspace)
+		print("✅ [POTATO MODE] Workspace optimized")
+	end)
+	
+	-- 2. ReplicatedStorage
+	print("🔧 [POTATO MODE] Processing ReplicatedStorage...")
+	pcall(function()
+		local rs = game:GetService("ReplicatedStorage")
+		if rs then deepOptimize(rs) end
+		print("✅ [POTATO MODE] ReplicatedStorage optimized")
+	end)
+	
+	-- 3. ServerScriptService
+	print("🔧 [POTATO MODE] Processing ServerScriptService...")
+	pcall(function()
+		local sss = game:GetService("ServerScriptService")
+		if sss then
+			local success, children = pcall(function() return sss:GetChildren() end)
+			if success and children then
+				for _, obj in ipairs(children) do
+					optimizePart(obj)
+				end
+			end
+		end
+		print("✅ [POTATO MODE] ServerScriptService optimized")
+	end)
+	
+	-- 4. StarterPlayer
+	print("🔧 [POTATO MODE] Processing StarterPlayer...")
+	pcall(function()
+		local sp = game:GetService("StarterPlayer")
+		if sp then deepOptimize(sp) end
+		print("✅ [POTATO MODE] StarterPlayer optimized")
+	end)
+	
+	-- 5. StarterGui
+	print("🔧 [POTATO MODE] Processing StarterGui...")
+	pcall(function()
+		local sg = game:GetService("StarterGui")
+		if sg then deepOptimize(sg) end
+		print("✅ [POTATO MODE] StarterGui optimized")
+	end)
+	
+	-- 6. Lighting - DISABLE ALL LIGHTS FOR FLAT APPEARANCE
+	print("🔧 [POTATO MODE] Disabling Lighting...")
+	pcall(function()
+		local lighting = game:GetService("Lighting")
+		if lighting then
+			-- Disable ambient & shadow
+			lighting.Ambient = Color3.fromRGB(100, 100, 100)
+			lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100)
+			lighting.ClockTime = 12
+			lighting.Shadow = false
+			
+			-- Disable all light objects
+			local success, children = pcall(function() return lighting:GetChildren() end)
+			if success and children then
+				for _, obj in ipairs(children) do
+					pcall(function()
+						if obj:IsA("Light") then
+							obj.Enabled = false
+							disabledEffects = disabledEffects + 1
+						end
+					end)
+				end
+			end
+		end
+		print("✅ [POTATO MODE] Lighting disabled")
+	end)
+	
+	-- 7. Terrain
+	print("🔧 [POTATO MODE] Processing Terrain...")
+	pcall(function()
+		local terrain = workspace.Terrain
+		if terrain then
+			terrain.CastShadow = false
+			print("✅ [POTATO MODE] Terrain optimized")
+		end
+	end)
+	
+	-- 8. CoreGui
+	print("🔧 [POTATO MODE] Processing CoreGui...")
+	pcall(function()
+		local coregui = game:GetService("CoreGui")
+		if coregui then deepOptimize(coregui) end
+		print("✅ [POTATO MODE] CoreGui optimized")
+	end)
+	
+	-- 9. Disable all effects in the game
+	print("🔧 [POTATO MODE] Disabling effects...")
+	pcall(function()
+		-- Find and disable all ParticleEmitters
+		local allDescendants = workspace:FindPartBoundsInRadius(Vector3.new(0,0,0), math.huge)
+		for _, obj in ipairs(allDescendants) do
+			pcall(function()
+				local particles = obj:FindFirstChildOfClass("ParticleEmitter")
+				if particles then
+					particles.Enabled = false
+					disabledEffects = disabledEffects + 1
+				end
+			end)
+		end
+		print("✅ [POTATO MODE] Effects disabled")
+	end)
+	
+	-- 10. WATER OPTIMIZATION (TERRAIN WATER - CONTINUOUS CLEARING)
+	print("🔧 [POTATO MODE] Optimizing Water (Terrain)...")
+	local waterOptimized = 0
+	
+	-- Start continuous water clearing loop
+	if not self.WaterClearingConnection then
+		self.WaterClearingConnection = RunService.RenderStepped:Connect(function()
+			if not self.PotatoModeEnabled then return end
+			
+			pcall(function()
+				local terrain = workspace.Terrain
+				if not terrain then return end
+				
+				-- Continuously clear water voxels from the map
+				-- This handles server sync by repeatedly clearing water
+				local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
+				region = region:ExpandToGrid(4)
+				
+				local materials, sizes = terrain:ReadVoxels(region, 4)
+				local size = materials.Size
+				local hasWater = false
+				
+				-- Replace all water voxels with air
+				for x = 1, size.X do
+					for y = 1, size.Y do
+						for z = 1, size.Z do
+							if materials[x][y][z] == Enum.Material.Water then
+								materials[x][y][z] = Enum.Material.Air
+								hasWater = true
+							end
+						end
+					end
+				end
+				
+				-- Only write if we found water (reduces network traffic)
+				if hasWater then
+					terrain:WriteVoxels(region, 4, materials, sizes)
+				end
+			end)
+		end)
+		waterOptimized = 1
+		print("   • Continuous water clearing ACTIVATED (runs every frame)")
+	end
+	
+	-- Handle water parts
+	print("🔧 [POTATO MODE] Checking for water parts...")
+	local waterPartsOptimized = 0
+	pcall(function()
+		local function findWaterParts(parent, depth)
+			if not parent or depth > 50 then return end
+			
+			local success, children = pcall(function() return parent:GetChildren() end)
+			if not success or not children then return end
+			
+			for _, part in ipairs(children) do
+				if part then
+					pcall(function()
+						if part:IsA("BasePart") then
+							local name = part.Name:lower()
+							-- Check multiple water identifiers
+							if name:find("water") or name:find("ocean") or name:find("sea") or name:find("fluid") or 
+							   name:find("liquid") or name:find("pool") then
+								-- Make water completely hidden/solid
+								part.Transparency = 1 -- Completely invisible
+								part.CanCollide = false
+								part.Material = Enum.Material.Air
+								waterPartsOptimized = waterPartsOptimized + 1
+							end
+						end
+					end)
+					
+					findWaterParts(part, depth + 1)
+				end
+			end
+		end
+		
+		findWaterParts(workspace, 0)
+		if waterPartsOptimized > 0 then
+			print("   • Water parts hidden: " .. waterPartsOptimized)
+		end
+	end)
+	
+	local totalOptimized = optimizedParts
+	print("✅ [POTATO MODE] POTATO MODE ACTIVATED!")
+	print("   • Parts optimized: " .. optimizedParts)
+	print("   • Effects disabled: " .. disabledEffects)
+	print("   • Water clearing: CONTINUOUS (always clearing on this frame)")
+	print("   • Total changes: " .. (totalOptimized + disabledEffects))
+	
+	if AdminGUI and AdminGUI.ShowNotification then
+		AdminGUI:ShowNotification("🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects, "success")
+	end
+end
+
+function UtilityGUI:DisablePotato()
+	print("💯 [POTATO MODE] Disabling Potato Mode...")
+	
+	-- Stop water clearing loop
+	if self.WaterClearingConnection then
+		self.WaterClearingConnection:Disconnect()
+		self.WaterClearingConnection = nil
+		print("   • Water clearing loop stopped")
+	end
+	
+	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
+	print("   • Note: Some changes (materials, shadows) are permanent until respawn")
+	
+	if AdminGUI and AdminGUI.ShowNotification then
+		AdminGUI:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", "info")
+	end
+end
+
+-- ==================== FEATURE 9: CROSSHAIR ====================
 
 function UtilityGUI:ToggleCursor()
 	self.CursorEnabled = not self.CursorEnabled
@@ -1535,13 +1837,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		speedButton.Text = UtilityGUI.SpeedEnabled and "ON" or "OFF"
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
-end)
-
--- ==================== DRAGGABLE ICON ====================
-
-local utilityDragging = false
-local utilityDragStart = nil
-local utilityStartPos = nil
+        
+        -- N = Potato Mode Toggle
+        if input.KeyCode == Enum.KeyCode.N then
+                UtilityGUI:TogglePotato()
+        end
 
 utilityIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
