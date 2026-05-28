@@ -25,6 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
+print("📌 VERSION: 2024-05-28 v2.1 - ABSOLUTE SIZING FIX")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1563,8 +1564,6 @@ playerListContainer.ClipsDescendants = true
 playerListContainer.ZIndex = 100
 playerListContainer.Parent = playerSelectorFrame
 
-print("[DEBUG] PlayerListContainer created at position: " .. tostring(playerListContainer.Position))
-
 local listContainerCorner = Instance.new("UICorner")
 listContainerCorner.CornerRadius = UDim.new(0, 6)
 listContainerCorner.Parent = playerListContainer
@@ -1617,8 +1616,6 @@ playerListFrame.ScrollingEnabled = true
 playerListFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 playerListFrame.ZIndex = 101
 playerListFrame.Parent = playerListContainer
-
-print("[DEBUG] PlayerListFrame created with width 190px")
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.Name
@@ -1956,7 +1953,7 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
-	print("[DEBUG] UpdatePlayerList called")
+	print("[V2] UpdatePlayerList started")
 	
 	-- Clear existing buttons (but keep UIListLayout!)
 	for _, child in ipairs(playerListFrame:GetChildren()) do
@@ -1965,9 +1962,7 @@ function AdminGUI:UpdatePlayerList()
 		end
 	end
 	
-	print("[DEBUG] Cleared old buttons, creating new ones...")
-	local playerCount = #Players:GetPlayers()
-	print("[DEBUG] Found " .. playerCount .. " players in game")
+	print("[V2] Creating buttons for " .. #Players:GetPlayers() .. " players")
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
@@ -1983,8 +1978,6 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.AutoButtonColor = false
 	selfButton.ZIndex = 102
 	selfButton.Parent = playerListFrame
-	
-	print("[DEBUG] Self button created, AbsoluteSize: " .. tostring(selfButton.AbsoluteSize))
 	
 	local selfCorner = Instance.new("UICorner")
 	selfCorner.CornerRadius = UDim.new(0, 4)
@@ -2248,6 +2241,7 @@ playerDropdown.MouseButton1Click:Connect(function()
 	playerListContainer.Visible = not playerListContainer.Visible
 	
 	if playerListContainer.Visible then
+		print("\n[NEW CODE V2] Dropdown clicked - Opening...")
 		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
 		
@@ -2255,26 +2249,37 @@ playerDropdown.MouseButton1Click:Connect(function()
 		local targetHeight = math.min(playerCount * 51 + 80, 320)
 		local targetWidth = 200 -- Fixed width
 		
-		print("[DEBUG] Opening dropdown - Target: " .. targetWidth .. "x" .. targetHeight)
+		print("[V2] Target size: " .. targetWidth .. "x" .. targetHeight)
+		print("[V2] Container BEFORE resize - AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
+		print("[V2] Frame BEFORE resize - AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
 		
 		-- Set full size immediately (no tween for now to debug)
 		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
+		print("[V2] Container size SET to: " .. tostring(playerListContainer.Size))
 		
 		-- Wait a frame for render
 		task.wait()
 		
 		-- Check rendering
-		print("[DEBUG] Container rendered - AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
-		print("[DEBUG] Frame rendered - AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		print("[V2] ===== AFTER RENDER =====")
+		print("[V2] Container AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
+		print("[V2] Container Visible: " .. tostring(playerListContainer.Visible))
+		print("[V2] Container Position: " .. tostring(playerListContainer.Position))
+		print("[V2] Container AbsolutePosition: " .. tostring(playerListContainer.AbsolutePosition))
+		print("[V2] Frame Size: " .. tostring(playerListFrame.Size))
+		print("[V2] Frame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		print("[V2] Frame AbsolutePosition: " .. tostring(playerListFrame.AbsolutePosition))
 		
 		local buttonCount = 0
 		for _, child in ipairs(playerListFrame:GetChildren()) do
 			if child:IsA("TextButton") then
 				buttonCount = buttonCount + 1
-				print("[DEBUG] Button " .. child.Name .. " - AbsoluteSize: " .. tostring(child.AbsoluteSize))
+				if buttonCount <= 3 then -- Only show first 3 buttons
+					print("[V2] Button '" .. child.Name .. "' - Size: " .. tostring(child.Size) .. " | AbsoluteSize: " .. tostring(child.AbsoluteSize) .. " | AbsolutePosition: " .. tostring(child.AbsolutePosition))
+				end
 			end
 		end
-		print("[DEBUG] Total visible buttons: " .. buttonCount)
+		print("[V2] Total buttons created: " .. buttonCount .. "\n")
 		
 		-- Focus on search box
 		searchBox:CaptureFocus()
