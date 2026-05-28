@@ -1604,7 +1604,7 @@ searchPadding.Parent = searchBox
 -- Player list scrolling frame
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
-playerListFrame.Size = UDim2.new(1, -10, 1, -45)
+playerListFrame.Size = UDim2.new(0, 190, 1, -45) -- Fixed width to contain 180px buttons
 playerListFrame.Position = UDim2.new(0, 5, 0, 40)
 playerListFrame.BackgroundTransparency = 0.95
 playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -1618,7 +1618,7 @@ playerListFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 playerListFrame.ZIndex = 101
 playerListFrame.Parent = playerListContainer
 
-print("[DEBUG] PlayerListFrame created, Parent: " .. tostring(playerListFrame.Parent))
+print("[DEBUG] PlayerListFrame created with width 190px")
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.Name
@@ -1971,7 +1971,7 @@ function AdminGUI:UpdatePlayerList()
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
-	selfButton.Size = UDim2.new(1, -4, 0, 35)
+	selfButton.Size = UDim2.new(0, 180, 0, 35) -- Use absolute width
 	selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
 	selfButton.BorderSizePixel = 1
 	selfButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
@@ -1984,7 +1984,7 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.ZIndex = 102
 	selfButton.Parent = playerListFrame
 	
-	print("[DEBUG] Self button created, Size: " .. tostring(selfButton.Size) .. ", Parent: " .. tostring(selfButton.Parent))
+	print("[DEBUG] Self button created, AbsoluteSize: " .. tostring(selfButton.AbsoluteSize))
 	
 	local selfCorner = Instance.new("UICorner")
 	selfCorner.CornerRadius = UDim.new(0, 4)
@@ -2011,7 +2011,7 @@ function AdminGUI:UpdatePlayerList()
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(1, -4, 0, 48)
+		playerButton.Size = UDim2.new(0, 180, 0, 48) -- Use absolute width
 		playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
 		playerButton.BorderSizePixel = 1
 		playerButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
@@ -2029,7 +2029,7 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
-		print("[DEBUG] Created button for: " .. plr.Name .. " (" .. plr.DisplayName .. "), Parent: " .. tostring(playerButton.Parent))
+		print("[DEBUG] Button for " .. plr.Name .. ", AbsoluteSize: " .. tostring(playerButton.AbsoluteSize))
 		
 		-- Store username for search
 		playerButton:SetAttribute("Username", plr.Name)
@@ -2252,53 +2252,32 @@ playerDropdown.MouseButton1Click:Connect(function()
 		AdminGUI:UpdatePlayerList()
 		
 		local playerCount = #Players:GetPlayers()
-		local targetHeight = math.min(playerCount * 51 + 80, 320) -- +80 for search box, 51 per player (48 + 3 spacing)
-		-- Use dropdown button width as reference (match dropdown size)
-		local targetWidth = playerDropdown.AbsoluteSize.X
-		print("[DEBUG] Opening dropdown - Players: " .. playerCount .. ", Target size: " .. targetWidth .. "x" .. targetHeight)
-		print("[DEBUG] Dropdown AbsoluteSize: " .. tostring(playerDropdown.AbsoluteSize))
-		print("[DEBUG] playerListFrame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		local targetHeight = math.min(playerCount * 51 + 80, 320)
+		local targetWidth = 200 -- Fixed width
 		
-		-- Check how many buttons exist
+		print("[DEBUG] Opening dropdown - Target: " .. targetWidth .. "x" .. targetHeight)
+		
+		-- Set full size immediately (no tween for now to debug)
+		playerListContainer.Size = UDim2.new(0, targetWidth, 0, targetHeight)
+		
+		-- Wait a frame for render
+		task.wait()
+		
+		-- Check rendering
+		print("[DEBUG] Container rendered - AbsoluteSize: " .. tostring(playerListContainer.AbsoluteSize))
+		print("[DEBUG] Frame rendered - AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		
 		local buttonCount = 0
 		for _, child in ipairs(playerListFrame:GetChildren()) do
 			if child:IsA("TextButton") then
 				buttonCount = buttonCount + 1
-				print("[DEBUG] Button: " .. child.Name .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize))
+				print("[DEBUG] Button " .. child.Name .. " - AbsoluteSize: " .. tostring(child.AbsoluteSize))
 			end
 		end
-		print("[DEBUG] Total buttons in frame: " .. buttonCount)
+		print("[DEBUG] Total visible buttons: " .. buttonCount)
 		
-		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
-		local tween = TweenService:Create(
-			playerListContainer,
-			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Size = UDim2.new(0, targetWidth, 0, targetHeight)}
-		)
-		tween:Play()
-		
-		-- Debug after tween
-		tween.Completed:Connect(function()
-			print("[DEBUG] Tween completed!")
-			print("[DEBUG] Container final size: " .. tostring(playerListContainer.AbsoluteSize))
-			print("[DEBUG] Frame final size: " .. tostring(playerListFrame.AbsoluteSize))
-			print("[DEBUG] Frame CanvasSize: " .. tostring(playerListFrame.CanvasSize))
-			
-			-- Check button visibility
-			for _, child in ipairs(playerListFrame:GetChildren()) do
-				if child:IsA("TextButton") then
-					print("[DEBUG] After tween - Button: " .. child.Name .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize) .. ", AbsolutePosition: " .. tostring(child.AbsolutePosition))
-				end
-			end
-		end)
-		
-		-- Focus on search box after animation
-		spawn(function()
-			wait(0.25)
-			if playerListContainer.Visible then
-				searchBox:CaptureFocus()
-			end
-		end)
+		-- Focus on search box
+		searchBox:CaptureFocus()
 	else
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end
