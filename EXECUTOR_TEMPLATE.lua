@@ -3,16 +3,40 @@
     TEMPLATE EXECUTOR - Copy paste ini ke executor kamu
     ============================================
     
+    📦 ADA 2 SCRIPT TERPISAH:
+    
+    1️⃣ LoaderScript.lua (WAJIB) - Admin Commands
+       • Fly, Speed, God Mode, Jump, Anti-AFK, dll
+       • Tombol ⚙️ untuk control panel
+       
+    2️⃣ vd.lua (OPTIONAL) - Violence District Features
+       • ESP Wallhack, Crosshair, Camera Zoom, dll
+       • Tombol ⚡ untuk VD panel
+       • Keyboard shortcuts: K, J, H, G, L
+    
+    💡 PILIHAN LOAD:
+    • Load KEDUANYA (full features) ✅ Recommended
+    • Load HANYA LoaderScript.lua (tanpa VD)
+    
     LANGKAH:
     1. Ganti URL di bawah dengan Raw URL GitHub kamu
-    2. Copy SEMUA code ini
-    3. Paste di executor
-    4. Execute!
+    2. Pilih mau load apa (comment/uncomment)
+    3. Copy SEMUA code ini
+    4. Paste di executor
+    5. Execute!
     
 ]]
 
+-- ============================================
 -- GANTI URL INI! ⬇️⬇️⬇️
-loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/LoaderScript.lua"))()
+-- ============================================
+
+-- 1️⃣ WAJIB: Admin Commands (LoaderScript.lua)
+loadstring(game:HttpGet("https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/main/LoaderScript.lua"))()
+
+-- 2️⃣ OPTIONAL: Violence District (vd.lua)
+-- Uncomment baris di bawah jika mau Violence District features
+loadstring(game:HttpGet("https://raw.githubusercontent.com/neiruhitori/sc-admin-rblx/main/vd.lua"))()
 
 --[[
     ⚠️ PENTING - PERBEDAAN URL:
@@ -41,16 +65,26 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/Lo
     ✅ File harus bernama LoaderScript.lua (atau sesuaikan nama file)
     
     SETELAH EXECUTE:
-    - Akan muncul tombol ⚙️ di layar
-    - Klik untuk buka admin panel
-    - Atau ketik command di chat: ;fly, ;speed 100, dll
+    • Tombol ⚙️ muncul di layar (Admin panel)
+    • Tombol ⚡ muncul di layar (Violence District - jika di-load)
+    • Ketik command di chat: ;fly, ;speed 100, dll
     
-    FITUR:
-    ✈️ Fly (WASD + Space + Shift)
-    🏃 Speed boost
-    🦘 Jump power
-    🛡️ God mode (true invincibility)
-    👻 Invisible
-    ⏰ Anti-AFK
+    📋 FITUR LoaderScript.lua:
+    ✈️  Fly (WASD + Space + Shift) - ;fly
+    🏃 Speed boost - ;speed [number]
+    🦘 Jump power - ;jp [number]
+    ∞  Infinite jump - ;infinitejump
+    🛡️ God mode (true invincibility) - ;god
+    📍 Goto player - ;goto
+    🔄 Respawn - ;respawn
+    ⏰ Anti-AFK 24/7 - ;antiafk
+    
+    ⚡ FITUR Violence District (vd.lua):
+    🖱️ Cursor Unlock - K key
+    👁️ ESP Wallhack + Objects - J key
+    🪤 Pallet Trap Detection - J key
+    🎯 Crosshair + Range Marks - H key
+    📷 Camera Zoom Unlock - G key
+    ⚡ Speed Boost + Auto Shift - L key
     
 ]]
