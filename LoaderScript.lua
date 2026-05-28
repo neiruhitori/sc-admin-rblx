@@ -62,29 +62,78 @@ end
 
 -- ============================================
 -- ANTI-AFK MODULE
-
 -- ============================================
 local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
 
 local AntiAFK = {}
 AntiAFK.Enabled = false
-AntiAFK.Connection = nil
+AntiAFK.IdledConnection = nil
+AntiAFK.HeartbeatConnection = nil
+AntiAFK.LastActivity = 0
+AntiAFK.ActivityInterval = 60 -- Kirim signal setiap 60 detik
 
 function AntiAFK:Enable()
 	if self.Enabled then return end
 
 	self.Enabled = true
-
+	self.LastActivity = tick()
 	
 	local player = game:GetService("Players").LocalPlayer
-	self.Connection = player.Idled:Connect(function()
-
+	
+	-- Method 1: Handle Idled event sebagai backup
+	self.IdledConnection = player.Idled:Connect(function()
 		VirtualUser:CaptureController()
 		VirtualUser:ClickButton2(Vector2.new())
-
+		VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+		VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
 	end)
 	
-	print("✅ Anti-AFK enabled!")
+	-- Method 2: Proactive loop - kirim signal berkala SEBELUM timeout
+	self.HeartbeatConnection = RunService.Heartbeat:Connect(function()
+		if not self.Enabled then return end
+		
+		local currentTime = tick()
+		
+		-- Setiap 60 detik, kirim berbagai signal anti-AFK
+		if currentTime - self.LastActivity >= self.ActivityInterval then
+			self.LastActivity = currentTime
+			
+			-- Virtual user input simulation
+			VirtualUser:CaptureController()
+			VirtualUser:ClickButton2(Vector2.new())
+			
+			-- Simulate mouse movement
+			VirtualUser:Button1Down(Vector2.new(0, 0))
+			VirtualUser:Button1Up(Vector2.new(0, 0))
+			
+			-- Camera jiggle kecil (hampir tidak terlihat)
+			local camera = workspace.CurrentCamera
+			if camera then
+				local currentCFrame = camera.CFrame
+				-- Rotate kamera sangat kecil (0.001 radian = ~0.057 derajat)
+				camera.CFrame = currentCFrame * CFrame.Angles(0, 0.001, 0)
+				wait(0.05)
+				camera.CFrame = currentCFrame -- Kembalikan posisi
+			end
+			
+			-- Simulate character movement (sangat kecil, tidak terlihat)
+			local character = player.Character
+			if character then
+				local humanoid = character:FindFirstChildOfClass("Humanoid")
+				local rootPart = character:FindFirstChild("HumanoidRootPart")
+				
+				if humanoid and rootPart and not FlyController.Flying then
+					-- Move tiny bit forward lalu backward (net zero movement)
+					humanoid:Move(Vector3.new(0, 0, 0.01), false)
+					wait(0.01)
+					humanoid:Move(Vector3.new(0, 0, -0.01), false)
+				end
+			end
+		end
+	end)
+	
+	print("✅ Anti-AFK enabled! (24/7 Active - Game akan selalu detect kamu online)")
 	return true
 end
 
@@ -93,10 +142,14 @@ function AntiAFK:Disable()
 	if not self.Enabled then return end
 	self.Enabled = false
 	
-	if self.Connection then
-		self.Connection:Disconnect()
-
-		self.Connection = nil
+	if self.IdledConnection then
+		self.IdledConnection:Disconnect()
+		self.IdledConnection = nil
+	end
+	
+	if self.HeartbeatConnection then
+		self.HeartbeatConnection:Disconnect()
+		self.HeartbeatConnection = nil
 	end
 	
 	print("❌ Anti-AFK disabled!")
@@ -229,6 +282,15 @@ function FlyController:StartFlying()
 	local humanoid = character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 	
+	-- Disable infinite jump if active to prevent conflict
+	if InfiniteJump and InfiniteJump.Enabled then
+		InfiniteJump:Disable()
+		if CommandExecutor then
+			CommandExecutor.PlayerStatuses.infinitejump = false
+		end
+		print("⚠️ Infinite Jump disabled (conflict with Fly mode)")
+	end
+	
 	self.Flying = true
 	
 	setupBodyMovers(character)
@@ -325,11 +387,187 @@ UserInputService.InputEnded:Connect(function(input)
 end)
 
 -- ============================================
+-- INFINITE JUMP CONTROLLER MODULE
+-- ============================================
+local InfiniteJump = {}
+InfiniteJump.Enabled = false
+InfiniteJump.Flying = false
+InfiniteJump.Speed = 100  -- Kecepatan terbang ke atas
+InfiniteJump.DownSpeed = 50  -- Kecepatan turun
+InfiniteJump.BodyVelocity = nil
+InfiniteJump.SpacePressed = false
+InfiniteJump.InputConnection = nil
+InfiniteJump.HeartbeatConnection = nil
+
+local function setupInfiniteJumpBodyMovers(character)
+	local hrp = character:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
+	
+	-- Hapus BodyVelocity yang lama jika ada
+	if InfiniteJump.BodyVelocity then
+		InfiniteJump.BodyVelocity:Destroy()
+	end
+	
+	InfiniteJump.BodyVelocity = Instance.new("BodyVelocity")
+	InfiniteJump.BodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+	InfiniteJump.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+	InfiniteJump.BodyVelocity.Parent = hrp
+end
+
+local function removeInfiniteJumpBodyMovers()
+	if InfiniteJump.BodyVelocity then
+		InfiniteJump.BodyVelocity:Destroy()
+		InfiniteJump.BodyVelocity = nil
+	end
+	
+	if InfiniteJump.HeartbeatConnection then
+		InfiniteJump.HeartbeatConnection:Disconnect()
+		InfiniteJump.HeartbeatConnection = nil
+	end
+end
+
+function InfiniteJump:Enable()
+	if self.Enabled then return end
+	
+	local character = player.Character
+	if not character then return end
+	
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	
+	-- Disable fly mode if active to prevent conflict
+	if FlyController.Flying then
+		FlyController:StopFlying()
+		if CommandExecutor then
+			CommandExecutor.PlayerStatuses.fly = false
+		end
+		print("⚠️ Fly mode disabled (conflict with Infinite Jump)")
+	end
+	
+	self.Enabled = true
+	self.SpacePressed = false
+	
+	setupInfiniteJumpBodyMovers(character)
+	
+	-- Monitor Space key press/release
+	self.InputConnection = UserInputService.InputChanged:Connect(function(input, gameProcessed)
+		if gameProcessed then return end
+		if not self.Enabled then return end
+		
+		-- Check if Space is being held
+		if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+			self.SpacePressed = true
+		else
+			self.SpacePressed = false
+		end
+	end)
+	
+	-- Also monitor InputBegan/Ended for Space
+	local inputBeganConn = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed or UserInputService:GetFocusedTextBox() then return end
+		if not self.Enabled then return end
+		
+		if input.KeyCode == Enum.KeyCode.Space then
+			self.SpacePressed = true
+		end
+	end)
+	
+	local inputEndedConn = UserInputService.InputEnded:Connect(function(input)
+		if not self.Enabled then return end
+		
+		if input.KeyCode == Enum.KeyCode.Space then
+			self.SpacePressed = false
+		end
+	end)
+	
+	-- Store connections for cleanup
+	self.ExtraConnections = {inputBeganConn, inputEndedConn}
+	
+	-- Heartbeat loop untuk apply velocity
+	self.HeartbeatConnection = RunService.Heartbeat:Connect(function()
+		if not self.Enabled then return end
+		if not self.BodyVelocity then return end
+		
+		local character = player.Character
+		if not character then return end
+		
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if not humanoid then return end
+		
+		if self.SpacePressed then
+			-- Space ditekan - terbang ke atas
+			self.BodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+			self.BodyVelocity.Velocity = Vector3.new(0, self.Speed, 0)
+			self.Flying = true
+		else
+			-- Space dilepas - turun pelan atau biarkan gravity
+			if self.Flying then
+				-- Baru saja lepas space, turun perlahan
+				self.BodyVelocity.MaxForce = Vector3.new(0, math.huge, 0)
+				self.BodyVelocity.Velocity = Vector3.new(0, -self.DownSpeed, 0)
+				
+				-- Setelah delay singkat, matikan BodyVelocity biar gravity bekerja
+				spawn(function()
+					wait(0.5)
+					if self.BodyVelocity and not self.SpacePressed then
+						self.BodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+						self.BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+						self.Flying = false
+					end
+				end)
+			end
+		end
+	end)
+	
+	print("🚀 Infinite Jump enabled! Hold SPACE to fly up continuously!")
+end
+
+function InfiniteJump:Disable()
+	if not self.Enabled then return end
+	
+	self.Enabled = false
+	self.SpacePressed = false
+	self.Flying = false
+	
+	if self.InputConnection then
+		self.InputConnection:Disconnect()
+		self.InputConnection = nil
+	end
+	
+	if self.ExtraConnections then
+		for _, conn in ipairs(self.ExtraConnections) do
+			conn:Disconnect()
+		end
+		self.ExtraConnections = nil
+	end
+	
+	removeInfiniteJumpBodyMovers()
+	
+	print("🪂 Infinite Jump disabled")
+end
+
+function InfiniteJump:Toggle()
+	if self.Enabled then
+		self:Disable()
+		return false
+	else
+		self:Enable()
+		return true
+	end
+end
+
+function InfiniteJump:SetSpeed(speed)
+	self.Speed = math.clamp(speed, 50, 300)
+	print("🚀 Infinite Jump speed set to " .. self.Speed)
+end
+
+-- ============================================
 -- CLIENT-SIDE COMMAND EXECUTOR
 -- ============================================
 CommandExecutor = {}
 CommandExecutor.PlayerStatuses = {
 	fly = false,
+	infinitejump = false,
 	god = false,
 	antiafk = false
 }
@@ -583,10 +821,12 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 			humanoid.MaxHealth = 100
 			humanoid.Health = 100
 			FlyController:StopFlying()
+			InfiniteJump:Disable()
 			-- Disable god mode properly
 			self:DisableGodMode()
 			-- Reset all statuses
 			self.PlayerStatuses.fly = false
+			self.PlayerStatuses.infinitejump = false
 			self.PlayerStatuses.god = false
 			return true, "Character reset to normal"
 		end
@@ -605,6 +845,20 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		else
 			return true, "Anti-AFK disabled"
 		end
+	
+	elseif command == "infinitejump" or command == "infjump" or command == "ijump" then
+		local status = InfiniteJump:Toggle()
+		self.PlayerStatuses.infinitejump = status
+		if status then
+			return true, "Infinite Jump enabled! Hold SPACE to fly up!"
+		else
+			return true, "Infinite Jump disabled"
+		end
+	
+	elseif command == "ijumpspeed" or command == "infinitejumpspeed" then
+		local speed = tonumber(args[1]) or 100
+		InfiniteJump:SetSpeed(speed)
+		return true, "Infinite Jump speed set to " .. speed
 	
 	else
 		return false, "Unknown command: " .. command
@@ -948,8 +1202,8 @@ iconLabel.Parent = floatingIcon
 -- Main Frame
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 650, 0, 450)
-mainFrame.Position = UDim2.new(0.5, -325, 0.5, -225)
+mainFrame.Size = UDim2.new(0, 750, 0, 500)
+mainFrame.Position = UDim2.new(0.5, -375, 0.5, -250)
 mainFrame.BackgroundColor3 = AdminConfig.Theme.Primary
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
@@ -1047,13 +1301,155 @@ watermarkText.TextXAlignment = Enum.TextXAlignment.Left
 watermarkText.TextTransparency = 0.3
 watermarkText.Parent = watermark
 
--- Player Selector
+-- ============================================
+-- SIDEBAR SYSTEM
+-- ============================================
+
+-- Sidebar Container
+local sidebarFrame = Instance.new("Frame")
+sidebarFrame.Name = "Sidebar"
+sidebarFrame.Size = UDim2.new(0, 160, 1, -95)
+sidebarFrame.Position = UDim2.new(0, 15, 0, 90)
+sidebarFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
+sidebarFrame.BorderSizePixel = 0
+sidebarFrame.Parent = mainFrame
+
+local sidebarCorner = Instance.new("UICorner")
+sidebarCorner.CornerRadius = UDim.new(0, 8)
+sidebarCorner.Parent = sidebarFrame
+
+local sidebarPadding = Instance.new("UIPadding")
+sidebarPadding.PaddingTop = UDim.new(0, 10)
+sidebarPadding.PaddingBottom = UDim.new(0, 10)
+sidebarPadding.PaddingLeft = UDim.new(0, 8)
+sidebarPadding.PaddingRight = UDim.new(0, 8)
+sidebarPadding.Parent = sidebarFrame
+
+local sidebarLayout = Instance.new("UIListLayout")
+sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
+sidebarLayout.Padding = UDim.new(0, 6)
+sidebarLayout.Parent = sidebarFrame
+
+-- Content Container (Right side)
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, -195, 1, -95)
+contentFrame.Position = UDim2.new(0, 185, 0, 90)
+contentFrame.BackgroundTransparency = 1
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = mainFrame
+
+-- Store active tab and pages
+AdminGUI.ActiveTab = nil
+AdminGUI.TabPages = {}
+AdminGUI.TabButtons = {}
+
+-- Helper: Create Tab Button
+local function createTabButton(name, icon, order, isDefault)
+	local button = Instance.new("TextButton")
+	button.Name = name .. "Tab"
+	button.Size = UDim2.new(1, 0, 0, 45)
+	button.BackgroundColor3 = isDefault and AdminConfig.Theme.Accent or Color3.fromRGB(50, 50, 50)
+	button.BorderSizePixel = 0
+	button.Text = ""
+	button.AutoButtonColor = false
+	button.LayoutOrder = order
+	button.Parent = sidebarFrame
+	
+	local btnCorner = Instance.new("UICorner")
+	btnCorner.CornerRadius = UDim.new(0, 6)
+	btnCorner.Parent = button
+	
+	local btnLabel = Instance.new("TextLabel")
+	btnLabel.Name = "Label"
+	btnLabel.Size = UDim2.new(1, -10, 1, 0)
+	btnLabel.Position = UDim2.new(0, 5, 0, 0)
+	btnLabel.BackgroundTransparency = 1
+	btnLabel.Text = icon .. " " .. name
+	btnLabel.TextColor3 = AdminConfig.Theme.Text
+	btnLabel.TextSize = 13
+	btnLabel.Font = Enum.Font.GothamBold
+	btnLabel.TextXAlignment = Enum.TextXAlignment.Left
+	btnLabel.Parent = button
+	
+	AdminGUI.TabButtons[name] = button
+	
+	return button
+end
+
+-- Helper: Create Content Page
+local function createContentPage(name)
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name .. "Page"
+	page.Size = UDim2.new(1, 0, 1, 0)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 6
+	page.CanvasSize = UDim2.new(0, 0, 0, 0)
+	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.Visible = false
+	page.Parent = contentFrame
+	
+	local pageLayout = Instance.new("UIListLayout")
+	pageLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	pageLayout.Padding = UDim.new(0, 10)
+	pageLayout.Parent = page
+	
+	AdminGUI.TabPages[name] = page
+	
+	return page
+end
+
+-- Helper: Switch Tab
+local function switchTab(tabName)
+	if AdminGUI.ActiveTab == tabName then return end
+	
+	-- Hide all pages
+	for name, page in pairs(AdminGUI.TabPages) do
+		page.Visible = false
+	end
+	
+	-- Reset all button colors
+	for name, button in pairs(AdminGUI.TabButtons) do
+		button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+	end
+	
+	-- Show selected page and highlight button
+	if AdminGUI.TabPages[tabName] then
+		AdminGUI.TabPages[tabName].Visible = true
+	end
+	
+	if AdminGUI.TabButtons[tabName] then
+		AdminGUI.TabButtons[tabName].BackgroundColor3 = AdminConfig.Theme.Accent
+	end
+	
+	AdminGUI.ActiveTab = tabName
+end
+
+-- Create Tabs
+createTabButton("Character", "⚡", 1, true)
+createTabButton("Movement", "✈️", 2, false)
+createTabButton("Teleport", "🌐", 3, false)
+createTabButton("Utility", "🔧", 4, false)
+
+-- Create Content Pages
+local characterPage = createContentPage("Character")
+local movementPage = createContentPage("Movement")
+local teleportPage = createContentPage("Teleport")
+local utilityPage = createContentPage("Utility")
+
+-- Set default tab
+characterPage.Visible = true
+AdminGUI.ActiveTab = "Character"
+
+-- Player Selector (moved to top of content area, above pages)
 local playerSelectorFrame = Instance.new("Frame")
 playerSelectorFrame.Name = "PlayerSelector"
-playerSelectorFrame.Size = UDim2.new(1, -30, 0, 45)
-playerSelectorFrame.Position = UDim2.new(0, 15, 0, 90)
+playerSelectorFrame.Size = UDim2.new(1, -195, 0, 45)
+playerSelectorFrame.Position = UDim2.new(0, 185, 0, 90)
 playerSelectorFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerSelectorFrame.BorderSizePixel = 0
+playerSelectorFrame.ZIndex = 2
 playerSelectorFrame.Parent = mainFrame
 
 local selectorCorner = Instance.new("UICorner")
@@ -1061,25 +1457,25 @@ selectorCorner.CornerRadius = UDim.new(0, 8)
 selectorCorner.Parent = playerSelectorFrame
 
 local selectorLabel = Instance.new("TextLabel")
-selectorLabel.Size = UDim2.new(0, 100, 1, 0)
+selectorLabel.Size = UDim2.new(0, 80, 1, 0)
 selectorLabel.Position = UDim2.new(0, 10, 0, 0)
 selectorLabel.BackgroundTransparency = 1
-selectorLabel.Text = "Target Player:"
+selectorLabel.Text = "Target:"
 selectorLabel.TextColor3 = AdminConfig.Theme.Text
-selectorLabel.TextSize = 14
+selectorLabel.TextSize = 13
 selectorLabel.Font = Enum.Font.Gotham
 selectorLabel.TextXAlignment = Enum.TextXAlignment.Left
 selectorLabel.Parent = playerSelectorFrame
 
 local playerDropdown = Instance.new("TextButton")
 playerDropdown.Name = "PlayerDropdown"
-playerDropdown.Size = UDim2.new(1, -220, 0, 35)
-playerDropdown.Position = UDim2.new(0, 115, 0, 5)
+playerDropdown.Size = UDim2.new(1, -260, 0, 35)
+playerDropdown.Position = UDim2.new(0, 85, 0, 5)
 playerDropdown.BackgroundColor3 = AdminConfig.Theme.Primary
 playerDropdown.BorderSizePixel = 0
 playerDropdown.Text = "Me (Self)"
 playerDropdown.TextColor3 = AdminConfig.Theme.Text
-playerDropdown.TextSize = 14
+playerDropdown.TextSize = 13
 playerDropdown.Font = Enum.Font.GothamBold
 playerDropdown.TextXAlignment = Enum.TextXAlignment.Left
 playerDropdown.Parent = playerSelectorFrame
@@ -1104,13 +1500,13 @@ dropdownArrow.Parent = playerDropdown
 
 local refreshButton = Instance.new("TextButton")
 refreshButton.Name = "RefreshButton"
-refreshButton.Size = UDim2.new(0, 80, 0, 35)
-refreshButton.Position = UDim2.new(1, -180, 0, 5)
+refreshButton.Size = UDim2.new(0, 70, 0, 35)
+refreshButton.Position = UDim2.new(1, -155, 0, 5)
 refreshButton.BackgroundColor3 = AdminConfig.Theme.Accent
 refreshButton.BorderSizePixel = 0
-refreshButton.Text = "🔄 Refresh"
+refreshButton.Text = "🔄"
 refreshButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-refreshButton.TextSize = 12
+refreshButton.TextSize = 14
 refreshButton.Font = Enum.Font.GothamBold
 refreshButton.Parent = playerSelectorFrame
 
@@ -1121,13 +1517,13 @@ refreshCorner.Parent = refreshButton
 -- Reset button (next to refresh)
 local resetButton = Instance.new("TextButton")
 resetButton.Name = "ResetButton"
-resetButton.Size = UDim2.new(0, 80, 0, 35)
-resetButton.Position = UDim2.new(1, -90, 0, 5)
+resetButton.Size = UDim2.new(0, 70, 0, 35)
+resetButton.Position = UDim2.new(1, -75, 0, 5)
 resetButton.BackgroundColor3 = Color3.fromRGB(255, 140, 0)
 resetButton.BorderSizePixel = 0
-resetButton.Text = "♻️ Reset"
+resetButton.Text = "♻️"
 resetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-resetButton.TextSize = 12
+resetButton.TextSize = 14
 resetButton.Font = Enum.Font.GothamBold
 resetButton.Parent = playerSelectorFrame
 
@@ -1135,11 +1531,15 @@ local resetCorner = Instance.new("UICorner")
 resetCorner.CornerRadius = UDim.new(0, 6)
 resetCorner.Parent = resetButton
 
+-- Adjust content frame position to be below player selector
+contentFrame.Position = UDim2.new(0, 185, 0, 145)
+contentFrame.Size = UDim2.new(1, -195, 1, -150)
+
 -- Player List Dropdown
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(0, 0, 0, 0)
-playerListFrame.Position = UDim2.new(0, 115, 0, 140)
+playerListFrame.Position = UDim2.new(0, 85, 0, 50)
 playerListFrame.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListFrame.BorderSizePixel = 0
 playerListFrame.Visible = false
@@ -1147,8 +1547,8 @@ playerListFrame.ScrollBarThickness = 4
 playerListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 playerListFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 playerListFrame.ClipsDescendants = true
-playerListFrame.ZIndex = 5
-playerListFrame.Parent = mainFrame
+playerListFrame.ZIndex = 10
+playerListFrame.Parent = playerSelectorFrame
 
 local listCorner = Instance.new("UICorner")
 listCorner.CornerRadius = UDim.new(0, 6)
@@ -1159,81 +1559,67 @@ listLayout.SortOrder = Enum.SortOrder.Name
 listLayout.Padding = UDim.new(0, 2)
 listLayout.Parent = playerListFrame
 
--- Commands Container
-local commandsContainer = Instance.new("ScrollingFrame")
-commandsContainer.Name = "CommandsContainer"
-commandsContainer.Size = UDim2.new(1, -30, 1, -155)
-commandsContainer.Position = UDim2.new(0, 15, 0, 145)
-commandsContainer.BackgroundTransparency = 1
-commandsContainer.BorderSizePixel = 0
-commandsContainer.ScrollBarThickness = 6
-commandsContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
-commandsContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-commandsContainer.Visible = true
-commandsContainer.Parent = mainFrame
+-- ============================================
+-- CONTENT SECTIONS (FOR EACH TAB)
+-- ============================================
 
-local commandsLayout = Instance.new("UIListLayout")
-commandsLayout.SortOrder = Enum.SortOrder.LayoutOrder
-commandsLayout.Padding = UDim.new(0, 10)
-commandsLayout.Parent = commandsContainer
-
--- Helper: Create Category
-local function createCategory(name, order)
-	local category = Instance.new("Frame")
-	category.Name = name .. "Category"
-	category.Size = UDim2.new(1, -10, 0, 0)
-	category.AutomaticSize = Enum.AutomaticSize.Y
-	category.BackgroundColor3 = AdminConfig.Theme.Secondary
-	category.BorderSizePixel = 0
-	category.LayoutOrder = order
-	category.Parent = commandsContainer
+-- Helper: Create Section in Page
+local function createSection(parentPage, title, order)
+	local section = Instance.new("Frame")
+	section.Name = title .. "Section"
+	section.Size = UDim2.new(1, 0, 0, 0)
+	section.AutomaticSize = Enum.AutomaticSize.Y
+	section.BackgroundColor3 = AdminConfig.Theme.Secondary
+	section.BorderSizePixel = 0
+	section.LayoutOrder = order
+	section.Parent = parentPage
 	
-	local categoryCorner = Instance.new("UICorner")
-	categoryCorner.CornerRadius = UDim.new(0, 8)
-	categoryCorner.Parent = category
+	local sectionCorner = Instance.new("UICorner")
+	sectionCorner.CornerRadius = UDim.new(0, 8)
+	sectionCorner.Parent = section
 	
-	local categoryPadding = Instance.new("UIPadding")
-	categoryPadding.PaddingTop = UDim.new(0, 10)
-	categoryPadding.PaddingBottom = UDim.new(0, 10)
-	categoryPadding.PaddingLeft = UDim.new(0, 10)
-	categoryPadding.PaddingRight = UDim.new(0, 10)
-	categoryPadding.Parent = category
+	local sectionPadding = Instance.new("UIPadding")
+	sectionPadding.PaddingTop = UDim.new(0, 10)
+	sectionPadding.PaddingBottom = UDim.new(0, 10)
+	sectionPadding.PaddingLeft = UDim.new(0, 10)
+	sectionPadding.PaddingRight = UDim.new(0, 10)
+	sectionPadding.Parent = section
 	
-	local categoryLayout = Instance.new("UIListLayout")
-	categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
-	categoryLayout.Padding = UDim.new(0, 8)
-	categoryLayout.Parent = category
+	local sectionLayout = Instance.new("UIListLayout")
+	sectionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	sectionLayout.Padding = UDim.new(0, 8)
+	sectionLayout.Parent = section
 	
-	local categoryTitle = Instance.new("TextLabel")
-	categoryTitle.Name = "Title"
-	categoryTitle.Size = UDim2.new(1, 0, 0, 25)
-	categoryTitle.BackgroundTransparency = 1
-	categoryTitle.Text = name
-	categoryTitle.TextColor3 = AdminConfig.Theme.Accent
-	categoryTitle.TextSize = 16
-	categoryTitle.Font = Enum.Font.GothamBold
-	categoryTitle.TextXAlignment = Enum.TextXAlignment.Left
-	categoryTitle.LayoutOrder = 0
-	categoryTitle.Parent = category
+	local sectionTitle = Instance.new("TextLabel")
+	sectionTitle.Name = "Title"
+	sectionTitle.Size = UDim2.new(1, 0, 0, 20)
+	sectionTitle.BackgroundTransparency = 1
+	sectionTitle.Text = title
+	sectionTitle.TextColor3 = AdminConfig.Theme.Accent
+	sectionTitle.TextSize = 14
+	sectionTitle.Font = Enum.Font.GothamBold
+	sectionTitle.TextXAlignment = Enum.TextXAlignment.Left
+	sectionTitle.LayoutOrder = 0
+	sectionTitle.Parent = section
 	
-	local buttonsFrame = Instance.new("Frame")
-	buttonsFrame.Name = "Buttons"
-	buttonsFrame.Size = UDim2.new(1, 0, 0, 0)
-	buttonsFrame.AutomaticSize = Enum.AutomaticSize.Y
-	buttonsFrame.BackgroundTransparency = 1
-	buttonsFrame.LayoutOrder = 1
-	buttonsFrame.Parent = category
+	local buttonsContainer = Instance.new("Frame")
+	buttonsContainer.Name = "ButtonsContainer"
+	buttonsContainer.Size = UDim2.new(1, 0, 0, 0)
+	buttonsContainer.AutomaticSize = Enum.AutomaticSize.Y
+	buttonsContainer.BackgroundTransparency = 1
+	buttonsContainer.LayoutOrder = 1
+	buttonsContainer.Parent = section
 	
 	local buttonsGrid = Instance.new("UIGridLayout")
-	buttonsGrid.CellSize = UDim2.new(0, 190, 0, 40)
+	buttonsGrid.CellSize = UDim2.new(0, 170, 0, 40)
 	buttonsGrid.CellPadding = UDim2.new(0, 8, 0, 8)
 	buttonsGrid.SortOrder = Enum.SortOrder.LayoutOrder
-	buttonsGrid.Parent = buttonsFrame
+	buttonsGrid.Parent = buttonsContainer
 	
-	return buttonsFrame
+	return buttonsContainer
 end
 
--- Helper: Create Command Button
+-- Helper: Create Command Button (Updated for new layout)
 local function createCommandButton(parent, text, icon, command, order, isToggle)
 	local button = Instance.new("TextButton")
 	button.Name = command
@@ -1250,12 +1636,12 @@ local function createCommandButton(parent, text, icon, command, order, isToggle)
 	
 	local buttonLabel = Instance.new("TextLabel")
 	buttonLabel.Name = "Label"
-	buttonLabel.Size = UDim2.new(1, -60, 1, 0)
-	buttonLabel.Position = UDim2.new(0, 10, 0, 0)
+	buttonLabel.Size = UDim2.new(1, -55, 1, 0)
+	buttonLabel.Position = UDim2.new(0, 8, 0, 0)
 	buttonLabel.BackgroundTransparency = 1
 	buttonLabel.Text = icon .. " " .. text
 	buttonLabel.TextColor3 = AdminConfig.Theme.Text
-	buttonLabel.TextSize = 13
+	buttonLabel.TextSize = 12
 	buttonLabel.Font = Enum.Font.GothamBold
 	buttonLabel.TextXAlignment = Enum.TextXAlignment.Left
 	buttonLabel.Parent = button
@@ -1264,12 +1650,12 @@ local function createCommandButton(parent, text, icon, command, order, isToggle)
 	if isToggle then
 		local statusLabel = Instance.new("TextLabel")
 		statusLabel.Name = "Status"
-		statusLabel.Size = UDim2.new(0, 50, 1, 0)
-		statusLabel.Position = UDim2.new(1, -55, 0, 0)
+		statusLabel.Size = UDim2.new(0, 40, 1, 0)
+		statusLabel.Position = UDim2.new(1, -45, 0, 0)
 		statusLabel.BackgroundTransparency = 1
 		statusLabel.Text = "OFF"
 		statusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-		statusLabel.TextSize = 11
+		statusLabel.TextSize = 10
 		statusLabel.Font = Enum.Font.GothamBold
 		statusLabel.Parent = button
 		
@@ -1280,22 +1666,32 @@ local function createCommandButton(parent, text, icon, command, order, isToggle)
 	return button
 end
 
--- Create Categories
-local characterButtons = createCategory("⚡ Character Mods", 1)
-createCommandButton(characterButtons, "Speed", "🏃", "speed", 1, false)
-createCommandButton(characterButtons, "Jump Power", "🦘", "jp", 2, false)
-createCommandButton(characterButtons, "God Mode", "🛡️", "god", 3, true)
+-- ============================================
+-- CREATE ALL SECTIONS AND BUTTONS
+-- ============================================
 
-local flyButtons = createCategory("✈️ Flying", 2)
-createCommandButton(flyButtons, "Fly Mode", "🚀", "fly", 1, true)
-createCommandButton(flyButtons, "Fly Speed", "⚡", "flyspeed", 2, false)
+-- CHARACTER TAB
+local characterStats = createSection(characterPage, "⚡ Character Stats", 1)
+createCommandButton(characterStats, "Speed", "🏃", "speed", 1, false)
+createCommandButton(characterStats, "Jump Power", "🦘", "jp", 2, false)
 
-local teleportButtons = createCategory("🌐 Teleport", 3)
-createCommandButton(teleportButtons, "Go To Player", "📍", "goto", 1, false)
+local characterAbilities = createSection(characterPage, "🛡️ Abilities", 2)
+createCommandButton(characterAbilities, "Infinite Jump", "🚀", "infinitejump", 1, true)
+createCommandButton(characterAbilities, "God Mode", "🛡️", "god", 2, true)
 
-local otherButtons = createCategory("🔧 Other", 4)
-createCommandButton(otherButtons, "Respawn", "🔄", "respawn", 1, false)
-createCommandButton(otherButtons, "Anti-AFK", "⏰", "antiafk", 2, true)
+-- MOVEMENT TAB
+local flyingSection = createSection(movementPage, "✈️ Flying Controls", 1)
+createCommandButton(flyingSection, "Fly Mode", "🚀", "fly", 1, true)
+createCommandButton(flyingSection, "Fly Speed", "⚡", "flyspeed", 2, false)
+
+-- TELEPORT TAB
+local teleportSection = createSection(teleportPage, "🌐 Player Teleport", 1)
+createCommandButton(teleportSection, "Go To Player", "📍", "goto", 1, false)
+
+-- UTILITY TAB
+local systemSection = createSection(utilityPage, "🔧 System", 1)
+createCommandButton(systemSection, "Respawn", "🔄", "respawn", 1, false)
+createCommandButton(systemSection, "Anti-AFK", "⏰", "antiafk", 2, true)
 
 -- Notification Frame
 local notificationFrame = Instance.new("Frame")
@@ -1779,8 +2175,24 @@ local function connectCommandButton(buttonName, command, requiresInput)
 	end
 end
 
+-- ============================================
+-- TAB SWITCHING LOGIC
+-- ============================================
+
+-- Connect tab buttons to switch pages
+for tabName, button in pairs(AdminGUI.TabButtons) do
+	button.MouseButton1Click:Connect(function()
+		switchTab(tabName)
+	end)
+end
+
+-- ============================================
+-- CONNECT COMMAND BUTTONS TO ACTIONS
+-- ============================================
+
 connectCommandButton("speed", "speed", true)
 connectCommandButton("jp", "jp", true)
+connectCommandButton("infinitejump", "infinitejump", false)
 connectCommandButton("god", "god", false)
 connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
@@ -3467,11 +3879,13 @@ print("\n🔧 Available commands (client-side only):")
 print("   ;fly - Toggle flying (WASD + Space + Shift)")
 print("   ;speed [number] - Set walk speed")
 print("   ;jp [number] - Set jump power")
+print("   ;infinitejump - Toggle infinite jump (Hold SPACE to fly up!)")
+print("   ;ijumpspeed [number] - Set infinite jump speed (50-300)")
 print("   ;god - Toggle god mode (true invincibility)")
 print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")
-print("   ;antiafk - Toggle anti-AFK")
+print("   ;antiafk - Toggle anti-AFK (24/7 active, no auto-kick)")
 print("\n💡 UI Features:")
 print("   • Toggle buttons show ON/OFF status")
 print("   • Select target player for goto command")
