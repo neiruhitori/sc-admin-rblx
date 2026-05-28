@@ -25,7 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v3.0 - FINAL WORKING VERSION")
+print("📌 VERSION: v3.1 - ULTRA VISIBLE BUTTONS (BLUE)")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1551,15 +1551,15 @@ contentFrame.Position = UDim2.new(0, 185, 0, 145)
 contentFrame.Size = UDim2.new(1, -195, 1, -150)
 contentFrame.ZIndex = 1
 
--- Player List Dropdown (proven working, now with proper styling)
+-- Player List Dropdown - ULTRA VISIBLE VERSION
 local playerListContainer = Instance.new("Frame")
 playerListContainer.Name = "PlayerListContainer"
-playerListContainer.Size = UDim2.new(0, 200, 0, 0) -- Width fixed, height dynamic
-playerListContainer.Position = UDim2.new(0, 0, 0, 0) -- Will be set dynamically
-playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
-playerListContainer.BackgroundTransparency = 0 -- Keep fully opaque
-playerListContainer.BorderSizePixel = 2
-playerListContainer.BorderColor3 = AdminConfig.Theme.Accent
+playerListContainer.Size = UDim2.new(0, 220, 0, 0)
+playerListContainer.Position = UDim2.new(0, 0, 0, 0)
+playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40) -- Dark gray
+playerListContainer.BackgroundTransparency = 0
+playerListContainer.BorderSizePixel = 3
+playerListContainer.BorderColor3 = Color3.fromRGB(0, 170, 255) -- Bright blue border
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = false
 playerListContainer.ZIndex = 200
@@ -1569,12 +1569,12 @@ local containerCorner = Instance.new("UICorner")
 containerCorner.CornerRadius = UDim.new(0, 8)
 containerCorner.Parent = playerListContainer
 
--- Player list scrolling frame
+-- Player list scrolling frame - VISIBLE BACKGROUND
 local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(1, -10, 1, -10)
 playerListFrame.Position = UDim2.new(0, 5, 0, 5)
-playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+playerListFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50) -- Lighter gray
 playerListFrame.BackgroundTransparency = 0
 playerListFrame.BorderSizePixel = 0
 playerListFrame.ScrollBarThickness = 6
@@ -1931,77 +1931,59 @@ function AdminGUI:UpdatePlayerList()
 	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
-	selfButton.Size = UDim2.new(0, 180, 0, 35) -- Use absolute width
-	selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
-	selfButton.BorderSizePixel = 1
-	selfButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
+	selfButton.Size = UDim2.new(0, 200, 0, 40) -- FULL WIDTH of frame
+	selfButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- BRIGHT BLUE
+	selfButton.BackgroundTransparency = 0
+	selfButton.BorderSizePixel = 2
+	selfButton.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
 	selfButton.Text = "Me (Self)"
-	selfButton.TextColor3 = AdminConfig.Theme.Text
-	selfButton.TextSize = 13
+	selfButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+	selfButton.TextSize = 16
 	selfButton.Font = Enum.Font.GothamBold
-	selfButton.TextXAlignment = Enum.TextXAlignment.Left
+	selfButton.TextXAlignment = Enum.TextXAlignment.Center
 	selfButton.AutoButtonColor = false
 	selfButton.ZIndex = 202
 	selfButton.LayoutOrder = 0
 	selfButton.Parent = playerListFrame
 	
-	local selfCorner = Instance.new("UICorner")
-	selfCorner.CornerRadius = UDim.new(0, 4)
-	selfCorner.Parent = selfButton
-	
-	local selfPadding = Instance.new("UIPadding")
-	selfPadding.PaddingLeft = UDim.new(0, 10)
-	selfPadding.Parent = selfButton
-	
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
 		playerDropdown.Text = "Me (Self)"
 		playerListContainer.Visible = false
-		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 	end)
 	
 	selfButton.MouseEnter:Connect(function()
-		selfButton.BackgroundColor3 = AdminConfig.Theme.Accent
+		selfButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255) -- Lighter blue
 	end)
 	selfButton.MouseLeave:Connect(function()
-		selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
+		selfButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- Back to bright blue
 	end)
 	
 	local buttonIndex = 1
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(0, 180, 0, 48) -- Use absolute width
-		playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
+		playerButton.Size = UDim2.new(0, 200, 0, 50) -- FULL WIDTH
+		playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Steel blue
+		playerButton.BackgroundTransparency = 0
 		playerButton.BorderSizePixel = 1
-		playerButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
+		playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
 		playerButton.AutoButtonColor = false
-		playerButton.ZIndex = 202 -- Higher than frame
-		playerButton.LayoutOrder = buttonIndex  -- Ensure consistent ordering
+		playerButton.ZIndex = 202
+		playerButton.LayoutOrder = buttonIndex
 		
-		-- Multi-line text: DisplayName on top, Username on bottom
+		-- Multi-line text
 		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
 		playerButton.Text = buttonText
-		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		playerButton.TextSize = 12
-		playerButton.Font = Enum.Font.Gotham
-		playerButton.TextXAlignment = Enum.TextXAlignment.Left
-		playerButton.TextYAlignment = Enum.TextYAlignment.Top
+		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+		playerButton.TextSize = 14
+		playerButton.Font = Enum.Font.GothamBold
+		playerButton.TextXAlignment = Enum.TextXAlignment.Center
+		playerButton.TextYAlignment = Enum.TextYAlignment.Center
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
 		buttonIndex = buttonIndex + 1
-		
-		local pCorner = Instance.new("UICorner")
-		pCorner.CornerRadius = UDim.new(0, 4)
-		pCorner.Parent = playerButton
-		
-		local pPadding = Instance.new("UIPadding")
-		pPadding.PaddingLeft = UDim.new(0, 10)
-		pPadding.PaddingRight = UDim.new(0, 10)
-		pPadding.PaddingTop = UDim.new(0, 8)
-		pPadding.PaddingBottom = UDim.new(0, 8)
-		pPadding.Parent = playerButton
 		
 		playerButton.MouseButton1Click:Connect(function()
 			AdminGUI.SelectedPlayer = plr.Name
@@ -2016,10 +1998,10 @@ function AdminGUI:UpdatePlayerList()
 		end)
 		
 		playerButton.MouseEnter:Connect(function()
-			playerButton.BackgroundColor3 = AdminConfig.Theme.Accent
+			playerButton.BackgroundColor3 = Color3.fromRGB(100, 180, 255) -- Lighter blue
 		end)
 		playerButton.MouseLeave:Connect(function()
-			playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
+			playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Back to steel blue
 		end)
 	end
 end
@@ -2191,16 +2173,15 @@ playerDropdown.MouseButton1Click:Connect(function()
 		AdminGUI:UpdatePlayerList()
 		
 		local playerCount = #Players:GetPlayers() + 1
-		local targetHeight = math.min(playerCount * 51 + 15, 400)
+		local targetHeight = math.min(playerCount * 53 + 20, 450) -- Taller buttons need more space
 		
-		-- Position below dropdown button
 		local dropdownAbsPos = playerDropdown.AbsolutePosition
 		local dropdownAbsSize = playerDropdown.AbsoluteSize
 		local posX = dropdownAbsPos.X
 		local posY = dropdownAbsPos.Y + dropdownAbsSize.Y + 5
 		
 		playerListContainer.Position = UDim2.new(0, posX, 0, posY)
-		playerListContainer.Size = UDim2.new(0, 200, 0, targetHeight)
+		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
 	end
 end)
 
