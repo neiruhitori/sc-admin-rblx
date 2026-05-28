@@ -25,7 +25,7 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: 2024-05-28 v2.1 - ABSOLUTE SIZING FIX")
+print("📌 VERSION: 2024-05-28 v2.2 - LAYOUT ORDER FIX")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1618,7 +1618,7 @@ playerListFrame.ZIndex = 101
 playerListFrame.Parent = playerListContainer
 
 local listLayout = Instance.new("UIListLayout")
-listLayout.SortOrder = Enum.SortOrder.Name
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
 listLayout.Padding = UDim.new(0, 3)
 listLayout.Parent = playerListFrame
 
@@ -1977,6 +1977,7 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.TextXAlignment = Enum.TextXAlignment.Left
 	selfButton.AutoButtonColor = false
 	selfButton.ZIndex = 102
+	selfButton.LayoutOrder = 0  -- Force Self to be first
 	selfButton.Parent = playerListFrame
 	
 	local selfCorner = Instance.new("UICorner")
@@ -2001,6 +2002,7 @@ function AdminGUI:UpdatePlayerList()
 		selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
 	end)
 	
+	local buttonIndex = 1
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
@@ -2010,6 +2012,7 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
 		playerButton.AutoButtonColor = false
 		playerButton.ZIndex = 102
+		playerButton.LayoutOrder = buttonIndex  -- Ensure consistent ordering
 		
 		-- Multi-line text: DisplayName on top, Username on bottom
 		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
@@ -2022,11 +2025,11 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
 		
-		print("[DEBUG] Button for " .. plr.Name .. ", AbsoluteSize: " .. tostring(playerButton.AbsoluteSize))
-		
 		-- Store username for search
 		playerButton:SetAttribute("Username", plr.Name)
 		playerButton:SetAttribute("DisplayName", plr.DisplayName)
+		
+		buttonIndex = buttonIndex + 1
 		
 		local pCorner = Instance.new("UICorner")
 		pCorner.CornerRadius = UDim.new(0, 4)
