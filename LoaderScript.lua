@@ -1557,11 +1557,13 @@ playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 playerListContainer.Position = UDim2.new(0, 70, 0, 45)
 playerListContainer.BackgroundColor3 = AdminConfig.Theme.Secondary
 playerListContainer.BorderSizePixel = 1
-playerListContainer.BorderColor3 = Color3.fromRGB(60, 60, 60)
+playerListContainer.BorderColor3 = Color3.fromRGB(80, 80, 80)
 playerListContainer.Visible = false
 playerListContainer.ClipsDescendants = true
 playerListContainer.ZIndex = 100
 playerListContainer.Parent = playerSelectorFrame
+
+print("[DEBUG] PlayerListContainer created at position: " .. tostring(playerListContainer.Position))
 
 local listContainerCorner = Instance.new("UICorner")
 listContainerCorner.CornerRadius = UDim.new(0, 6)
@@ -1604,7 +1606,8 @@ local playerListFrame = Instance.new("ScrollingFrame")
 playerListFrame.Name = "PlayerListFrame"
 playerListFrame.Size = UDim2.new(1, -10, 1, -45)
 playerListFrame.Position = UDim2.new(0, 5, 0, 40)
-playerListFrame.BackgroundTransparency = 1
+playerListFrame.BackgroundTransparency = 0.95
+playerListFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 playerListFrame.BorderSizePixel = 0
 playerListFrame.ScrollBarThickness = 6
 playerListFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
@@ -1614,6 +1617,8 @@ playerListFrame.ScrollingEnabled = true
 playerListFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 playerListFrame.ZIndex = 101
 playerListFrame.Parent = playerListContainer
+
+print("[DEBUG] PlayerListFrame created, Parent: " .. tostring(playerListFrame.Parent))
 
 local listLayout = Instance.new("UIListLayout")
 listLayout.SortOrder = Enum.SortOrder.Name
@@ -1951,17 +1956,25 @@ function AdminGUI:TogglePanel()
 end
 
 function AdminGUI:UpdatePlayerList()
+	print("[DEBUG] UpdatePlayerList called")
+	
+	-- Clear existing buttons (but keep UIListLayout!)
 	for _, child in ipairs(playerListFrame:GetChildren()) do
 		if child:IsA("TextButton") then
 			child:Destroy()
 		end
 	end
 	
+	print("[DEBUG] Cleared old buttons, creating new ones...")
+	local playerCount = #Players:GetPlayers()
+	print("[DEBUG] Found " .. playerCount .. " players in game")
+	
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
-	selfButton.Size = UDim2.new(1, 0, 0, 35)
+	selfButton.Size = UDim2.new(1, -4, 0, 35)
 	selfButton.BackgroundColor3 = AdminConfig.Theme.Primary
-	selfButton.BorderSizePixel = 0
+	selfButton.BorderSizePixel = 1
+	selfButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
 	selfButton.Text = "Me (Self)"
 	selfButton.TextColor3 = AdminConfig.Theme.Text
 	selfButton.TextSize = 13
@@ -1970,6 +1983,8 @@ function AdminGUI:UpdatePlayerList()
 	selfButton.AutoButtonColor = false
 	selfButton.ZIndex = 102
 	selfButton.Parent = playerListFrame
+	
+	print("[DEBUG] Self button created, Size: " .. tostring(selfButton.Size) .. ", Parent: " .. tostring(selfButton.Parent))
 	
 	local selfCorner = Instance.new("UICorner")
 	selfCorner.CornerRadius = UDim.new(0, 4)
@@ -1996,9 +2011,10 @@ function AdminGUI:UpdatePlayerList()
 	for _, plr in ipairs(Players:GetPlayers()) do
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(1, 0, 0, 48)
+		playerButton.Size = UDim2.new(1, -4, 0, 48)
 		playerButton.BackgroundColor3 = AdminConfig.Theme.Primary
-		playerButton.BorderSizePixel = 0
+		playerButton.BorderSizePixel = 1
+		playerButton.BorderColor3 = Color3.fromRGB(60, 60, 60)
 		playerButton.AutoButtonColor = false
 		playerButton.ZIndex = 102
 		
@@ -2012,6 +2028,8 @@ function AdminGUI:UpdatePlayerList()
 		playerButton.TextYAlignment = Enum.TextYAlignment.Top
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
+		
+		print("[DEBUG] Created button for: " .. plr.Name .. " (" .. plr.DisplayName .. "), Parent: " .. tostring(playerButton.Parent))
 		
 		-- Store username for search
 		playerButton:SetAttribute("Username", plr.Name)
@@ -2233,14 +2251,46 @@ playerDropdown.MouseButton1Click:Connect(function()
 		searchBox.Text = "" -- Clear search
 		AdminGUI:UpdatePlayerList()
 		
-		local targetHeight = math.min(#Players:GetPlayers() * 51 + 80, 320) -- +80 for search box, 51 per player (48 + 3 spacing)
+		local playerCount = #Players:GetPlayers()
+		local targetHeight = math.min(playerCount * 51 + 80, 320) -- +80 for search box, 51 per player (48 + 3 spacing)
+		-- Use dropdown button width as reference (match dropdown size)
+		local targetWidth = playerDropdown.AbsoluteSize.X
+		print("[DEBUG] Opening dropdown - Players: " .. playerCount .. ", Target size: " .. targetWidth .. "x" .. targetHeight)
+		print("[DEBUG] Dropdown AbsoluteSize: " .. tostring(playerDropdown.AbsoluteSize))
+		print("[DEBUG] playerListFrame AbsoluteSize: " .. tostring(playerListFrame.AbsoluteSize))
+		
+		-- Check how many buttons exist
+		local buttonCount = 0
+		for _, child in ipairs(playerListFrame:GetChildren()) do
+			if child:IsA("TextButton") then
+				buttonCount = buttonCount + 1
+				print("[DEBUG] Button: " .. child.Name .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize))
+			end
+		end
+		print("[DEBUG] Total buttons in frame: " .. buttonCount)
+		
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)
 		local tween = TweenService:Create(
 			playerListContainer,
 			TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-			{Size = UDim2.new(1, -80, 0, targetHeight)}
+			{Size = UDim2.new(0, targetWidth, 0, targetHeight)}
 		)
 		tween:Play()
+		
+		-- Debug after tween
+		tween.Completed:Connect(function()
+			print("[DEBUG] Tween completed!")
+			print("[DEBUG] Container final size: " .. tostring(playerListContainer.AbsoluteSize))
+			print("[DEBUG] Frame final size: " .. tostring(playerListFrame.AbsoluteSize))
+			print("[DEBUG] Frame CanvasSize: " .. tostring(playerListFrame.CanvasSize))
+			
+			-- Check button visibility
+			for _, child in ipairs(playerListFrame:GetChildren()) do
+				if child:IsA("TextButton") then
+					print("[DEBUG] After tween - Button: " .. child.Name .. ", AbsoluteSize: " .. tostring(child.AbsoluteSize) .. ", AbsolutePosition: " .. tostring(child.AbsolutePosition))
+				end
+			end
+		end)
 		
 		-- Focus on search box after animation
 		spawn(function()
