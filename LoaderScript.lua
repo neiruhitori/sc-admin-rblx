@@ -25,9 +25,9 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v3.3 - RED BOX PLAYER LIST (CENTER SCREEN TEST!)")
-print("     🔴 KLIK BUTTON KUNING → LIST MUNCUL DI TENGAH LAYAR DENGAN KOTAK MERAH!")
-print("     🔴 KALAU GA KELIATAN = ADA MASALAH BESAR!")
+print("📌 VERSION: v3.4 - NEON RAINBOW BUTTONS (YELLOW SELF + CYAN PLAYERS!)")
+print("     🌈 BUTTON SELF = KUNING, BORDER HIJAU | BUTTON PLAYERS = CYAN, BORDER MAGENTA!")
+print("     🔴 KOTAK MERAH DI TENGAH LAYAR HARUS ADA BUTTON WARNA-WARNI!")
 
 -- ============================================
 -- CONFIG MODULE
@@ -1929,19 +1929,21 @@ function AdminGUI:UpdatePlayerList()
 	local selfButton = Instance.new("TextButton")
 	selfButton.Name = "Self"
 	selfButton.Size = UDim2.new(0, 200, 0, 40) -- FULL WIDTH of frame
-	selfButton.BackgroundColor3 = Color3.fromRGB(0, 150, 255) -- BRIGHT BLUE
+	selfButton.BackgroundColor3 = Color3.fromRGB(255, 255, 0) -- BRIGHT YELLOW!
 	selfButton.BackgroundTransparency = 0
-	selfButton.BorderSizePixel = 2
-	selfButton.BorderColor3 = Color3.fromRGB(255, 255, 255) -- White border
-	selfButton.Text = "Me (Self)"
-	selfButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
-	selfButton.TextSize = 16
+	selfButton.BorderSizePixel = 5
+	selfButton.BorderColor3 = Color3.fromRGB(0, 255, 0) -- GREEN BORDER!
+	selfButton.Text = "ME (SELF)"
+	selfButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- BLACK text
+	selfButton.TextSize = 18
 	selfButton.Font = Enum.Font.GothamBold
 	selfButton.TextXAlignment = Enum.TextXAlignment.Center
 	selfButton.AutoButtonColor = false
 	selfButton.ZIndex = 202
 	selfButton.LayoutOrder = 0
+	selfButton.Visible = true -- FORCE VISIBLE!
 	selfButton.Parent = playerListFrame
+	print("✅ Self button created! AbsSize:", selfButton.AbsoluteSize)
 	
 	selfButton.MouseButton1Click:Connect(function()
 		AdminGUI.SelectedPlayer = nil
@@ -1965,24 +1967,27 @@ function AdminGUI:UpdatePlayerList()
 		local playerButton = Instance.new("TextButton")
 		playerButton.Name = plr.Name
 		playerButton.Size = UDim2.new(0, 200, 0, 50) -- FULL WIDTH
-		playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Steel blue
+		playerButton.BackgroundColor3 = Color3.fromRGB(0, 255, 255) -- BRIGHT CYAN!
 		playerButton.BackgroundTransparency = 0
-		playerButton.BorderSizePixel = 1
-		playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+		playerButton.BorderSizePixel = 3
+		playerButton.BorderColor3 = Color3.fromRGB(255, 0, 255) -- MAGENTA BORDER!
 		playerButton.AutoButtonColor = false
 		playerButton.ZIndex = 202
 		playerButton.LayoutOrder = buttonIndex
+		playerButton.Visible = true -- FORCE VISIBLE!
 		
 		-- Multi-line text
 		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
 		playerButton.Text = buttonText
-		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- White text
+		playerButton.TextColor3 = Color3.fromRGB(0, 0, 0) -- BLACK TEXT!
 		playerButton.TextSize = 14
 		playerButton.Font = Enum.Font.GothamBold
 		playerButton.TextXAlignment = Enum.TextXAlignment.Center
 		playerButton.TextYAlignment = Enum.TextYAlignment.Center
 		playerButton.TextWrapped = true
 		playerButton.Parent = playerListFrame
+		
+		print("  ✅ Button created! AbsSize:", playerButton.AbsoluteSize)
 		
 		buttonIndex = buttonIndex + 1
 		
@@ -2176,27 +2181,50 @@ playerDropdown.MouseButton1Click:Connect(function()
 	print("📌 Container Visible:", playerListContainer.Visible)
 	
 	if playerListContainer.Visible then
-		-- ULTRA VISIBLE TEST - WARNA MERAH TERANG!
-		playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- BRIGHT RED untuk testing!
-		playerListFrame.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Light red
-		
-		print("🔄 Memanggil UpdatePlayerList()...")
-		AdminGUI:UpdatePlayerList()
-		
 		local playerCount = #Players:GetPlayers() + 1
 		print("👥 Jumlah Player Total (termasuk Self):", playerCount)
-		local targetHeight = math.min(playerCount * 53 + 20, 450) -- Taller buttons need more space
+		local targetHeight = math.min(playerCount * 53 + 20, 450)
 		
-		-- TEMPORARY: Position at CENTER SCREEN for testing visibility!
+		-- SET SIZE AND POSITION FIRST!
 		local screenSize = workspace.CurrentCamera.ViewportSize
-		local centerX = screenSize.X / 2 - 110 -- Center horizontally (110 = half of 220 width)
-		local centerY = screenSize.Y / 2 - (targetHeight / 2) -- Center vertically
+		local centerX = screenSize.X / 2 - 110
+		local centerY = screenSize.Y / 2 - (targetHeight / 2)
 		
 		playerListContainer.Position = UDim2.new(0, centerX, 0, centerY)
 		playerListContainer.Size = UDim2.new(0, 220, 0, targetHeight)
+		playerListContainer.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- RED
+		playerListFrame.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Light red
 		
-		print("📍 Container Position: CENTER SCREEN at X=", centerX, "Y=", centerY)
-		print("📏 Container Size: 220x" .. targetHeight)
+		print("📍 Container SET DULU: Position X=", centerX, "Y=", centerY)
+		print("📏 Container SET DULU: Size 220x" .. targetHeight)
+		
+		-- WAIT for render
+		task.wait(0.05)
+		
+		-- NOW create buttons
+		print("🔄 Memanggil UpdatePlayerList()...")
+		AdminGUI:UpdatePlayerList()
+		
+		-- EMERGENCY TEST: Create a button DIRECTLY in container (bypass ScrollingFrame)
+		print("\n🚨 EMERGENCY TEST: Bikin button LANGSUNG di container (bypass ScrollingFrame)!")
+		local testButton = Instance.new("TextButton")
+		testButton.Name = "EMERGENCY_TEST"
+		testButton.Size = UDim2.new(0, 200, 0, 60)
+		testButton.Position = UDim2.new(0, 10, 0, 10) -- Top-left corner
+		testButton.BackgroundColor3 = Color3.fromRGB(255, 0, 255) -- BRIGHT MAGENTA!
+		testButton.BackgroundTransparency = 0
+		testButton.BorderSizePixel = 5
+		testButton.BorderColor3 = Color3.fromRGB(255, 255, 0) -- YELLOW BORDER!
+		testButton.Text = "TEST BUTTON\n(SHOULD BE VISIBLE!)"
+		testButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- WHITE
+		testButton.TextSize = 16
+		testButton.Font = Enum.Font.GothamBold
+		testButton.TextWrapped = true
+		testButton.ZIndex = 205 -- HIGHER than everything!
+		testButton.Visible = true
+		testButton.Parent = playerListContainer -- DIRECTLY to container!
+		print("✅ Test button created in CONTAINER (not frame)!")
+		print("   Position:", testButton.AbsolutePosition, "Size:", testButton.AbsoluteSize)
 		print("✅ AbsoluteSize:", playerListContainer.AbsoluteSize)
 		print("✅ Frame AbsoluteSize:", playerListFrame.AbsoluteSize)
 		
@@ -2206,10 +2234,21 @@ playerDropdown.MouseButton1Click:Connect(function()
 		for _, child in ipairs(playerListFrame:GetChildren()) do
 			if child:IsA("TextButton") then
 				buttonCount = buttonCount + 1
-				print("  🔘 Button:", child.Name, "Size:", child.AbsoluteSize, "Pos:", child.AbsolutePosition)
+				print("  🔘 Button:", child.Name, "Size:", child.AbsoluteSize, "Pos:", child.AbsolutePosition, "Visible:", child.Visible)
 			end
 		end
 		print("📊 Total Buttons in Frame:", buttonCount)
+		
+		-- Check frame canvas size
+		print("🎨 Frame CanvasSize:", playerListFrame.CanvasSize)
+		print("🎨 Frame AbsoluteCanvasSize:", playerListFrame.AbsoluteCanvasSize)
+		
+		-- Check if UIListLayout is working
+		for _, child in ipairs(playerListFrame:GetChildren()) do
+			if child:IsA("UIListLayout") then
+				print("📐 UIListLayout found! AbsoluteContentSize:", child.AbsoluteContentSize)
+			end
+		end
 	else
 		-- Reset colors when closed
 		playerListContainer.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
