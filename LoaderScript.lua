@@ -1139,10 +1139,17 @@ local function suppressMapVisual(instance)
 			end
 			instance.TextureId = ""
 		elseif instance:IsA("MeshPart") then
-			if instance.TextureID ~= "" then
+			if instance.TextureID ~= "" or ((isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance)) and instance.Transparency < 1) then
 				removedCount = 1
 			end
 			instance.TextureID = ""
+			if isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance) then
+				instance.LocalTransparencyModifier = 1
+				instance.Transparency = 1
+				instance.CastShadow = false
+				instance.Material = Enum.Material.SmoothPlastic
+				instance.Reflectance = 0
+			end
 		elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
 			removedCount = 1
 			instance.LocalTransparencyModifier = 1
@@ -1152,6 +1159,8 @@ local function suppressMapVisual(instance)
 			instance.Reflectance = 0
 		elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
 			removedCount = 1
+			instance.LocalTransparencyModifier = 1
+			instance.Transparency = 1
 			instance.CastShadow = false
 			instance.Material = Enum.Material.SmoothPlastic
 			instance.Reflectance = 0
@@ -1221,8 +1230,14 @@ function Optimizer:WatchMapVisual(instance)
 	elseif instance:IsA("SpecialMesh") then
 		propertyName = "TextureId"
 	elseif instance:IsA("MeshPart") then
-		propertyName = "TextureID"
+		if isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance) then
+			propertyName = "Transparency"
+		else
+			propertyName = "TextureID"
+		end
 	elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
+		propertyName = "Transparency"
+	elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
 		propertyName = "Transparency"
 	end
 
