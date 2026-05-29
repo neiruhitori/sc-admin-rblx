@@ -648,23 +648,50 @@ local function isPromptRelated(instance)
 		return false
 	end
 
+	local function hasPromptDescendant(target)
+		return target and target:FindFirstChildWhichIsA("ProximityPrompt", true) ~= nil
+	end
+
 	if instance:IsA("ProximityPrompt") then
 		return true
 	end
 
+	if hasPromptDescendant(instance) then
+		return true
+	end
+
 	local parent = instance.Parent
-	if parent and parent:FindFirstChildWhichIsA("ProximityPrompt", true) then
+	if hasPromptDescendant(parent) then
 		return true
 	end
 
 	local modelAncestor = instance:FindFirstAncestorOfClass("Model")
-	if modelAncestor and modelAncestor:FindFirstChildWhichIsA("ProximityPrompt", true) then
+	if hasPromptDescendant(modelAncestor) then
 		return true
 	end
 
 	local basePartAncestor = instance:FindFirstAncestorOfClass("BasePart")
-	if basePartAncestor and basePartAncestor:FindFirstChildWhichIsA("ProximityPrompt", true) then
+	if hasPromptDescendant(basePartAncestor) then
 		return true
+	end
+
+	if instance:IsA("Highlight") and hasPromptDescendant(instance.Adornee) then
+		return true
+	end
+
+	if (instance:IsA("Trail") or instance:IsA("Beam")) then
+		local attachment0 = instance.Attachment0
+		local attachment1 = instance.Attachment1
+		if hasPromptDescendant(attachment0 and attachment0.Parent) or hasPromptDescendant(attachment1 and attachment1.Parent) then
+			return true
+		end
+	end
+
+	if instance:IsA("ParticleEmitter") then
+		local emitterParent = instance.Parent
+		if emitterParent and emitterParent:IsA("Attachment") and hasPromptDescendant(emitterParent.Parent) then
+			return true
+		end
 	end
 
 	return false
