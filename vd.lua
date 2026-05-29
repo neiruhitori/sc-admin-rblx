@@ -1482,8 +1482,6 @@ function UtilityGUI:ToggleESP()
 	self.ESPEnabled = not self.ESPEnabled
 	
 	if self.ESPEnabled then
-		self:EnableVaultESP()
-
 		-- Add ESP to all existing players
 		for _, plr in pairs(Players:GetPlayers()) do
 			if plr.Character then
@@ -1494,10 +1492,8 @@ function UtilityGUI:ToggleESP()
 		-- Monitor for new players
 		self.PlayerAddedConnection = Players.PlayerAdded:Connect(function(plr)
 			plr.CharacterAdded:Connect(function()
-				if self.ESPEnabled then
+		print("✓ ESP Enabled - Players visible through walls")
 					wait(0.5)
-					self:CreateESP(plr)
-				end
 			end)
 		end)
 		
@@ -1941,8 +1937,8 @@ local espButton = createUtilityCard(
 
 local palletESPButton = createUtilityCard(
 	"🪤 Pallet Trap Detection",
-	"Highlight trap pallets in orange (Part of J key)",
-	"J",
+	"Highlight trap pallets in orange (button only)",
+	"-",
 	function() return UtilityGUI:TogglePalletESP() end
 )
 
@@ -2018,15 +2014,12 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		cursorButton.BackgroundColor3 = UtilityGUI.CursorEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
-	-- J = ESP Toggle (Players + Interactables + Pallets)
+	-- J = ESP Toggle (Players only)
 	if input.KeyCode == Enum.KeyCode.J then
 		UtilityGUI:ToggleESP()
-		UtilityGUI:TogglePalletESP()  -- Also toggle pallet ESP
 		-- Update button visuals
 		espButton.Text = UtilityGUI.ESPEnabled and "ON" or "OFF"
 		espButton.BackgroundColor3 = UtilityGUI.ESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
-		palletESPButton.Text = UtilityGUI.PalletESPEnabled and "ON" or "OFF"
-		palletESPButton.BackgroundColor3 = UtilityGUI.PalletESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
 	-- H = Crosshair Toggle
