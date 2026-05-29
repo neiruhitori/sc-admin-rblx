@@ -1137,7 +1137,7 @@ function Optimizer:SetRodDebugEnabled(enabled)
 end
 
 local function suppressMapVisual(instance)
-	if not instance or isCharacterDescendant(instance) then
+	if not Optimizer.PotatoModeEnabled or not instance or isCharacterDescendant(instance) then
 		return 0
 	end
 
@@ -1364,7 +1364,7 @@ local function isCosmeticCharacterPart(instance)
 end
 
 local function suppressCharacterVisual(instance)
-	if not instance then
+	if not Optimizer.PotatoModeEnabled or not instance then
 		return 0
 	end
 
@@ -1554,6 +1554,10 @@ function Optimizer:StartCharacterMonitoring()
 end
 
 local function removePlayerEffects(character)
+	if not Optimizer.PotatoModeEnabled then
+		return
+	end
+
 	for _, obj in ipairs(character:GetDescendants()) do
 		
 		-- PARTICLES
