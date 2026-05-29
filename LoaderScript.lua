@@ -895,7 +895,6 @@ Optimizer.PlayerAddedConnection = nil
 Optimizer.PlayerCharacterAddedConnections = {}
 Optimizer.ActiveCharacterMonitorConnections = {}
 Optimizer.CharacterEffectPropertyConnections = {}
-Optimizer.HiddenCosmeticParts = {}
 Optimizer.RodDebugEnabled = false
 Optimizer.RodDebugSeenPaths = {}
 Optimizer.RodDebugLogCount = 0
@@ -1213,8 +1212,6 @@ function Optimizer:StopCharacterMonitoring()
 		end)
 		self.CharacterEffectPropertyConnections[instance] = nil
 	end
-
-	self:RestoreHiddenCosmeticParts()
 end
 
 local characterBodyPartNames = {
@@ -1264,45 +1261,6 @@ local function isCosmeticCharacterPart(instance)
 	end
 
 	return false
-end
-
-local function hideCosmeticCharacterPart(part)
-	if not isCosmeticCharacterPart(part) then
-		return 0
-	end
-
-	if type(Optimizer.HiddenCosmeticParts) ~= "table" then
-		Optimizer.HiddenCosmeticParts = {}
-	end
-
-	local success = pcall(function()
-		if Optimizer.HiddenCosmeticParts[part] == nil then
-			Optimizer.HiddenCosmeticParts[part] = part.LocalTransparencyModifier
-		end
-
-		part.LocalTransparencyModifier = 1
-		part.CastShadow = false
-		part.Material = Enum.Material.SmoothPlastic
-		part.Reflectance = 0
-		part.Color = Color3.fromRGB(70, 70, 70)
-	end)
-
-	if not success then
-		return 0
-	end
-
-	return 1
-end
-
-function Optimizer:RestoreHiddenCosmeticParts()
-	for part, previousTransparency in pairs(self.HiddenCosmeticParts) do
-		if part and part.Parent then
-			pcall(function()
-				part.LocalTransparencyModifier = previousTransparency
-			end)
-		end
-		self.HiddenCosmeticParts[part] = nil
-	end
 end
 
 local function suppressCharacterVisual(instance)
@@ -1364,7 +1322,11 @@ local function suppressCharacterVisual(instance)
 			end
 			instance.TextureID = ""
 		elseif isCosmeticCharacterPart(instance) then
-			removedCount = hideCosmeticCharacterPart(instance)
+			removedCount = 1
+			instance.CastShadow = false
+			instance.Material = Enum.Material.SmoothPlastic
+			instance.Reflectance = 0
+			instance.Color = Color3.fromRGB(70, 70, 70)
 		end
 	end)
 
@@ -1575,7 +1537,10 @@ local function removePlayerEffects(character)
 		end
 
 		if isCosmeticCharacterPart(obj) then
-			hideCosmeticCharacterPart(obj)
+			obj.CastShadow = false
+			obj.Material = Enum.Material.SmoothPlastic
+			obj.Reflectance = 0
+			obj.Color = Color3.fromRGB(70, 70, 70)
 		end
 		
 	end
