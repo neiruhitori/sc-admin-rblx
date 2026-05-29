@@ -960,6 +960,26 @@ local function getInstanceDebugPath(instance)
 	return table.concat(pathParts, "/")
 end
 
+local function isKnownRodWorldAsset(instance)
+	if not instance or isCharacterDescendant(instance) then
+		return false
+	end
+
+	local instancePath = getInstanceDebugPath(instance):lower()
+	if not instancePath:find("workspace/islands/", 1, true) then
+		return false
+	end
+
+	return instancePath:find("/roddisplay", 1, true)
+		or instancePath:find("/rod store", 1, true)
+		or instancePath:find("/bobber store", 1, true)
+		or instancePath:find("defaultrod", 1, true)
+		or instancePath:find("/vfx", 1, true)
+		or instancePath:find("/manifest", 1, true)
+		or instancePath:find("/lucky rod", 1, true)
+		or instancePath:find("/carbon rod", 1, true)
+end
+
 local function isLikelyRodEffectInstance(instance)
 	if not instance then
 		return false
@@ -1075,6 +1095,13 @@ local function suppressMapVisual(instance)
 				removedCount = 1
 			end
 			instance.TextureID = ""
+		elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
+			removedCount = 1
+			instance.LocalTransparencyModifier = 1
+			instance.Transparency = 1
+			instance.CastShadow = false
+			instance.Material = Enum.Material.SmoothPlastic
+			instance.Reflectance = 0
 		elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
 			removedCount = 1
 			instance.CastShadow = false
@@ -1147,6 +1174,8 @@ function Optimizer:WatchMapVisual(instance)
 		propertyName = "TextureId"
 	elseif instance:IsA("MeshPart") then
 		propertyName = "TextureID"
+	elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
+		propertyName = "Transparency"
 	end
 
 	local removedCount = suppressMapVisual(instance)
