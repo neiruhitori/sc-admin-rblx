@@ -2654,56 +2654,64 @@ AdminGUI:RefreshAllToggles() -- Initialize toggle statuses
 -- CHARACTER RESPAWN HANDLER
 -- ============================================
 -- Reapply god mode when character respawns
-player.CharacterAdded:Connect(function(character)
+for _, player in ipairs(Players:GetPlayers()) do
 
-	character.DescendantAdded:Connect(function(obj)
-	task.wait()
-
-	if not Optimizer.PotatoModeEnabled then
-		return
+	if player.Character then
+		removePlayerEffects(player.Character)
 	end
 
-	pcall(function()
+	player.CharacterAdded:Connect(function(character)
 
-		if obj:IsA("ParticleEmitter")
-		or obj:IsA("Trail")
-		or obj:IsA("Beam")
-		or obj:IsA("Highlight")
-		or obj:IsA("Fire")
-		or obj:IsA("Smoke")
-		or obj:IsA("Sparkles") then
-			obj.Enabled = false
-		end
+		task.wait(1)
 
-		if obj:IsA("PointLight")
-		or obj:IsA("SpotLight")
-		or obj:IsA("SurfaceLight") then
-			obj.Enabled = false
-		end
+		removePlayerEffects(character)
 
-		if obj:IsA("BasePart") then
-			local name = obj.Name:lower()
+		-- DETECT EFFECT BARU
+		character.DescendantAdded:Connect(function(obj)
 
-			if obj.Material == Enum.Material.Neon
-			or name:find("aura")
-			or name:find("fx")
-			or name:find("effect")
-			or name:find("glow")
-			or name:find("skin") then
-				
-				obj.Transparency = 1
+			task.wait()
+
+			if not Optimizer.PotatoModeEnabled then
+				return
 			end
-		end
+
+			pcall(function()
+
+				if obj:IsA("ParticleEmitter")
+				or obj:IsA("Trail")
+				or obj:IsA("Beam")
+				or obj:IsA("Highlight")
+				or obj:IsA("Fire")
+				or obj:IsA("Smoke")
+				or obj:IsA("Sparkles") then
+					obj.Enabled = false
+				end
+
+				if obj:IsA("PointLight")
+				or obj:IsA("SpotLight")
+				or obj:IsA("SurfaceLight") then
+					obj.Enabled = false
+				end
+
+				if obj:IsA("BasePart") then
+					local name = obj.Name:lower()
+
+					if obj.Material == Enum.Material.Neon
+					or name:find("aura")
+					or name:find("fx")
+					or name:find("effect")
+					or name:find("glow")
+					or name:find("skin") then
+
+						obj.Transparency = 1
+					end
+				end
+
+			end)
+		end)
 
 	end)
-end)
-
-	task.wait(0.1) -- Wait for character to fully load
-	if CommandExecutor.PlayerStatuses.god then
-		CommandExecutor:EnableGodMode()
-		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
-	end
-end)
+end
 
 
 
