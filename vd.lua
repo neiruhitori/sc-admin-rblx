@@ -121,6 +121,8 @@ notificationText.Parent = notificationFrame
 
 -- Notification function
 function UtilityGUI:ShowNotification(message, notifType)
+	print("[VD DEBUG] ShowNotification called with:", message, notifType)
+	
 	local color = Color3.fromRGB(100, 149, 237) -- Default blue
 	
 	if notifType == "success" then
@@ -1966,4 +1968,8 @@ _G.ViolenceDistrict = UtilityGUI
 print("⚡ Violence District loaded - K (Cursor), J (ESP+E/SPACE/LMB Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
 
 -- Show success notification
-UtilityGUI:ShowNotification("⚡ Violence District Module Loaded!\nAll VD features unlocked!", "success")
+print("[VD DEBUG] About to call ShowNotification...")
+print("[VD DEBUG] UtilityGUI type:", type(UtilityGUI))
+print("[VD DEBUG] ShowNotification type:", type(UtilityGUI.ShowNotification))
+
+UtilityGUI:ShowNotification("Violence District Module Loaded! All VD features unlocked!", "success")
