@@ -879,6 +879,69 @@ local Optimizer = {}
 Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
 
+-- TARUH DI SINI
+local Players = game:GetService("Players")
+
+local function removePlayerEffects(character)
+	for _, obj in ipairs(character:GetDescendants()) do
+		
+		-- PARTICLES
+		if obj:IsA("ParticleEmitter") then
+			obj.Enabled = false
+		end
+		
+		-- TRAILS
+		if obj:IsA("Trail") then
+			obj.Enabled = false
+		end
+		
+		-- BEAMS
+		if obj:IsA("Beam") then
+			obj.Enabled = false
+		end
+		
+		-- LIGHTS
+		if obj:IsA("PointLight")
+		or obj:IsA("SpotLight")
+		or obj:IsA("SurfaceLight") then
+			obj.Enabled = false
+		end
+		
+		-- HIGHLIGHT / GLOW
+		if obj:IsA("Highlight") then
+			obj.Enabled = false
+		end
+		
+		-- FIRE EFFECT
+		if obj:IsA("Fire") then
+			obj.Enabled = false
+		end
+		
+		-- SMOKE
+		if obj:IsA("Smoke") then
+			obj.Enabled = false
+		end
+		
+		-- SPARKLES
+		if obj:IsA("Sparkles") then
+			obj.Enabled = false
+		end
+		
+		-- FORCEFIELD GLOW
+		if obj:IsA("ForceField") then
+			obj.Visible = false
+		end
+		
+		-- ACCESSORY TEXTURE
+		if obj:IsA("Decal") or obj:IsA("Texture") then
+			obj.Transparency = 1
+		end
+		
+	end
+end
+
+function Optimizer:TogglePotato()
+
 function Optimizer:TogglePotato()
 	self.PotatoModeEnabled = not self.PotatoModeEnabled
 	
@@ -912,6 +975,21 @@ end
 
 function Optimizer:OptimizeAll()
 	print("🥔 [POTATO MODE] Starting optimization...")
+	-- REMOVE PLAYER EFFECTS
+print("🔧 [POTATO MODE] Removing player effects...")
+
+for _, player in ipairs(Players:GetPlayers()) do
+	if player.Character then
+		removePlayerEffects(player.Character)
+	end
+	
+	player.CharacterAdded:Connect(function(char)
+		task.wait(2)
+		removePlayerEffects(char)
+	end)
+end
+
+print("✅ [POTATO MODE] Player effects removed")
 	
 	local optimizedParts = 0
 	local disabledEffects = 0
@@ -976,6 +1054,23 @@ function Optimizer:OptimizeAll()
 	
 	-- 1. Workspace
 	print("🔧 [POTATO MODE] Processing Workspace...")
+	-- =========================================
+-- REMOVE ALL PLAYER COSMETIC EFFECTS
+-- =========================================
+print("🔧 [POTATO MODE] Removing player effects...")
+
+for _, player in ipairs(Players:GetPlayers()) do
+	if player.Character then
+		removePlayerEffects(player.Character)
+	end
+	
+	player.CharacterAdded:Connect(function(char)
+		task.wait(2)
+		removePlayerEffects(char)
+	end)
+end
+
+print("✅ [POTATO MODE] Player effects removed")
 	pcall(function()
 		deepOptimize(workspace)
 		print("✅ [POTATO MODE] Workspace optimized")
