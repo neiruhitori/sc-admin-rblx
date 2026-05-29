@@ -28,9 +28,6 @@ local RunService = game:GetService("RunService")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- Wait for AdminGUI to be available (if exists)
-local AdminGUI = _G.AdminGUI or nil
-
 -- ============================================
 -- UTILITY GUI MODULE
 -- Features: Cursor Unlock, ESP Wallhack, Speed Boost
@@ -91,6 +88,74 @@ utilityScreenGui.ResetOnSpawn = false
 utilityScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 utilityScreenGui.IgnoreGuiInset = true
 utilityScreenGui.Parent = playerGui
+
+-- ==================== NOTIFICATION SYSTEM ====================
+local notificationFrame = Instance.new("Frame")
+notificationFrame.Name = "NotificationFrame"
+notificationFrame.Size = UDim2.new(0, 300, 0, 60)
+notificationFrame.Position = UDim2.new(1, 0, 0, 10)
+notificationFrame.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+notificationFrame.BorderSizePixel = 0
+notificationFrame.Visible = false
+notificationFrame.ZIndex = 300
+notificationFrame.Parent = utilityScreenGui
+
+local notificationCorner = Instance.new("UICorner")
+notificationCorner.CornerRadius = UDim.new(0, 8)
+notificationCorner.Parent = notificationFrame
+
+local notificationText = Instance.new("TextLabel")
+notificationText.Name = "NotificationText"
+notificationText.Size = UDim2.new(1, -20, 1, -10)
+notificationText.Position = UDim2.new(0, 10, 0, 5)
+notificationText.BackgroundTransparency = 1
+notificationText.Text = ""
+notificationText.TextColor3 = Color3.fromRGB(255, 255, 255)
+notificationText.TextSize = 14
+notificationText.Font = Enum.Font.GothamBold
+notificationText.TextWrapped = true
+notificationText.TextXAlignment = Enum.TextXAlignment.Left
+notificationText.TextYAlignment = Enum.TextYAlignment.Center
+notificationText.ZIndex = 301
+notificationText.Parent = notificationFrame
+
+-- Notification function
+function UtilityGUI:ShowNotification(message, notifType)
+	local color = Color3.fromRGB(100, 149, 237) -- Default blue
+	
+	if notifType == "success" then
+		color = Color3.fromRGB(46, 204, 113) -- Green
+	elseif notifType == "error" then
+		color = Color3.fromRGB(231, 76, 60) -- Red
+	elseif notifType == "info" then
+		color = Color3.fromRGB(52, 152, 219) -- Blue
+	end
+	
+	notificationFrame.BackgroundColor3 = color
+	notificationText.Text = message
+	notificationFrame.Visible = true
+	
+	-- Slide in animation
+	notificationFrame.Position = UDim2.new(1, 0, 0, 10)
+	local slideIn = TweenService:Create(
+		notificationFrame,
+		TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
+		{Position = UDim2.new(1, -310, 0, 10)}
+	)
+	slideIn:Play()
+	
+	-- Auto hide after 3 seconds
+	task.delay(3, function()
+		local slideOut = TweenService:Create(
+			notificationFrame,
+			TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.In),
+			{Position = UDim2.new(1, 0, 0, 10)}
+		)
+		slideOut:Play()
+		slideOut.Completed:Wait()
+		notificationFrame.Visible = false
+	end)
+end
 
 -- ==================== FLOATING ICON BUTTON ====================
 local utilityIcon = Instance.new("ImageButton")
@@ -308,9 +373,7 @@ end
 function UtilityGUI:NotifyToggle(featureName, enabled)
 	local message = string.format("%s %s", featureName, enabled and "ON" or "OFF")
 	local notifType = enabled and "success" or "info"
-	if AdminGUI and AdminGUI.ShowNotification then
-		AdminGUI:ShowNotification(message, notifType)
-	end
+	self:ShowNotification(message, notifType)
 end
 
 function UtilityGUI:IsVaultObject(instance)
@@ -562,9 +625,7 @@ function UtilityGUI:EnableFastGeneratorCreation()
 		end
 	end)
 
-	if AdminGUI and AdminGUI.ShowNotification then
-		AdminGUI:ShowNotification("Generator build boost aktif (hold dipercepat)", "success")
-	end
+	self:ShowNotification("Generator build boost aktif (hold dipercepat)", "success")
 end
 
 -- ==================== FEATURE 8: POTATO MODE (OPTIMIZER) ====================
@@ -844,9 +905,7 @@ function UtilityGUI:OptimizeAll()
 	print("   • Water clearing: CONTINUOUS (always clearing on this frame)")
 	print("   • Total changes: " .. (totalOptimized + disabledEffects))
 	
-	if AdminGUI and AdminGUI.ShowNotification then
-		AdminGUI:ShowNotification("🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects, "success")
-	end
+	self:ShowNotification("🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects, "success")
 end
 
 function UtilityGUI:DisablePotato()
@@ -862,9 +921,7 @@ function UtilityGUI:DisablePotato()
 	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
 	print("   • Note: Some changes (materials, shadows) are permanent until respawn")
 	
-	if AdminGUI and AdminGUI.ShowNotification then
-		AdminGUI:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", "info")
-	end
+	self:ShowNotification("💯 POTATO MODE OFF (water loop stopped)", "info")
 end
 
 -- ==================== FEATURE 9: CROSSHAIR ====================
@@ -1907,3 +1964,6 @@ end)
 _G.ViolenceDistrict = UtilityGUI
 
 print("⚡ Violence District loaded - K (Cursor), J (ESP+E/SPACE/LMB Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
+
+-- Show success notification
+UtilityGUI:ShowNotification("⚡ Violence District Module Loaded!\nAll VD features unlocked!", "success")
