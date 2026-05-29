@@ -385,25 +385,17 @@ end
 function UtilityGUI:IsVaultObject(instance)
 	if not instance then return false end
 
+	if instance:IsA("ClickDetector") then
+		return true
+	end
+
 	if not instance:IsA("ProximityPrompt") then
 		return false
 	end
 
-	if not instance.Enabled then
-		return false
-	end
-
-	local promptParent = instance.Parent
-	if promptParent and promptParent:FindFirstChildOfClass("Humanoid") then
-		return false
-	end
-
-	local modelAncestor = instance:FindFirstAncestorOfClass("Model")
-	if modelAncestor and modelAncestor:FindFirstChildOfClass("Humanoid") then
-		return false
-	end
-
-	return true
+	return instance.KeyboardKeyCode == Enum.KeyCode.E
+		or instance.KeyboardKeyCode == Enum.KeyCode.Space
+		or instance.ClickablePrompt == true
 end
 
 function UtilityGUI:ResolveVaultAdornee(instance)
@@ -459,15 +451,27 @@ function UtilityGUI:GetInteractIndicatorText(instance)
 		return "INTERACT"
 	end
 
+	if instance:IsA("ClickDetector") then
+		return "LMB"
+	end
+
 	if not instance:IsA("ProximityPrompt") then
 		return "INTERACT"
 	end
 
-	if instance.KeyboardKeyCode and instance.KeyboardKeyCode ~= Enum.KeyCode.Unknown then
-		return string.upper(instance.KeyboardKeyCode.Name)
+	if instance.KeyboardKeyCode == Enum.KeyCode.E then
+		return "E"
 	end
 
-	return "PROX"
+	if instance.KeyboardKeyCode == Enum.KeyCode.Space then
+		return "SPACE"
+	end
+
+	if instance.ClickablePrompt then
+		return "LMB"
+	end
+
+	return "INTERACT"
 end
 
 function UtilityGUI:AddVaultESP(instance)
@@ -493,35 +497,19 @@ function UtilityGUI:AddVaultESP(instance)
 		local marker = Instance.new("BillboardGui")
 		marker.Name = "Interact_Indicator"
 		marker.Adornee = markerPart
-		marker.Size = UDim2.new(0, 150, 0, 150)
-		marker.StudsOffset = Vector3.new(0, 4, 0)
+		marker.Size = UDim2.new(0, 90, 0, 28)
+		marker.StudsOffset = Vector3.new(0, 2.5, 0)
 		marker.AlwaysOnTop = true
 		marker.MaxDistance = 1500
 		marker.Parent = markerPart
-
-		local markerFrame = Instance.new("Frame")
-		markerFrame.Size = UDim2.new(1, 0, 1, 0)
-		markerFrame.BackgroundColor3 = Color3.fromRGB(255, 220, 0)
-		markerFrame.BackgroundTransparency = 0.2
-		markerFrame.BorderSizePixel = 0
-		markerFrame.Parent = marker
-
-		local markerCorner = Instance.new("UICorner")
-		markerCorner.CornerRadius = UDim.new(1, 0)
-		markerCorner.Parent = markerFrame
-
-		local markerStroke = Instance.new("UIStroke")
-		markerStroke.Color = Color3.fromRGB(255, 255, 255)
-		markerStroke.Thickness = 4
-		markerStroke.Parent = markerFrame
 
 		local markerText = Instance.new("TextLabel")
 		markerText.Size = UDim2.new(1, 0, 1, 0)
 		markerText.BackgroundTransparency = 1
 		markerText.Text = self:GetInteractIndicatorText(instance)
-		markerText.TextColor3 = Color3.fromRGB(20, 20, 20)
+		markerText.TextColor3 = Color3.fromRGB(255, 220, 0)
 		markerText.TextStrokeTransparency = 0
-		markerText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
+		markerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
 		markerText.TextScaled = true
 		markerText.Font = Enum.Font.GothamBlack
 		markerText.Parent = marker
@@ -681,22 +669,6 @@ local function suppressPotatoVisual(self, instance)
 			instance.Enabled = false
 		elseif instance:IsA("ForceField") then
 			instance.Visible = false
-		elseif instance:IsA("Decal") or instance:IsA("Texture") then
-			instance.Transparency = 1
-			removedCount = 1
-		elseif instance:IsA("SurfaceAppearance") then
-			removedCount = 1
-			instance:Destroy()
-		elseif instance:IsA("SpecialMesh") then
-			if instance.TextureId ~= "" then
-				removedCount = 1
-			end
-			instance.TextureId = ""
-		elseif instance:IsA("MeshPart") then
-			if instance.TextureID ~= "" then
-				removedCount = 1
-			end
-			instance.TextureID = ""
 		elseif instance:IsA("Atmosphere") then
 			if not self.AtmosphereStates[instance] then
 				self.AtmosphereStates[instance] = {
@@ -766,11 +738,6 @@ function UtilityGUI:WatchPotatoVisual(instance)
 		or instance:IsA("SurfaceLight")
 		or instance:IsA("Highlight")
 		or instance:IsA("ForceField")
-		or instance:IsA("Decal")
-		or instance:IsA("Texture")
-		or instance:IsA("SurfaceAppearance")
-		or instance:IsA("SpecialMesh")
-		or instance:IsA("MeshPart")
 		or instance:IsA("Atmosphere")
 
 	if not shouldWatch then
@@ -853,8 +820,6 @@ function UtilityGUI:OptimizeAll()
 		if part:IsA("BasePart") then
 			pcall(function()
 				part.CastShadow = false
-				-- Simplify material to basic
-				part.Material = Enum.Material.SmoothPlastic
 				optimizedParts = optimizedParts + 1
 			end)
 		elseif part:IsA("Model") then
