@@ -386,16 +386,29 @@ function UtilityGUI:IsVaultObject(instance)
 	if not instance then return false end
 
 	if instance:IsA("ClickDetector") then
-		return true
+		local detectorParent = instance.Parent
+		return detectorParent and not detectorParent:FindFirstChildOfClass("Humanoid")
 	end
 
 	if not instance:IsA("ProximityPrompt") then
 		return false
 	end
 
-	return instance.KeyboardKeyCode == Enum.KeyCode.E
-		or instance.KeyboardKeyCode == Enum.KeyCode.Space
-		or instance.ClickablePrompt == true
+	if not instance.Enabled then
+		return false
+	end
+
+	local promptParent = instance.Parent
+	if promptParent and promptParent:FindFirstChildOfClass("Humanoid") then
+		return false
+	end
+
+	local modelAncestor = instance:FindFirstAncestorOfClass("Model")
+	if modelAncestor and modelAncestor:FindFirstChildOfClass("Humanoid") then
+		return false
+	end
+
+	return true
 end
 
 function UtilityGUI:ResolveVaultAdornee(instance)
@@ -459,19 +472,27 @@ function UtilityGUI:GetInteractIndicatorText(instance)
 		return "INTERACT"
 	end
 
-	if instance.KeyboardKeyCode == Enum.KeyCode.E then
-		return "E"
-	end
-
-	if instance.KeyboardKeyCode == Enum.KeyCode.Space then
-		return "SPACE"
-	end
+	local keyLabel = "INTERACT"
 
 	if instance.ClickablePrompt then
-		return "LMB"
+		keyLabel = "LMB"
+	elseif instance.KeyboardKeyCode and instance.KeyboardKeyCode ~= Enum.KeyCode.Unknown then
+		keyLabel = instance.KeyboardKeyCode.Name
+	elseif instance.GamepadKeyCode and instance.GamepadKeyCode ~= Enum.KeyCode.Unknown then
+		keyLabel = instance.GamepadKeyCode.Name
 	end
 
-	return "INTERACT"
+	local actionText = instance.ActionText and instance.ActionText ~= "" and string.upper(instance.ActionText) or ""
+	if actionText ~= "" then
+		return keyLabel .. " - " .. actionText
+	end
+
+	local objectText = instance.ObjectText and instance.ObjectText ~= "" and string.upper(instance.ObjectText) or ""
+	if objectText ~= "" then
+		return keyLabel .. " - " .. objectText
+	end
+
+	return keyLabel
 end
 
 function UtilityGUI:AddVaultESP(instance)
@@ -497,7 +518,7 @@ function UtilityGUI:AddVaultESP(instance)
 		local marker = Instance.new("BillboardGui")
 		marker.Name = "Interact_Indicator"
 		marker.Adornee = markerPart
-		marker.Size = UDim2.new(0, 90, 0, 28)
+		marker.Size = UDim2.new(0, 180, 0, 36)
 		marker.StudsOffset = Vector3.new(0, 2.5, 0)
 		marker.AlwaysOnTop = true
 		marker.MaxDistance = 1500
@@ -510,6 +531,7 @@ function UtilityGUI:AddVaultESP(instance)
 		markerText.TextColor3 = Color3.fromRGB(255, 220, 0)
 		markerText.TextStrokeTransparency = 0
 		markerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		markerText.TextWrapped = true
 		markerText.TextScaled = true
 		markerText.Font = Enum.Font.GothamBlack
 		markerText.Parent = marker
