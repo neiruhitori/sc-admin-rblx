@@ -1039,6 +1039,55 @@ function Optimizer:StopCharacterMonitoring()
 	end
 end
 
+local characterBodyPartNames = {
+	Head = true,
+	UpperTorso = true,
+	LowerTorso = true,
+	Torso = true,
+	LeftArm = true,
+	RightArm = true,
+	LeftLeg = true,
+	RightLeg = true,
+	LeftHand = true,
+	RightHand = true,
+	LeftFoot = true,
+	RightFoot = true,
+	LeftLowerArm = true,
+	RightLowerArm = true,
+	LeftUpperArm = true,
+	RightUpperArm = true,
+	LeftLowerLeg = true,
+	RightLowerLeg = true,
+	LeftUpperLeg = true,
+	RightUpperLeg = true,
+	HumanoidRootPart = true,
+}
+
+local function isCosmeticCharacterPart(instance)
+	if not instance or not instance:IsA("BasePart") then
+		return false
+	end
+
+	if characterBodyPartNames[instance.Name] then
+		return false
+	end
+
+	if instance:FindFirstAncestorOfClass("Tool") then
+		return true
+	end
+
+	if instance:FindFirstAncestorOfClass("Accessory") then
+		return true
+	end
+
+	local meshParent = instance:FindFirstAncestorOfClass("Model")
+	if meshParent and meshParent.Name:lower():find("rod") then
+		return true
+	end
+
+	return false
+end
+
 local function suppressCharacterVisual(instance)
 	if not instance then
 		return 0
@@ -1050,6 +1099,7 @@ local function suppressCharacterVisual(instance)
 		if instance:IsA("ParticleEmitter")
 			or instance:IsA("Trail")
 			or instance:IsA("Beam")
+			or instance:IsA("RopeConstraint")
 			or instance:IsA("Fire")
 			or instance:IsA("Smoke")
 			or instance:IsA("Sparkles")
@@ -1061,6 +1111,20 @@ local function suppressCharacterVisual(instance)
 				removedCount = 1
 			end
 			instance.Enabled = false
+		elseif instance:IsA("BillboardGui") or instance:IsA("SurfaceGui") then
+			if instance.Enabled then
+				removedCount = 1
+			end
+			instance.Enabled = false
+		elseif instance:IsA("SelectionBox")
+			or instance:IsA("BoxHandleAdornment")
+			or instance:IsA("SphereHandleAdornment")
+			or instance:IsA("CylinderHandleAdornment")
+			or instance:IsA("ConeHandleAdornment") then
+			if instance.Visible then
+				removedCount = 1
+			end
+			instance.Visible = false
 		elseif instance:IsA("ForceField") then
 			instance.Visible = false
 			removedCount = 1
@@ -1082,6 +1146,12 @@ local function suppressCharacterVisual(instance)
 				removedCount = 1
 			end
 			instance.TextureID = ""
+		elseif isCosmeticCharacterPart(instance) then
+			removedCount = 1
+			instance.CastShadow = false
+			instance.Material = Enum.Material.SmoothPlastic
+			instance.Reflectance = 0
+			instance.Color = Color3.fromRGB(70, 70, 70)
 		end
 	end)
 
@@ -1098,6 +1168,7 @@ function Optimizer:WatchCharacterVisual(instance)
 	if instance:IsA("ParticleEmitter")
 		or instance:IsA("Trail")
 		or instance:IsA("Beam")
+		or instance:IsA("RopeConstraint")
 		or instance:IsA("Fire")
 		or instance:IsA("Smoke")
 		or instance:IsA("Sparkles")
@@ -1106,6 +1177,14 @@ function Optimizer:WatchCharacterVisual(instance)
 		or instance:IsA("SurfaceLight")
 		or instance:IsA("Highlight") then
 		propertyName = "Enabled"
+	elseif instance:IsA("BillboardGui") or instance:IsA("SurfaceGui") then
+		propertyName = "Enabled"
+	elseif instance:IsA("SelectionBox")
+		or instance:IsA("BoxHandleAdornment")
+		or instance:IsA("SphereHandleAdornment")
+		or instance:IsA("CylinderHandleAdornment")
+		or instance:IsA("ConeHandleAdornment") then
+		propertyName = "Visible"
 	elseif instance:IsA("ForceField") then
 		propertyName = "Visible"
 	elseif instance:IsA("Decal") or instance:IsA("Texture") then
@@ -1114,6 +1193,8 @@ function Optimizer:WatchCharacterVisual(instance)
 		propertyName = "TextureId"
 	elseif instance:IsA("MeshPart") then
 		propertyName = "TextureID"
+	elseif isCosmeticCharacterPart(instance) then
+		propertyName = "Material"
 	end
 
 	local removedCount = suppressCharacterVisual(instance)
@@ -1262,6 +1343,29 @@ local function removePlayerEffects(character)
 
 		if obj:IsA("MeshPart") then
 			obj.TextureID = ""
+		end
+
+		if obj:IsA("RopeConstraint") then
+			obj.Enabled = false
+		end
+
+		if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+			obj.Enabled = false
+		end
+
+		if obj:IsA("SelectionBox")
+		or obj:IsA("BoxHandleAdornment")
+		or obj:IsA("SphereHandleAdornment")
+		or obj:IsA("CylinderHandleAdornment")
+		or obj:IsA("ConeHandleAdornment") then
+			obj.Visible = false
+		end
+
+		if isCosmeticCharacterPart(obj) then
+			obj.CastShadow = false
+			obj.Material = Enum.Material.SmoothPlastic
+			obj.Reflectance = 0
+			obj.Color = Color3.fromRGB(70, 70, 70)
 		end
 		
 	end
