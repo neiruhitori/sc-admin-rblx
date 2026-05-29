@@ -878,9 +878,132 @@ end
 local Optimizer = {}
 Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
+Optimizer.EffectMonitorConnection = nil
+Optimizer.EffectPropertyConnections = {}
 
 -- TARUH DI SINI
 local Players = game:GetService("Players")
+
+local function isCharacterDescendant(instance)
+	local model = instance and instance:FindFirstAncestorOfClass("Model")
+	return model and model:FindFirstChildOfClass("Humanoid") ~= nil
+end
+
+local function suppressMapVisual(instance)
+	if not instance or isCharacterDescendant(instance) then
+		return 0
+	end
+
+	local removedCount = 0
+
+	pcall(function()
+		if instance:IsA("ParticleEmitter")
+			or instance:IsA("Trail")
+			or instance:IsA("Beam")
+			or instance:IsA("Fire")
+			or instance:IsA("Smoke")
+			or instance:IsA("Sparkles")
+			or instance:IsA("PointLight")
+			or instance:IsA("SpotLight")
+			or instance:IsA("SurfaceLight")
+			or instance:IsA("Highlight") then
+			if instance.Enabled then
+				removedCount = 1
+			end
+			instance.Enabled = false
+		elseif instance:IsA("ForceField") then
+			instance.Visible = false
+		elseif instance:IsA("Decal") or instance:IsA("Texture") then
+			instance.Transparency = 1
+			removedCount = 1
+		elseif instance:IsA("SurfaceAppearance") then
+			removedCount = 1
+			instance:Destroy()
+		elseif instance:IsA("SpecialMesh") then
+			if instance.TextureId ~= "" then
+				removedCount = 1
+			end
+			instance.TextureId = ""
+		elseif instance:IsA("MeshPart") then
+			if instance.TextureID ~= "" then
+				removedCount = 1
+			end
+			instance.TextureID = ""
+		end
+	end)
+
+	return removedCount
+end
+
+function Optimizer:StopEffectMonitoring()
+	if self.EffectMonitorConnection then
+		self.EffectMonitorConnection:Disconnect()
+		self.EffectMonitorConnection = nil
+	end
+
+	for instance, connection in pairs(self.EffectPropertyConnections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+		self.EffectPropertyConnections[instance] = nil
+	end
+end
+
+function Optimizer:WatchMapVisual(instance)
+	if not instance or isCharacterDescendant(instance) then
+		return 0
+	end
+
+	local propertyName = nil
+
+	if instance:IsA("ParticleEmitter")
+		or instance:IsA("Trail")
+		or instance:IsA("Beam")
+		or instance:IsA("Fire")
+		or instance:IsA("Smoke")
+		or instance:IsA("Sparkles")
+		or instance:IsA("PointLight")
+		or instance:IsA("SpotLight")
+		or instance:IsA("SurfaceLight")
+		or instance:IsA("Highlight") then
+		propertyName = "Enabled"
+	elseif instance:IsA("ForceField") then
+		propertyName = "Visible"
+	elseif instance:IsA("Decal") or instance:IsA("Texture") then
+		propertyName = "Transparency"
+	elseif instance:IsA("SpecialMesh") then
+		propertyName = "TextureId"
+	elseif instance:IsA("MeshPart") then
+		propertyName = "TextureID"
+	end
+
+	local removedCount = suppressMapVisual(instance)
+
+	if propertyName and not self.EffectPropertyConnections[instance] then
+		self.EffectPropertyConnections[instance] = instance:GetPropertyChangedSignal(propertyName):Connect(function()
+			if not self.PotatoModeEnabled then return end
+			suppressMapVisual(instance)
+		end)
+	end
+
+	return removedCount
+end
+
+function Optimizer:StartEffectMonitoring()
+	self:StopEffectMonitoring()
+
+	local disabledEffects = 0
+	for _, instance in ipairs(workspace:GetDescendants()) do
+		disabledEffects += self:WatchMapVisual(instance)
+	end
+
+	self.EffectMonitorConnection = workspace.DescendantAdded:Connect(function(instance)
+		if not self.PotatoModeEnabled then return end
+		self:WatchMapVisual(instance)
+	end)
+
+	return disabledEffects
+end
 
 local function removePlayerEffects(character)
 	for _, obj in ipairs(character:GetDescendants()) do
@@ -963,6 +1086,8 @@ function Optimizer:DisablePotato()
 		self.WaterClearingConnection = nil
 		print("   • Water clearing loop stopped")
 	end
+
+	self:StopEffectMonitoring()
 	
 	self.PotatoModeEnabled = false
 	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
@@ -1174,17 +1299,7 @@ print("✅ [POTATO MODE] Player effects removed")
 	-- 9. Disable all effects in the game
 	print("🔧 [POTATO MODE] Disabling effects...")
 	pcall(function()
-		-- Find and disable all ParticleEmitters
-		local allDescendants = workspace:FindPartBoundsInRadius(Vector3.new(0,0,0), math.huge)
-		for _, obj in ipairs(allDescendants) do
-			pcall(function()
-				local particles = obj:FindFirstChildOfClass("ParticleEmitter")
-				if particles then
-					particles.Enabled = false
-					disabledEffects = disabledEffects + 1
-				end
-			end)
-		end
+		disabledEffects = disabledEffects + self:StartEffectMonitoring()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
