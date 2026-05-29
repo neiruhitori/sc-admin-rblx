@@ -880,6 +880,10 @@ Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
 Optimizer.EffectMonitorConnection = nil
 Optimizer.EffectPropertyConnections = {}
+Optimizer.PlayerAddedConnection = nil
+Optimizer.PlayerCharacterAddedConnections = {}
+Optimizer.ActiveCharacterMonitorConnections = {}
+Optimizer.CharacterEffectPropertyConnections = {}
 
 -- TARUH DI SINI
 local Players = game:GetService("Players")
@@ -1005,6 +1009,194 @@ function Optimizer:StartEffectMonitoring()
 	return disabledEffects
 end
 
+function Optimizer:StopCharacterMonitoring()
+	if self.PlayerAddedConnection then
+		self.PlayerAddedConnection:Disconnect()
+		self.PlayerAddedConnection = nil
+	end
+
+	for playerRef, connection in pairs(self.PlayerCharacterAddedConnections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+		self.PlayerCharacterAddedConnections[playerRef] = nil
+	end
+
+	for playerRef, connections in pairs(self.ActiveCharacterMonitorConnections) do
+		for _, connection in ipairs(connections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+		self.ActiveCharacterMonitorConnections[playerRef] = nil
+	end
+
+	for instance, connection in pairs(self.CharacterEffectPropertyConnections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+		self.CharacterEffectPropertyConnections[instance] = nil
+	end
+end
+
+local function suppressCharacterVisual(instance)
+	if not instance then
+		return 0
+	end
+
+	local removedCount = 0
+
+	pcall(function()
+		if instance:IsA("ParticleEmitter")
+			or instance:IsA("Trail")
+			or instance:IsA("Beam")
+			or instance:IsA("Fire")
+			or instance:IsA("Smoke")
+			or instance:IsA("Sparkles")
+			or instance:IsA("PointLight")
+			or instance:IsA("SpotLight")
+			or instance:IsA("SurfaceLight")
+			or instance:IsA("Highlight") then
+			if instance.Enabled then
+				removedCount = 1
+			end
+			instance.Enabled = false
+		elseif instance:IsA("ForceField") then
+			instance.Visible = false
+			removedCount = 1
+		elseif instance:IsA("Decal") or instance:IsA("Texture") then
+			if instance.Transparency < 1 then
+				removedCount = 1
+			end
+			instance.Transparency = 1
+		elseif instance:IsA("SurfaceAppearance") then
+			removedCount = 1
+			instance:Destroy()
+		elseif instance:IsA("SpecialMesh") then
+			if instance.TextureId ~= "" then
+				removedCount = 1
+			end
+			instance.TextureId = ""
+		elseif instance:IsA("MeshPart") then
+			if instance.TextureID ~= "" then
+				removedCount = 1
+			end
+			instance.TextureID = ""
+		end
+	end)
+
+	return removedCount
+end
+
+function Optimizer:WatchCharacterVisual(instance)
+	if not instance then
+		return 0
+	end
+
+	local propertyName = nil
+
+	if instance:IsA("ParticleEmitter")
+		or instance:IsA("Trail")
+		or instance:IsA("Beam")
+		or instance:IsA("Fire")
+		or instance:IsA("Smoke")
+		or instance:IsA("Sparkles")
+		or instance:IsA("PointLight")
+		or instance:IsA("SpotLight")
+		or instance:IsA("SurfaceLight")
+		or instance:IsA("Highlight") then
+		propertyName = "Enabled"
+	elseif instance:IsA("ForceField") then
+		propertyName = "Visible"
+	elseif instance:IsA("Decal") or instance:IsA("Texture") then
+		propertyName = "Transparency"
+	elseif instance:IsA("SpecialMesh") then
+		propertyName = "TextureId"
+	elseif instance:IsA("MeshPart") then
+		propertyName = "TextureID"
+	end
+
+	local removedCount = suppressCharacterVisual(instance)
+
+	if propertyName and not self.CharacterEffectPropertyConnections[instance] then
+		local success, connection = pcall(function()
+			return instance:GetPropertyChangedSignal(propertyName):Connect(function()
+				if not self.PotatoModeEnabled then return end
+				suppressCharacterVisual(instance)
+			end)
+		end)
+
+		if success and connection then
+			self.CharacterEffectPropertyConnections[instance] = connection
+		end
+	end
+
+	return removedCount
+end
+
+function Optimizer:MonitorPlayerCharacter(playerRef, character)
+	if not playerRef or not character then
+		return 0
+	end
+
+	local existingConnections = self.ActiveCharacterMonitorConnections[playerRef]
+	if existingConnections then
+		for _, connection in ipairs(existingConnections) do
+			pcall(function()
+				connection:Disconnect()
+			end)
+		end
+	end
+
+	local disabledEffects = 0
+	disabledEffects += self:WatchCharacterVisual(character)
+
+	for _, instance in ipairs(character:GetDescendants()) do
+		disabledEffects += self:WatchCharacterVisual(instance)
+	end
+
+	self.ActiveCharacterMonitorConnections[playerRef] = {
+		character.DescendantAdded:Connect(function(instance)
+			if not self.PotatoModeEnabled then return end
+			self:WatchCharacterVisual(instance)
+		end)
+	}
+
+	return disabledEffects
+end
+
+function Optimizer:StartCharacterMonitoring()
+	self:StopCharacterMonitoring()
+
+	local disabledEffects = 0
+
+	for _, playerRef in ipairs(Players:GetPlayers()) do
+		if playerRef.Character then
+			disabledEffects += self:MonitorPlayerCharacter(playerRef, playerRef.Character)
+		end
+
+		self.PlayerCharacterAddedConnections[playerRef] = playerRef.CharacterAdded:Connect(function(character)
+			if not self.PotatoModeEnabled then return end
+			task.wait(2)
+			self:MonitorPlayerCharacter(playerRef, character)
+		end)
+	end
+
+	self.PlayerAddedConnection = Players.PlayerAdded:Connect(function(playerRef)
+		if playerRef.Character then
+			self:MonitorPlayerCharacter(playerRef, playerRef.Character)
+		end
+
+		self.PlayerCharacterAddedConnections[playerRef] = playerRef.CharacterAdded:Connect(function(character)
+			if not self.PotatoModeEnabled then return end
+			task.wait(2)
+			self:MonitorPlayerCharacter(playerRef, character)
+		end)
+	end)
+
+	return disabledEffects
+end
+
 local function removePlayerEffects(character)
 	for _, obj in ipairs(character:GetDescendants()) do
 		
@@ -1059,6 +1251,18 @@ local function removePlayerEffects(character)
 		if obj:IsA("Decal") or obj:IsA("Texture") then
 			obj.Transparency = 1
 		end
+
+		if obj:IsA("SurfaceAppearance") then
+			obj:Destroy()
+		end
+
+		if obj:IsA("SpecialMesh") then
+			obj.TextureId = ""
+		end
+
+		if obj:IsA("MeshPart") then
+			obj.TextureID = ""
+		end
 		
 	end
 end
@@ -1088,6 +1292,7 @@ function Optimizer:DisablePotato()
 	end
 
 	self:StopEffectMonitoring()
+	self:StopCharacterMonitoring()
 	
 	self.PotatoModeEnabled = false
 	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
@@ -1101,21 +1306,12 @@ function Optimizer:OptimizeAll()
 	-- REMOVE PLAYER EFFECTS
 print("🔧 [POTATO MODE] Removing player effects...")
 
-for _, player in ipairs(Players:GetPlayers()) do
-	if player.Character then
-		removePlayerEffects(player.Character)
-	end
-	
-	player.CharacterAdded:Connect(function(char)
-		task.wait(2)
-		removePlayerEffects(char)
-	end)
-end
+local characterEffectsDisabled = self:StartCharacterMonitoring()
 
 print("✅ [POTATO MODE] Player effects removed")
 	
 	local optimizedParts = 0
-	local disabledEffects = 0
+	local disabledEffects = characterEffectsDisabled
 	
 	-- Helper function to optimize a single part
 	local function optimizePart(part)
@@ -1190,24 +1386,12 @@ end
 	
 	-- 1. Workspace
 	print("🔧 [POTATO MODE] Processing Workspace...")
-	-- =========================================
--- REMOVE ALL PLAYER COSMETIC EFFECTS
--- =========================================
-print("🔧 [POTATO MODE] Removing player effects...")
-
-for _, player in ipairs(Players:GetPlayers()) do
-	if player.Character then
-		removePlayerEffects(player.Character)
-	end
-	
-	player.CharacterAdded:Connect(function(char)
-		task.wait(2)
-		removePlayerEffects(char)
-	end)
-end
-
-print("✅ [POTATO MODE] Player effects removed")
 	pcall(function()
+		for _, playerRef in ipairs(Players:GetPlayers()) do
+			if playerRef.Character then
+				removePlayerEffects(playerRef.Character)
+			end
+		end
 		deepOptimize(workspace)
 		print("✅ [POTATO MODE] Workspace optimized")
 	end)
