@@ -915,6 +915,19 @@ function UtilityGUI:StartLightingEnforcement()
 	end)
 	end
 
+function UtilityGUI:TogglePotato()
+	self.PotatoModeEnabled = not self.PotatoModeEnabled
+
+	if self.PotatoModeEnabled then
+		self:OptimizeAll()
+	else
+		self:DisablePotato()
+	end
+
+	self:NotifyToggle("Potato Mode", self.PotatoModeEnabled)
+	return self.PotatoModeEnabled
+end
+
 function UtilityGUI:OptimizeAll()
 	print("🥔 [POTATO MODE] Activating bright sky mode...")
 
