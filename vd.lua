@@ -385,11 +385,6 @@ end
 function UtilityGUI:IsVaultObject(instance)
 	if not instance then return false end
 
-	if instance:IsA("ClickDetector") then
-		local detectorParent = instance.Parent
-		return detectorParent and not detectorParent:FindFirstChildOfClass("Humanoid")
-	end
-
 	if not instance:IsA("ProximityPrompt") then
 		return false
 	end
@@ -464,35 +459,15 @@ function UtilityGUI:GetInteractIndicatorText(instance)
 		return "INTERACT"
 	end
 
-	if instance:IsA("ClickDetector") then
-		return "LMB"
-	end
-
 	if not instance:IsA("ProximityPrompt") then
 		return "INTERACT"
 	end
 
-	local keyLabel = "INTERACT"
-
-	if instance.ClickablePrompt then
-		keyLabel = "LMB"
-	elseif instance.KeyboardKeyCode and instance.KeyboardKeyCode ~= Enum.KeyCode.Unknown then
-		keyLabel = instance.KeyboardKeyCode.Name
-	elseif instance.GamepadKeyCode and instance.GamepadKeyCode ~= Enum.KeyCode.Unknown then
-		keyLabel = instance.GamepadKeyCode.Name
+	if instance.KeyboardKeyCode and instance.KeyboardKeyCode ~= Enum.KeyCode.Unknown then
+		return string.upper(instance.KeyboardKeyCode.Name)
 	end
 
-	local actionText = instance.ActionText and instance.ActionText ~= "" and string.upper(instance.ActionText) or ""
-	if actionText ~= "" then
-		return keyLabel .. " - " .. actionText
-	end
-
-	local objectText = instance.ObjectText and instance.ObjectText ~= "" and string.upper(instance.ObjectText) or ""
-	if objectText ~= "" then
-		return keyLabel .. " - " .. objectText
-	end
-
-	return keyLabel
+	return "PROX"
 end
 
 function UtilityGUI:AddVaultESP(instance)
@@ -518,20 +493,35 @@ function UtilityGUI:AddVaultESP(instance)
 		local marker = Instance.new("BillboardGui")
 		marker.Name = "Interact_Indicator"
 		marker.Adornee = markerPart
-		marker.Size = UDim2.new(0, 180, 0, 36)
-		marker.StudsOffset = Vector3.new(0, 2.5, 0)
+		marker.Size = UDim2.new(0, 150, 0, 150)
+		marker.StudsOffset = Vector3.new(0, 4, 0)
 		marker.AlwaysOnTop = true
 		marker.MaxDistance = 1500
 		marker.Parent = markerPart
+
+		local markerFrame = Instance.new("Frame")
+		markerFrame.Size = UDim2.new(1, 0, 1, 0)
+		markerFrame.BackgroundColor3 = Color3.fromRGB(255, 220, 0)
+		markerFrame.BackgroundTransparency = 0.2
+		markerFrame.BorderSizePixel = 0
+		markerFrame.Parent = marker
+
+		local markerCorner = Instance.new("UICorner")
+		markerCorner.CornerRadius = UDim.new(1, 0)
+		markerCorner.Parent = markerFrame
+
+		local markerStroke = Instance.new("UIStroke")
+		markerStroke.Color = Color3.fromRGB(255, 255, 255)
+		markerStroke.Thickness = 4
+		markerStroke.Parent = markerFrame
 
 		local markerText = Instance.new("TextLabel")
 		markerText.Size = UDim2.new(1, 0, 1, 0)
 		markerText.BackgroundTransparency = 1
 		markerText.Text = self:GetInteractIndicatorText(instance)
-		markerText.TextColor3 = Color3.fromRGB(255, 220, 0)
+		markerText.TextColor3 = Color3.fromRGB(20, 20, 20)
 		markerText.TextStrokeTransparency = 0
-		markerText.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-		markerText.TextWrapped = true
+		markerText.TextStrokeColor3 = Color3.fromRGB(255, 255, 255)
 		markerText.TextScaled = true
 		markerText.Font = Enum.Font.GothamBlack
 		markerText.Parent = marker
