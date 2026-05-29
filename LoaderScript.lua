@@ -894,6 +894,7 @@ end
 Optimizer = {}
 Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
+Optimizer.CosmeticSweepConnection = nil
 Optimizer.EffectMonitorConnection = nil
 Optimizer.EffectPropertyConnections = {}
 Optimizer.RodEffectPropertyConnections = {}
@@ -998,6 +999,21 @@ local function isKnownCosmeticRespawnAsset(instance)
 		or instancePath:find("outline", 1, true)
 		or instancePath:find("smoketrail", 1, true)
 		or instancePath:find("wind lines", 1, true)
+end
+
+local function isPersistentCosmeticRoot(instance)
+	if not instance then
+		return false
+	end
+
+	local instancePath = getInstanceDebugPath(instance):lower()
+
+	return instancePath == "workspace/cosmeticfolder"
+		or instancePath == "workspace/characters"
+		or instancePath == "workspace/lighting"
+		or instancePath == "workspace/camera"
+		or instancePath:find("!!equipped_tool!!", 1, true)
+		or instancePath:find("workspace/cosmeticfolder/", 1, true)
 end
 
 local function isLikelyRodEffectInstance(instance)
@@ -1201,6 +1217,11 @@ function Optimizer:StopEffectMonitoring()
 		self.EffectMonitorConnection = nil
 	end
 
+	if self.CosmeticSweepConnection then
+		self.CosmeticSweepConnection:Disconnect()
+		self.CosmeticSweepConnection = nil
+	end
+
 	for instance, connection in pairs(self.EffectPropertyConnections) do
 		pcall(function()
 			connection:Disconnect()
@@ -1214,6 +1235,38 @@ function Optimizer:StopEffectMonitoring()
 		end)
 		self.RodEffectPropertyConnections[instance] = nil
 	end
+end
+
+function Optimizer:SweepPersistentCosmeticEffects()
+	local function sweepNode(root)
+		if not root then
+			return 0
+		end
+
+		local removedCount = 0
+		for _, descendant in ipairs(root:GetDescendants()) do
+			removedCount += self:WatchMapVisual(descendant)
+		end
+		return removedCount
+	end
+
+	local removedCount = 0
+	local workspaceRef = workspace
+
+	removedCount += sweepNode(workspaceRef:FindFirstChild("CosmeticFolder"))
+	removedCount += sweepNode(workspaceRef:FindFirstChild("Lighting"))
+	removedCount += sweepNode(workspaceRef.CurrentCamera)
+
+	local charactersFolder = workspaceRef:FindFirstChild("Characters")
+	if charactersFolder then
+		for _, descendant in ipairs(charactersFolder:GetDescendants()) do
+			if isPersistentCosmeticRoot(descendant) or isKnownCosmeticRespawnAsset(descendant) then
+				removedCount += self:WatchMapVisual(descendant)
+			end
+		end
+	end
+
+	return removedCount
 end
 
 function Optimizer:WatchMapVisual(instance)
@@ -1298,6 +1351,11 @@ function Optimizer:StartEffectMonitoring()
 	for _, instance in ipairs(workspace:GetDescendants()) do
 		disabledEffects += self:WatchMapVisual(instance)
 	end
+
+	self.CosmeticSweepConnection = RunService.RenderStepped:Connect(function()
+		if not self.PotatoModeEnabled then return end
+		self:SweepPersistentCosmeticEffects()
+	end)
 
 	self.EffectMonitorConnection = workspace.DescendantAdded:Connect(function(instance)
 		if not self.PotatoModeEnabled then return end
