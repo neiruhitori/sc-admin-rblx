@@ -936,10 +936,8 @@ local function removePlayerEffects(character)
 		if obj:IsA("Decal") or obj:IsA("Texture") then
 			obj.Transparency = 1
 		end
-		
-	end
 
-			-- NEON EFFECT
+		-- NEON EFFECT
 		if obj:IsA("BasePart") then
 			pcall(function()
 				-- Skin aura biasanya neon
@@ -988,6 +986,7 @@ local function removePlayerEffects(character)
 				obj:Destroy()
 			end
 		end
+	end
 end
 
 function Optimizer:TogglePotato()
@@ -2711,7 +2710,7 @@ for _, player in ipairs(Players:GetPlayers()) do
 		end)
 
 	end)
-end
+end9
 
 
 
