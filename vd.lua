@@ -664,13 +664,12 @@ function UtilityGUI:OptimizeAll()
 				optimizedParts = optimizedParts + 1
 			end)
 		elseif part:IsA("Model") then
-			pcall(function()
-				if part:FindFirstChildOfClass("Humanoid") == nil then
-					part.CastShadow = false
-					optimizedParts = optimizedParts + 1
-				end
-			end)
+	pcall(function()
+		if part:FindFirstChildOfClass("Humanoid") == nil then
+			optimizedParts = optimizedParts + 1
 		end
+	end)
+end
 		
 		-- Disable particle effects
 		if part:IsA("ParticleEmitter") or part:FindFirstChildOfClass("ParticleEmitter") then
@@ -726,19 +725,19 @@ function UtilityGUI:OptimizeAll()
 	end)
 	
 	-- 3. ServerScriptService
-	print("🔧 [POTATO MODE] Processing ServerScriptService...")
-	pcall(function()
-		local sss = game:GetService("ServerScriptService")
-		if sss then
-			local success, children = pcall(function() return sss:GetChildren() end)
-			if success and children then
-				for _, obj in ipairs(children) do
-					optimizePart(obj)
-				end
-			end
-		end
-		print("✅ [POTATO MODE] ServerScriptService optimized")
-	end)
+	-- print("🔧 [POTATO MODE] Processing ServerScriptService...")
+	-- pcall(function()
+	-- 	local sss = game:GetService("ServerScriptService")
+	-- 	if sss then
+	-- 		local success, children = pcall(function() return sss:GetChildren() end)
+	-- 		if success and children then
+	-- 			for _, obj in ipairs(children) do
+	-- 				optimizePart(obj)
+	-- 			end
+	-- 		end
+	-- 	end
+	-- 	print("✅ [POTATO MODE] ServerScriptService optimized")
+	-- end)
 	
 	-- 4. StarterPlayer
 	print("🔧 [POTATO MODE] Processing StarterPlayer...")
@@ -765,7 +764,7 @@ function UtilityGUI:OptimizeAll()
 			lighting.Ambient = Color3.fromRGB(100, 100, 100)
 			lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100)
 			lighting.ClockTime = 12
-			lighting.Shadow = false
+			lighting.GlobalShadows = false
 			
 			-- Disable all light objects
 			local success, children = pcall(function() return lighting:GetChildren() end)
@@ -805,7 +804,7 @@ function UtilityGUI:OptimizeAll()
 	print("🔧 [POTATO MODE] Disabling effects...")
 	pcall(function()
 		-- Find and disable all ParticleEmitters
-		local allDescendants = workspace:FindPartBoundsInRadius(Vector3.new(0,0,0), math.huge)
+		local allDescendants = workspace:FindPartBoundsInRadius(Vector3.new(0,0,0), 9999)
 		for _, obj in ipairs(allDescendants) do
 			pcall(function()
 				local particles = obj:FindFirstChildOfClass("ParticleEmitter")
@@ -833,7 +832,10 @@ function UtilityGUI:OptimizeAll()
 				
 				-- Continuously clear water voxels from the map
 				-- This handles server sync by repeatedly clearing water
-				local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
+				local region = Region3.new(
+	Vector3.new(-512, -512, -512),
+	Vector3.new(512, 512, 512)
+)
 				region = region:ExpandToGrid(4)
 				
 				local materials, sizes = terrain:ReadVoxels(region, 4)
@@ -1901,6 +1903,11 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         if input.KeyCode == Enum.KeyCode.N then
                 UtilityGUI:TogglePotato()
         end
+end)
+
+local utilityDragging = false
+local utilityDragStart = nil
+local utilityStartPos = nil
 
 utilityIcon.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
