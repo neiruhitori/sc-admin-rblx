@@ -1136,11 +1136,26 @@ function Optimizer:SetRodDebugEnabled(enabled)
 	return self.RodDebugEnabled
 end
 
+local function suppressMapVisual(instance)
+	if not instance or isCharacterDescendant(instance) then
+		return 0
+	end
+
+	local removedCount = 0
+
+	pcall(function()
+		if instance:IsA("ParticleEmitter")
+			or instance:IsA("Trail")
 			or instance:IsA("Beam")
 			or instance:IsA("RopeConstraint")
 			or instance:IsA("Fire")
 			or instance:IsA("Smoke")
 			or instance:IsA("Sparkles")
+			or instance:IsA("PointLight")
+			or instance:IsA("SpotLight")
+			or instance:IsA("SurfaceLight")
+			or instance:IsA("Highlight") then
+			if instance.Enabled then
 				removedCount = 1
 			end
 			instance.Enabled = false
@@ -1148,6 +1163,50 @@ end
 			if instance.Enabled then
 				removedCount = 1
 			end
+			instance.Enabled = false
+		elseif instance:IsA("SelectionBox")
+			or instance:IsA("BoxHandleAdornment")
+			or instance:IsA("SphereHandleAdornment")
+			or instance:IsA("CylinderHandleAdornment")
+			or instance:IsA("ConeHandleAdornment") then
+			if instance.Visible then
+				removedCount = 1
+			end
+			instance.Visible = false
+		elseif instance:IsA("ForceField") then
+			instance.Visible = false
+		elseif instance:IsA("Decal") or instance:IsA("Texture") then
+			if instance.Transparency < 1 then
+				removedCount = 1
+			end
+			instance.Transparency = 1
+		elseif instance:IsA("SurfaceAppearance") then
+			removedCount = 1
+			instance:Destroy()
+		elseif instance:IsA("SpecialMesh") then
+			if instance.TextureId ~= "" then
+				removedCount = 1
+			end
+			instance.TextureId = ""
+		elseif instance:IsA("MeshPart") then
+			if instance.TextureID ~= "" or ((isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) and instance.Transparency < 1) then
+				removedCount = 1
+			end
+			instance.TextureID = ""
+			if isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance) then
+				instance.LocalTransparencyModifier = 1
+				instance.Transparency = 1
+				instance.CastShadow = false
+				instance.Material = Enum.Material.SmoothPlastic
+				instance.Reflectance = 0
+			end
+		elseif (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance)) and instance:IsA("BasePart") then
+			removedCount = 1
+			instance.LocalTransparencyModifier = 1
+			instance.Transparency = 1
+			instance.CastShadow = false
+			instance.Material = Enum.Material.SmoothPlastic
+			instance.Reflectance = 0
 		elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
 			removedCount = 1
 			instance.LocalTransparencyModifier = 1
