@@ -884,7 +884,6 @@ local Players = game:GetService("Players")
 
 local function removePlayerEffects(character)
 	for _, obj in ipairs(character:GetDescendants()) do
-		
 		-- PARTICLES
 		if obj:IsA("ParticleEmitter") then
 			obj.Enabled = false
@@ -936,10 +935,8 @@ local function removePlayerEffects(character)
 		if obj:IsA("Decal") or obj:IsA("Texture") then
 			obj.Transparency = 1
 		end
-		
-	end
 
-			-- NEON EFFECT
+		-- NEON EFFECT
 		if obj:IsA("BasePart") then
 			pcall(function()
 				-- Skin aura biasanya neon
@@ -984,10 +981,11 @@ local function removePlayerEffects(character)
 			or accName:find("trail")
 			or accName:find("beam")
 			or accName:find("skin") then
-				
+
 				obj:Destroy()
 			end
 		end
+	end
 end
 
 function Optimizer:TogglePotato()
