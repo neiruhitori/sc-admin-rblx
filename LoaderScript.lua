@@ -895,6 +895,8 @@ Optimizer = {}
 Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
 Optimizer.CosmeticSweepConnection = nil
+Optimizer.CosmeticSweepInterval = 0.35
+Optimizer.LastCosmeticSweep = 0
 Optimizer.EffectMonitorConnection = nil
 Optimizer.EffectPropertyConnections = {}
 Optimizer.RodEffectPropertyConnections = {}
@@ -1014,6 +1016,16 @@ local function isPersistentCosmeticRoot(instance)
 		or instancePath == "workspace/camera"
 		or instancePath:find("!!equipped_tool!!", 1, true)
 		or instancePath:find("workspace/cosmeticfolder/", 1, true)
+end
+
+local function shouldSweepPersistentDescendant(instance)
+	if not instance or not isVisualRodInstance(instance) then
+		return false
+	end
+
+	return isKnownCosmeticRespawnAsset(instance)
+		or isLikelyRodEffectInstance(instance)
+		or isKnownRodWorldAsset(instance)
 end
 
 local function isLikelyRodEffectInstance(instance)
@@ -1245,7 +1257,9 @@ function Optimizer:SweepPersistentCosmeticEffects()
 
 		local removedCount = 0
 		for _, descendant in ipairs(root:GetDescendants()) do
-			removedCount += self:WatchMapVisual(descendant)
+			if shouldSweepPersistentDescendant(descendant) then
+				removedCount += self:WatchMapVisual(descendant)
+			end
 		end
 		return removedCount
 	end
@@ -1254,17 +1268,18 @@ function Optimizer:SweepPersistentCosmeticEffects()
 	local workspaceRef = workspace
 
 	removedCount += sweepNode(workspaceRef:FindFirstChild("CosmeticFolder"))
-	removedCount += sweepNode(workspaceRef:FindFirstChild("Lighting"))
-	removedCount += sweepNode(workspaceRef.CurrentCamera)
 
 	local charactersFolder = workspaceRef:FindFirstChild("Characters")
 	if charactersFolder then
 		for _, descendant in ipairs(charactersFolder:GetDescendants()) do
-			if isPersistentCosmeticRoot(descendant) or isKnownCosmeticRespawnAsset(descendant) then
+			if shouldSweepPersistentDescendant(descendant) then
 				removedCount += self:WatchMapVisual(descendant)
 			end
 		end
 	end
+
+	removedCount += sweepNode(workspaceRef:FindFirstChild("Lighting"))
+	removedCount += sweepNode(workspaceRef.CurrentCamera)
 
 	return removedCount
 end
@@ -1352,8 +1367,15 @@ function Optimizer:StartEffectMonitoring()
 		disabledEffects += self:WatchMapVisual(instance)
 	end
 
-	self.CosmeticSweepConnection = RunService.RenderStepped:Connect(function()
+	self.LastCosmeticSweep = 0
+	self.CosmeticSweepConnection = RunService.Heartbeat:Connect(function()
 		if not self.PotatoModeEnabled then return end
+
+		local now = tick()
+		if now - self.LastCosmeticSweep < self.CosmeticSweepInterval then
+			return end
+
+		self.LastCosmeticSweep = now
 		self:SweepPersistentCosmeticEffects()
 	end)
 
