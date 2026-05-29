@@ -868,7 +868,12 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		return true, "Infinite Jump speed set to " .. speed
 
 	elseif command == "potatodebug" or command == "pdebug" then
-		local enabled = Optimizer:SetRodDebugEnabled(not Optimizer.RodDebugEnabled)
+		local optimizerRef = Optimizer or _G.AdminOptimizer
+		if not optimizerRef then
+			return false, "Optimizer not initialized yet"
+		end
+
+		local enabled = optimizerRef:SetRodDebugEnabled(not optimizerRef.RodDebugEnabled)
 		self.PlayerStatuses.potatodebug = enabled
 		if enabled then
 			return true, "Potato rod debug enabled"
@@ -900,6 +905,7 @@ Optimizer.RodDebugEnabled = false
 Optimizer.RodDebugSeenPaths = {}
 Optimizer.RodDebugLogCount = 0
 Optimizer.RodDebugLogLimit = 25
+_G.AdminOptimizer = Optimizer
 
 -- TARUH DI SINI
 local Players = game:GetService("Players")
