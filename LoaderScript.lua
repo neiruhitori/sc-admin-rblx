@@ -177,6 +177,7 @@ end
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local Optimizer
 
 local player = Players.LocalPlayer
 local CommandExecutor
@@ -885,7 +886,7 @@ end
 -- ============================================
 -- OPTIMIZER MODULE (POTATO MODE)
 -- ============================================
-local Optimizer = {}
+Optimizer = {}
 Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
 Optimizer.EffectMonitorConnection = nil
