@@ -941,8 +941,6 @@ local function removePlayerEffects(character)
 end
 
 function Optimizer:TogglePotato()
-
-function Optimizer:TogglePotato()
 	self.PotatoModeEnabled = not self.PotatoModeEnabled
 	
 	if self.PotatoModeEnabled then
@@ -996,41 +994,54 @@ print("✅ [POTATO MODE] Player effects removed")
 	
 	-- Helper function to optimize a single part
 	local function optimizePart(part)
-		if not part then return end
-		
-		if part:IsA("BasePart") then
-			pcall(function()
-				part.CastShadow = false
-				-- Simplify material to basic
-				part.Material = Enum.Material.SmoothPlastic
-				optimizedParts = optimizedParts + 1
-			end)
-		elseif part:IsA("Model") then
-			pcall(function()
-				if part:FindFirstChildOfClass("Humanoid") == nil then
-					part.CastShadow = false
-					optimizedParts = optimizedParts + 1
-				end
-			end)
-		end
-		
-		-- Disable particle effects
-		if part:IsA("ParticleEmitter") or part:FindFirstChildOfClass("ParticleEmitter") then
-			pcall(function()
-				if part:IsA("ParticleEmitter") then
-					part.Enabled = false
-					disabledEffects = disabledEffects + 1
-				else
-					for _, emitter in ipairs(part:FindFirstChildOfClass("ParticleEmitter"):Ancestors()) do
-						if emitter:IsA("ParticleEmitter") then
-							emitter.Enabled = false
-							disabledEffects = disabledEffects + 1
-						end
-					end
-				end
-			end)
-		end
+	if not part then return end
+
+	-- JANGAN OPTIMIZE CHARACTER PLAYER
+	local model = part:FindFirstAncestorOfClass("Model")
+	if model and model:FindFirstChildOfClass("Humanoid") then
+		return
 	end
+
+	-- MAP PART
+	if part:IsA("BasePart") then
+		pcall(function()
+			part.CastShadow = false
+			part.Material = Enum.Material.SmoothPlastic
+			optimizedParts += 1
+		end)
+	end
+
+	-- EFFECT MAP
+	if part:IsA("ParticleEmitter") then
+		part.Enabled = false
+	end
+
+	if part:IsA("Trail") then
+		part.Enabled = false
+	end
+
+	if part:IsA("Beam") then
+		part.Enabled = false
+	end
+
+	if part:IsA("Fire") then
+		part.Enabled = false
+	end
+
+	if part:IsA("Smoke") then
+		part.Enabled = false
+	end
+
+	if part:IsA("Sparkles") then
+		part.Enabled = false
+	end
+
+	if part:IsA("PointLight")
+	or part:IsA("SpotLight")
+	or part:IsA("SurfaceLight") then
+		part.Enabled = false
+	end
+end
 	
 	-- Helper to recursively optimize all children with depth limit
 	local function deepOptimize(parent, depth)
