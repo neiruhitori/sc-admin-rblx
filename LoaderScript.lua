@@ -574,7 +574,8 @@ CommandExecutor.PlayerStatuses = {
 	infinitejump = false,
 	god = false,
 	antiafk = false,
-	potato = false
+	potato = false,
+	potatodebug = false
 }
 CommandExecutor.GodModeConnections = {}
 
@@ -867,6 +868,7 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 
 	elseif command == "potatodebug" or command == "pdebug" then
 		local enabled = Optimizer:SetRodDebugEnabled(not Optimizer.RodDebugEnabled)
+		self.PlayerStatuses.potatodebug = enabled
 		if enabled then
 			return true, "Potato rod debug enabled"
 		else
@@ -2442,6 +2444,7 @@ local systemSection = createSection(utilityPage, "🔧 System", 1)
 createCommandButton(systemSection, "Respawn", "🔄", "respawn", 1, false)
 createCommandButton(systemSection, "Anti-AFK", "⏰", "antiafk", 2, true)
 createCommandButton(systemSection, "Potato Mode", "🥔", "potato", 3, true)
+createCommandButton(systemSection, "Potato Debug", "🧪", "potatodebug", 4, true)
 
 -- Notification Frame
 local notificationFrame = Instance.new("Frame")
@@ -3065,6 +3068,7 @@ connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
+connectCommandButton("potatodebug", "potatodebug", false)
 
 -- Potato Mode button - Custom handler (not a chat command)
 local potatoButton = nil
