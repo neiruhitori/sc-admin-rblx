@@ -2655,14 +2655,8 @@ AdminGUI:RefreshAllToggles() -- Initialize toggle statuses
 -- ============================================
 -- Reapply god mode when character respawns
 player.CharacterAdded:Connect(function(character)
-	task.wait(0.1) -- Wait for character to fully load
-	if CommandExecutor.PlayerStatuses.god then
-		CommandExecutor:EnableGodMode()
-		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
-	end
-end)
 
-character.DescendantAdded:Connect(function(obj)
+	character.DescendantAdded:Connect(function(obj)
 	task.wait()
 
 	if not Optimizer.PotatoModeEnabled then
@@ -2703,6 +2697,15 @@ character.DescendantAdded:Connect(function(obj)
 
 	end)
 end)
+
+	task.wait(0.1) -- Wait for character to fully load
+	if CommandExecutor.PlayerStatuses.god then
+		CommandExecutor:EnableGodMode()
+		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
+	end
+end)
+
+
 
 -- ============================================
 -- VIOLENCE DISTRICT MODULE (OPTIONAL)
