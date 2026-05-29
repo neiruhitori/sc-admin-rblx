@@ -76,8 +76,10 @@ UtilityGUI.PotatoModeEnabled = false
 UtilityGUI.WaterClearingConnection = nil
 UtilityGUI.EffectMonitorConnection = nil
 UtilityGUI.LightingMonitorConnection = nil
+UtilityGUI.LightingEnforcementConnection = nil
 UtilityGUI.EffectPropertyConnections = {}
 UtilityGUI.AtmosphereStates = {}
+UtilityGUI.StoredLightingSettings = nil
 
 -- Check if already loaded
 if playerGui:FindFirstChild("UtilityGUI") then
@@ -793,6 +795,79 @@ function UtilityGUI:StartEffectMonitoring()
 	return disabledEffects
 end
 
+function UtilityGUI:ApplyPotatoLighting()
+	local lighting = game:GetService("Lighting")
+	if not lighting then return end
+
+	lighting.Ambient = Color3.fromRGB(185, 185, 185)
+	lighting.OutdoorAmbient = Color3.fromRGB(210, 210, 210)
+	lighting.Brightness = 4
+	lighting.ExposureCompensation = 0.5
+	lighting.ClockTime = 13.5
+	lighting.GlobalShadows = false
+	lighting.FogEnd = 100000
+
+	for _, obj in ipairs(lighting:GetChildren()) do
+		pcall(function()
+			if obj:IsA("Light") then
+				obj.Enabled = false
+			end
+		end)
+	end
+end
+
+function UtilityGUI:StartLightingEnforcement()
+	local lighting = game:GetService("Lighting")
+	if not lighting then return end
+
+	if not self.StoredLightingSettings then
+		self.StoredLightingSettings = {
+			Ambient = lighting.Ambient,
+			OutdoorAmbient = lighting.OutdoorAmbient,
+			Brightness = lighting.Brightness,
+			ExposureCompensation = lighting.ExposureCompensation,
+			ClockTime = lighting.ClockTime,
+			GlobalShadows = lighting.GlobalShadows,
+			FogEnd = lighting.FogEnd,
+		}
+	end
+
+	if self.LightingEnforcementConnection then
+		self.LightingEnforcementConnection:Disconnect()
+		self.LightingEnforcementConnection = nil
+	end
+
+	self:ApplyPotatoLighting()
+
+	self.LightingEnforcementConnection = RunService.RenderStepped:Connect(function()
+		if not self.PotatoModeEnabled then return end
+		self:ApplyPotatoLighting()
+	end)
+end
+
+function UtilityGUI:StopLightingEnforcement()
+	if self.LightingEnforcementConnection then
+		self.LightingEnforcementConnection:Disconnect()
+		self.LightingEnforcementConnection = nil
+	end
+
+	local lighting = game:GetService("Lighting")
+	local stored = self.StoredLightingSettings
+	if lighting and stored then
+		pcall(function()
+			lighting.Ambient = stored.Ambient
+			lighting.OutdoorAmbient = stored.OutdoorAmbient
+			lighting.Brightness = stored.Brightness
+			lighting.ExposureCompensation = stored.ExposureCompensation
+			lighting.ClockTime = stored.ClockTime
+			lighting.GlobalShadows = stored.GlobalShadows
+			lighting.FogEnd = stored.FogEnd
+		end)
+	end
+
+	self.StoredLightingSettings = nil
+end
+
 function UtilityGUI:TogglePotato()
 	self.PotatoModeEnabled = not self.PotatoModeEnabled
 	
@@ -919,13 +994,7 @@ end
 	pcall(function()
 		local lighting = game:GetService("Lighting")
 		if lighting then
-			-- Brighten the scene while keeping potato mode lightweight
-			lighting.Ambient = Color3.fromRGB(170, 170, 170)
-			lighting.OutdoorAmbient = Color3.fromRGB(190, 190, 190)
-			lighting.Brightness = 3
-			lighting.ExposureCompensation = 0.25
-			lighting.ClockTime = 14
-			lighting.GlobalShadows = false
+			self:StartLightingEnforcement()
 			
 			-- Disable all light objects
 			local success, children = pcall(function() return lighting:GetChildren() end)
@@ -1073,6 +1142,7 @@ function UtilityGUI:DisablePotato()
 		print("   • Water clearing loop stopped")
 	end
 
+	self:StopLightingEnforcement()
 	self:StopEffectMonitoring()
 	
 	print("✅ [POTATO MODE] POTATO MODE DEACTIVATED!")
@@ -1492,8 +1562,10 @@ function UtilityGUI:ToggleESP()
 		-- Monitor for new players
 		self.PlayerAddedConnection = Players.PlayerAdded:Connect(function(plr)
 			plr.CharacterAdded:Connect(function()
-		print("✓ ESP Enabled - Players visible through walls")
+				if self.ESPEnabled then
 					wait(0.5)
+					self:CreateESP(plr)
+				end
 			end)
 		end)
 		
@@ -1508,10 +1580,8 @@ function UtilityGUI:ToggleESP()
 			end)
 		end
 		
-		print("✓ ESP Enabled - Players + ALL interactable objects visible")
+		print("✓ ESP Enabled - Players visible through walls")
 	else
-		self:ClearVaultESP()
-
 		-- Remove all ESP
 		for plr, _ in pairs(self.ESPHighlights) do
 			self:RemoveESP(plr)
