@@ -919,10 +919,12 @@ end
 	pcall(function()
 		local lighting = game:GetService("Lighting")
 		if lighting then
-			-- Disable ambient & shadow
-			lighting.Ambient = Color3.fromRGB(100, 100, 100)
-			lighting.OutdoorAmbient = Color3.fromRGB(100, 100, 100)
-			lighting.ClockTime = 12
+			-- Brighten the scene while keeping potato mode lightweight
+			lighting.Ambient = Color3.fromRGB(170, 170, 170)
+			lighting.OutdoorAmbient = Color3.fromRGB(190, 190, 190)
+			lighting.Brightness = 3
+			lighting.ExposureCompensation = 0.25
+			lighting.ClockTime = 14
 			lighting.GlobalShadows = false
 			
 			-- Disable all light objects
