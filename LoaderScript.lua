@@ -938,6 +938,56 @@ local function removePlayerEffects(character)
 		end
 		
 	end
+
+			-- NEON EFFECT
+		if obj:IsA("BasePart") then
+			pcall(function()
+				-- Skin aura biasanya neon
+				if obj.Material == Enum.Material.Neon then
+					obj.Transparency = 1
+				end
+				
+				-- Part effect kecil
+				local name = obj.Name:lower()
+
+				if name:find("aura")
+				or name:find("effect")
+				or name:find("fx")
+				or name:find("vfx")
+				or name:find("glow")
+				or name:find("trail")
+				or name:find("beam")
+				or name:find("slash")
+				or name:find("skin")
+				or name:find("particle") then
+					
+					obj.Transparency = 1
+					obj.CanCollide = false
+				end
+			end)
+		end
+
+		-- GUI EFFECT
+		if obj:IsA("BillboardGui")
+		or obj:IsA("SurfaceGui") then
+			obj.Enabled = false
+		end
+
+		-- ACCESSORY EFFECT
+		if obj:IsA("Accessory") then
+			local accName = obj.Name:lower()
+
+			if accName:find("aura")
+			or accName:find("fx")
+			or accName:find("effect")
+			or accName:find("glow")
+			or accName:find("trail")
+			or accName:find("beam")
+			or accName:find("skin") then
+				
+				obj:Destroy()
+			end
+		end
 end
 
 function Optimizer:TogglePotato()
@@ -2610,6 +2660,48 @@ player.CharacterAdded:Connect(function(character)
 		CommandExecutor:EnableGodMode()
 		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
 	end
+end)
+
+character.DescendantAdded:Connect(function(obj)
+	task.wait()
+
+	if not Optimizer.PotatoModeEnabled then
+		return
+	end
+
+	pcall(function()
+
+		if obj:IsA("ParticleEmitter")
+		or obj:IsA("Trail")
+		or obj:IsA("Beam")
+		or obj:IsA("Highlight")
+		or obj:IsA("Fire")
+		or obj:IsA("Smoke")
+		or obj:IsA("Sparkles") then
+			obj.Enabled = false
+		end
+
+		if obj:IsA("PointLight")
+		or obj:IsA("SpotLight")
+		or obj:IsA("SurfaceLight") then
+			obj.Enabled = false
+		end
+
+		if obj:IsA("BasePart") then
+			local name = obj.Name:lower()
+
+			if obj.Material == Enum.Material.Neon
+			or name:find("aura")
+			or name:find("fx")
+			or name:find("effect")
+			or name:find("glow")
+			or name:find("skin") then
+				
+				obj.Transparency = 1
+			end
+		end
+
+	end)
 end)
 
 -- ============================================
