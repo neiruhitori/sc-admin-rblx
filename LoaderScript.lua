@@ -904,7 +904,7 @@ Optimizer.CharacterEffectPropertyConnections = {}
 Optimizer.RodDebugEnabled = false
 Optimizer.RodDebugSeenPaths = {}
 Optimizer.RodDebugLogCount = 0
-Optimizer.RodDebugLogLimit = 25
+Optimizer.RodDebugLogLimit = 60
 _G.AdminOptimizer = Optimizer
 
 -- TARUH DI SINI
@@ -999,12 +999,60 @@ local function isLikelyRodEffectInstance(instance)
 	return false
 end
 
+local function isVisualRodInstance(instance)
+	if not instance then
+		return false
+	end
+
+	return instance:IsA("BasePart")
+		or instance:IsA("ParticleEmitter")
+		or instance:IsA("Trail")
+		or instance:IsA("Beam")
+		or instance:IsA("RopeConstraint")
+		or instance:IsA("Fire")
+		or instance:IsA("Smoke")
+		or instance:IsA("Sparkles")
+		or instance:IsA("PointLight")
+		or instance:IsA("SpotLight")
+		or instance:IsA("SurfaceLight")
+		or instance:IsA("Highlight")
+		or instance:IsA("BillboardGui")
+		or instance:IsA("SurfaceGui")
+		or instance:IsA("SelectionBox")
+		or instance:IsA("BoxHandleAdornment")
+		or instance:IsA("SphereHandleAdornment")
+		or instance:IsA("CylinderHandleAdornment")
+		or instance:IsA("ConeHandleAdornment")
+		or instance:IsA("ForceField")
+		or instance:IsA("Decal")
+		or instance:IsA("Texture")
+		or instance:IsA("SurfaceAppearance")
+		or instance:IsA("SpecialMesh")
+		or instance:IsA("MeshPart")
+end
+
+local function shouldDebugRodInstance(instance)
+	if not isLikelyRodEffectInstance(instance) then
+		return false
+	end
+
+	if not isVisualRodInstance(instance) then
+		return false
+	end
+
+	if isKnownRodWorldAsset(instance) and (instance:IsA("Model") or instance:IsA("Folder")) then
+		return false
+	end
+
+	return true
+end
+
 function Optimizer:DebugRodInstance(instance, source)
 	if not self.RodDebugEnabled or not instance then
 		return
 	end
 
-	if not isLikelyRodEffectInstance(instance) then
+	if not shouldDebugRodInstance(instance) then
 		return
 	end
 
