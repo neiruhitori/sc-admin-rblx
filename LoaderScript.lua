@@ -1168,59 +1168,12 @@ function Optimizer:StopEffectMonitoring()
 		self.EffectMonitorConnection = nil
 	end
 
-	if self.CosmeticSweepConnection then
-		self.CosmeticSweepConnection:Disconnect()
-		self.CosmeticSweepConnection = nil
-	end
-
-	for instance, connection in pairs(self.EffectPropertyConnections) do
+	for instance, connection in pairs(self.EffectPropertyConnections or {}) do
 		pcall(function()
 			connection:Disconnect()
 		end)
 		self.EffectPropertyConnections[instance] = nil
 	end
-
-	for instance, connection in pairs(self.RodEffectPropertyConnections) do
-		pcall(function()
-			connection:Disconnect()
-		end)
-		self.RodEffectPropertyConnections[instance] = nil
-	end
-end
-
-function Optimizer:SweepPersistentCosmeticEffects()
-	local function sweepNode(root)
-		if not root then
-			return 0
-		end
-
-		local removedCount = 0
-		for _, descendant in ipairs(root:GetDescendants()) do
-			if shouldSweepPersistentDescendant(descendant) then
-				removedCount += self:WatchMapVisual(descendant)
-			end
-		end
-		return removedCount
-	end
-
-	local removedCount = 0
-	local workspaceRef = workspace
-
-	removedCount += sweepNode(workspaceRef:FindFirstChild("CosmeticFolder"))
-
-	local charactersFolder = workspaceRef:FindFirstChild("Characters")
-	if charactersFolder then
-		for _, descendant in ipairs(charactersFolder:GetDescendants()) do
-			if shouldSweepPersistentDescendant(descendant) then
-				removedCount += self:WatchMapVisual(descendant)
-			end
-		end
-	end
-
-	removedCount += sweepNode(workspaceRef:FindFirstChild("Lighting"))
-	removedCount += sweepNode(workspaceRef.CurrentCamera)
-
-	return removedCount
 end
 
 function Optimizer:WatchMapVisual(instance)
