@@ -643,6 +643,33 @@ local function isCharacterDescendant(instance)
 	return model and model:FindFirstChildOfClass("Humanoid") ~= nil
 end
 
+local function isPromptRelated(instance)
+	if not instance then
+		return false
+	end
+
+	if instance:IsA("ProximityPrompt") then
+		return true
+	end
+
+	local parent = instance.Parent
+	if parent and parent:FindFirstChildWhichIsA("ProximityPrompt", true) then
+		return true
+	end
+
+	local modelAncestor = instance:FindFirstAncestorOfClass("Model")
+	if modelAncestor and modelAncestor:FindFirstChildWhichIsA("ProximityPrompt", true) then
+		return true
+	end
+
+	local basePartAncestor = instance:FindFirstAncestorOfClass("BasePart")
+	if basePartAncestor and basePartAncestor:FindFirstChildWhichIsA("ProximityPrompt", true) then
+		return true
+	end
+
+	return false
+end
+
 local function suppressPotatoVisual(self, instance)
 	if not instance then
 		return 0
@@ -655,6 +682,10 @@ local function suppressPotatoVisual(self, instance)
 	local removedCount = 0
 
 	pcall(function()
+		if isPromptRelated(instance) then
+			return
+		end
+
 		if instance:IsA("ParticleEmitter")
 			or instance:IsA("Trail")
 			or instance:IsA("Beam")
@@ -891,6 +922,7 @@ function UtilityGUI:OptimizeAll()
 	-- Helper function to optimize a single part
 	local function optimizePart(part)
 		if not part then return end
+		if isPromptRelated(part) then return end
 		
 		if part:IsA("BasePart") then
 			pcall(function()
@@ -928,6 +960,7 @@ end
 		if not parent then return end
 		depth = depth or 0
 		if depth > 50 then return end
+		if isPromptRelated(parent) then return end
 		
 		local success, children = pcall(function()
 			return parent:GetChildren()
