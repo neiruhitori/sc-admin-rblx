@@ -864,6 +864,14 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		local speed = tonumber(args[1]) or 100
 		InfiniteJump:SetSpeed(speed)
 		return true, "Infinite Jump speed set to " .. speed
+
+	elseif command == "potatodebug" or command == "pdebug" then
+		local enabled = Optimizer:SetRodDebugEnabled(not Optimizer.RodDebugEnabled)
+		if enabled then
+			return true, "Potato rod debug enabled"
+		else
+			return true, "Potato rod debug disabled"
+		end
 	
 	else
 		return false, "Unknown command: " .. command
@@ -880,10 +888,15 @@ Optimizer.PotatoModeEnabled = false
 Optimizer.WaterClearingConnection = nil
 Optimizer.EffectMonitorConnection = nil
 Optimizer.EffectPropertyConnections = {}
+Optimizer.RodEffectPropertyConnections = {}
 Optimizer.PlayerAddedConnection = nil
 Optimizer.PlayerCharacterAddedConnections = {}
 Optimizer.ActiveCharacterMonitorConnections = {}
 Optimizer.CharacterEffectPropertyConnections = {}
+Optimizer.RodDebugEnabled = false
+Optimizer.RodDebugSeenPaths = {}
+Optimizer.RodDebugLogCount = 0
+Optimizer.RodDebugLogLimit = 25
 
 -- TARUH DI SINI
 local Players = game:GetService("Players")
@@ -891,6 +904,111 @@ local Players = game:GetService("Players")
 local function isCharacterDescendant(instance)
 	local model = instance and instance:FindFirstAncestorOfClass("Model")
 	return model and model:FindFirstChildOfClass("Humanoid") ~= nil
+end
+
+local rodEffectKeywords = {
+	"rod",
+	"reel",
+	"line",
+	"bobber",
+	"lure",
+	"bait",
+	"hook",
+	"cast",
+	"fishing",
+	"vfx",
+	"fx",
+	"trail",
+	"splash",
+	"ripple",
+	"waterfx",
+}
+
+local function stringContainsAnyKeyword(text, keywords)
+	if not text or text == "" then
+		return false
+	end
+
+	local lowerText = text:lower()
+	for _, keyword in ipairs(keywords) do
+		if lowerText:find(keyword, 1, true) then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function getInstanceDebugPath(instance)
+	local pathParts = {}
+	local current = instance
+
+	while current and current ~= game do
+		table.insert(pathParts, 1, current.Name)
+		current = current.Parent
+	end
+
+	return table.concat(pathParts, "/")
+end
+
+local function isLikelyRodEffectInstance(instance)
+	if not instance then
+		return false
+	end
+
+	local current = instance
+	local depth = 0
+
+	while current and current ~= game and depth < 8 do
+		if stringContainsAnyKeyword(current.Name, rodEffectKeywords) then
+			return true
+		end
+		current = current.Parent
+		depth += 1
+	end
+
+	return false
+end
+
+function Optimizer:DebugRodInstance(instance, source)
+	if not self.RodDebugEnabled or not instance then
+		return
+	end
+
+	if not isLikelyRodEffectInstance(instance) then
+		return
+	end
+
+	local instancePath = getInstanceDebugPath(instance)
+	if self.RodDebugSeenPaths[instancePath] then
+		return
+	end
+
+	if self.RodDebugLogCount >= self.RodDebugLogLimit then
+		return
+	end
+
+	self.RodDebugSeenPaths[instancePath] = true
+	self.RodDebugLogCount += 1
+	print("[POTATO DEBUG][" .. source .. "] " .. instance.ClassName .. " -> " .. instancePath)
+
+	if self.RodDebugLogCount == self.RodDebugLogLimit then
+		warn("[POTATO DEBUG] Log limit reached. Toggle ;potatodebug again to reset logs.")
+	end
+end
+
+function Optimizer:SetRodDebugEnabled(enabled)
+	self.RodDebugEnabled = enabled == true
+	self.RodDebugSeenPaths = {}
+	self.RodDebugLogCount = 0
+
+	if self.RodDebugEnabled then
+		print("[POTATO DEBUG] Rod/effect debug enabled. New suspicious objects will be logged.")
+	else
+		print("[POTATO DEBUG] Rod/effect debug disabled.")
+	end
+
+	return self.RodDebugEnabled
 end
 
 local function suppressMapVisual(instance)
@@ -904,6 +1022,7 @@ local function suppressMapVisual(instance)
 		if instance:IsA("ParticleEmitter")
 			or instance:IsA("Trail")
 			or instance:IsA("Beam")
+			or instance:IsA("RopeConstraint")
 			or instance:IsA("Fire")
 			or instance:IsA("Smoke")
 			or instance:IsA("Sparkles")
@@ -915,6 +1034,20 @@ local function suppressMapVisual(instance)
 				removedCount = 1
 			end
 			instance.Enabled = false
+		elseif instance:IsA("BillboardGui") or instance:IsA("SurfaceGui") then
+			if instance.Enabled then
+				removedCount = 1
+			end
+			instance.Enabled = false
+		elseif instance:IsA("SelectionBox")
+			or instance:IsA("BoxHandleAdornment")
+			or instance:IsA("SphereHandleAdornment")
+			or instance:IsA("CylinderHandleAdornment")
+			or instance:IsA("ConeHandleAdornment") then
+			if instance.Visible then
+				removedCount = 1
+			end
+			instance.Visible = false
 		elseif instance:IsA("ForceField") then
 			instance.Visible = false
 		elseif instance:IsA("Decal") or instance:IsA("Texture") then
@@ -933,6 +1066,12 @@ local function suppressMapVisual(instance)
 				removedCount = 1
 			end
 			instance.TextureID = ""
+		elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
+			removedCount = 1
+			instance.CastShadow = false
+			instance.Material = Enum.Material.SmoothPlastic
+			instance.Reflectance = 0
+			instance.Color = Color3.fromRGB(70, 70, 70)
 		end
 	end)
 
@@ -951,6 +1090,13 @@ function Optimizer:StopEffectMonitoring()
 		end)
 		self.EffectPropertyConnections[instance] = nil
 	end
+
+	for instance, connection in pairs(self.RodEffectPropertyConnections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+		self.RodEffectPropertyConnections[instance] = nil
+	end
 end
 
 function Optimizer:WatchMapVisual(instance)
@@ -959,10 +1105,15 @@ function Optimizer:WatchMapVisual(instance)
 	end
 
 	local propertyName = nil
+	local needsRodWatcher = isLikelyRodEffectInstance(instance)
+	if needsRodWatcher then
+		self:DebugRodInstance(instance, "workspace")
+	end
 
 	if instance:IsA("ParticleEmitter")
 		or instance:IsA("Trail")
 		or instance:IsA("Beam")
+		or instance:IsA("RopeConstraint")
 		or instance:IsA("Fire")
 		or instance:IsA("Smoke")
 		or instance:IsA("Sparkles")
@@ -971,6 +1122,14 @@ function Optimizer:WatchMapVisual(instance)
 		or instance:IsA("SurfaceLight")
 		or instance:IsA("Highlight") then
 		propertyName = "Enabled"
+	elseif instance:IsA("BillboardGui") or instance:IsA("SurfaceGui") then
+		propertyName = "Enabled"
+	elseif instance:IsA("SelectionBox")
+		or instance:IsA("BoxHandleAdornment")
+		or instance:IsA("SphereHandleAdornment")
+		or instance:IsA("CylinderHandleAdornment")
+		or instance:IsA("ConeHandleAdornment") then
+		propertyName = "Visible"
 	elseif instance:IsA("ForceField") then
 		propertyName = "Visible"
 	elseif instance:IsA("Decal") or instance:IsA("Texture") then
@@ -988,6 +1147,20 @@ function Optimizer:WatchMapVisual(instance)
 			if not self.PotatoModeEnabled then return end
 			suppressMapVisual(instance)
 		end)
+	end
+
+	if needsRodWatcher and not self.RodEffectPropertyConnections[instance] then
+		local success, connection = pcall(function()
+			return instance.Changed:Connect(function()
+				if not self.PotatoModeEnabled then return end
+				self:DebugRodInstance(instance, "changed")
+				suppressMapVisual(instance)
+			end)
+		end)
+
+		if success and connection then
+			self.RodEffectPropertyConnections[instance] = connection
+		end
 	end
 
 	return removedCount
@@ -3073,6 +3246,7 @@ print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")
 print("   ;antiafk - Toggle anti-AFK (24/7 active, no auto-kick)")
+print("   ;potatodebug - Toggle rod/effect debug logging for Potato Mode")
 print("\n💡 UI Features:")
 print("   • Toggle buttons show ON/OFF status")
 print("   • Select target player for goto command")
