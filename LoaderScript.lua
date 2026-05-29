@@ -1181,40 +1181,20 @@ local function suppressMapVisual(instance)
 			end
 			instance.Transparency = 1
 		elseif instance:IsA("SurfaceAppearance") then
-			removedCount = 1
-			instance:Destroy()
+			if not (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) then
+				removedCount = 1
+				instance:Destroy()
+			end
 		elseif instance:IsA("SpecialMesh") then
-			if instance.TextureId ~= "" then
+			if instance.TextureId ~= "" and not (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) then
 				removedCount = 1
+				instance.TextureId = ""
 			end
-			instance.TextureId = ""
 		elseif instance:IsA("MeshPart") then
-			if instance.TextureID ~= "" or ((isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) and instance.Transparency < 1) then
+			if instance.TextureID ~= "" and not (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) then
 				removedCount = 1
+				instance.TextureID = ""
 			end
-			instance.TextureID = ""
-			if isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance) then
-				instance.LocalTransparencyModifier = 1
-				instance.Transparency = 1
-				instance.CastShadow = false
-				instance.Material = Enum.Material.SmoothPlastic
-				instance.Reflectance = 0
-			end
-		elseif (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance)) and instance:IsA("BasePart") then
-			removedCount = 1
-			instance.LocalTransparencyModifier = 1
-			instance.Transparency = 1
-			instance.CastShadow = false
-			instance.Material = Enum.Material.SmoothPlastic
-			instance.Reflectance = 0
-		elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
-			removedCount = 1
-			instance.LocalTransparencyModifier = 1
-			instance.Transparency = 1
-			instance.CastShadow = false
-			instance.Material = Enum.Material.SmoothPlastic
-			instance.Reflectance = 0
-			instance.Color = Color3.fromRGB(70, 70, 70)
 		end
 	end)
 
@@ -1273,15 +1253,7 @@ function Optimizer:WatchMapVisual(instance)
 	elseif instance:IsA("SpecialMesh") then
 		propertyName = "TextureId"
 	elseif instance:IsA("MeshPart") then
-		if isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance) then
-			propertyName = "Transparency"
-		else
-			propertyName = "TextureID"
-		end
-	elseif (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance)) and instance:IsA("BasePart") then
-		propertyName = "Transparency"
-	elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
-		propertyName = "Transparency"
+		propertyName = "TextureID"
 	end
 
 	local removedCount = suppressMapVisual(instance)
@@ -1803,46 +1775,7 @@ end
 		print("✅ [POTATO MODE] Workspace optimized")
 	end)
 	
-	-- 2. ReplicatedStorage
-	print("🔧 [POTATO MODE] Processing ReplicatedStorage...")
-	pcall(function()
-		local rs = game:GetService("ReplicatedStorage")
-		if rs then deepOptimize(rs) end
-		print("✅ [POTATO MODE] ReplicatedStorage optimized")
-	end)
-	
-	-- 3. ServerScriptService
-	print("🔧 [POTATO MODE] Processing ServerScriptService...")
-	pcall(function()
-		local sss = game:GetService("ServerScriptService")
-		if sss then
-			local success, children = pcall(function() return sss:GetChildren() end)
-			if success and children then
-				for _, obj in ipairs(children) do
-					optimizePart(obj)
-				end
-			end
-		end
-		print("✅ [POTATO MODE] ServerScriptService optimized")
-	end)
-	
-	-- 4. StarterPlayer
-	print("🔧 [POTATO MODE] Processing StarterPlayer...")
-	pcall(function()
-		local sp = game:GetService("StarterPlayer")
-		if sp then deepOptimize(sp) end
-		print("✅ [POTATO MODE] StarterPlayer optimized")
-	end)
-	
-	-- 5. StarterGui
-	print("🔧 [POTATO MODE] Processing StarterGui...")
-	pcall(function()
-		local sg = game:GetService("StarterGui")
-		if sg then deepOptimize(sg) end
-		print("✅ [POTATO MODE] StarterGui optimized")
-	end)
-	
-	-- 6. Lighting - DISABLE ALL LIGHTS FOR FLAT APPEARANCE
+	-- 2. Lighting - DISABLE ALL LIGHTS FOR FLAT APPEARANCE
 	print("🔧 [POTATO MODE] Disabling Lighting...")
 	pcall(function()
 		local lighting = game:GetService("Lighting")
@@ -1869,7 +1802,7 @@ end
 		print("✅ [POTATO MODE] Lighting disabled")
 	end)
 	
-	-- 7. Terrain
+	-- 3. Terrain
 	print("🔧 [POTATO MODE] Processing Terrain...")
 	pcall(function()
 		local terrain = workspace.Terrain
@@ -1879,64 +1812,44 @@ end
 		end
 	end)
 	
-	-- 8. CoreGui
-	print("🔧 [POTATO MODE] Processing CoreGui...")
-	pcall(function()
-		local coregui = game:GetService("CoreGui")
-		if coregui then deepOptimize(coregui) end
-		print("✅ [POTATO MODE] CoreGui optimized")
-	end)
-	
-	-- 9. Disable all effects in the game
+	-- 4. Disable all effects in the game
 	print("🔧 [POTATO MODE] Disabling effects...")
 	pcall(function()
 		disabledEffects = disabledEffects + self:StartEffectMonitoring()
 		print("✅ [POTATO MODE] Effects disabled")
 	end)
 	
-	-- 10. WATER OPTIMIZATION (TERRAIN WATER - CONTINUOUS CLEARING)
+	-- 5. WATER OPTIMIZATION (one-time terrain pass)
 	print("🔧 [POTATO MODE] Optimizing Water (Terrain)...")
 	local waterOptimized = 0
-	
-	-- Start continuous water clearing loop
-	if not self.WaterClearingConnection then
-		self.WaterClearingConnection = RunService.RenderStepped:Connect(function()
-			if not self.PotatoModeEnabled then return end
-			
-			pcall(function()
-				local terrain = workspace.Terrain
-				if not terrain then return end
-				
-				-- Continuously clear water voxels from the map
-				-- This handles server sync by repeatedly clearing water
-				local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
-				region = region:ExpandToGrid(4)
-				
-				local materials, sizes = terrain:ReadVoxels(region, 4)
-				local size = materials.Size
-				local hasWater = false
-				
-				-- Replace all water voxels with air
-				for x = 1, size.X do
-					for y = 1, size.Y do
-						for z = 1, size.Z do
-							if materials[x][y][z] == Enum.Material.Water then
-								materials[x][y][z] = Enum.Material.Air
-								hasWater = true
-							end
-						end
+	pcall(function()
+		local terrain = workspace.Terrain
+		if not terrain then return end
+
+		local region = Region3.new(terrain.MinimumPoint, terrain.MaximumPoint)
+		region = region:ExpandToGrid(4)
+
+		local materials, sizes = terrain:ReadVoxels(region, 4)
+		local size = materials.Size
+		local hasWater = false
+
+		for x = 1, size.X do
+			for y = 1, size.Y do
+				for z = 1, size.Z do
+					if materials[x][y][z] == Enum.Material.Water then
+						materials[x][y][z] = Enum.Material.Air
+						hasWater = true
 					end
 				end
-				
-				-- Only write if we found water (reduces network traffic)
-				if hasWater then
-					terrain:WriteVoxels(region, 4, materials, sizes)
-				end
-			end)
-		end)
-		waterOptimized = 1
-		print("   • Continuous water clearing ACTIVATED (runs every frame)")
-	end
+			end
+		end
+
+		if hasWater then
+			terrain:WriteVoxels(region, 4, materials, sizes)
+			waterOptimized = 1
+			print("   • One-time terrain water clear applied")
+		end
+	end)
 	
 	-- Handle water parts
 	print("🔧 [POTATO MODE] Checking for water parts...")
@@ -1982,10 +1895,10 @@ end
 	print("✅ [POTATO MODE] POTATO MODE ACTIVATED!")
 	print("   • Parts optimized: " .. optimizedParts)
 	print("   • Effects disabled: " .. disabledEffects)
-	print("   • Water clearing: CONTINUOUS (always clearing on this frame)")
+	print("   • Water clearing: ONE-TIME PASS")
 	print("   • Total changes: " .. (totalOptimized + disabledEffects))
 	
-	return true, "🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects .. " Water:CONTINUOUS"
+	return true, "🥔 POTATO MODE ON! Parts:" .. totalOptimized .. " Effects:" .. disabledEffects .. " Water:ONE-PASS"
 end
 
 -- ============================================
