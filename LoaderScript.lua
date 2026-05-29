@@ -1213,6 +1213,8 @@ function Optimizer:StopCharacterMonitoring()
 		end)
 		self.CharacterEffectPropertyConnections[instance] = nil
 	end
+
+	self:RestoreHiddenCosmeticParts()
 end
 
 local characterBodyPartNames = {
@@ -1269,15 +1271,25 @@ local function hideCosmeticCharacterPart(part)
 		return 0
 	end
 
-	if Optimizer.HiddenCosmeticParts[part] == nil then
-		Optimizer.HiddenCosmeticParts[part] = part.LocalTransparencyModifier
+	if type(Optimizer.HiddenCosmeticParts) ~= "table" then
+		Optimizer.HiddenCosmeticParts = {}
 	end
 
-	part.LocalTransparencyModifier = 1
-	part.CastShadow = false
-	part.Material = Enum.Material.SmoothPlastic
-	part.Reflectance = 0
-	part.Color = Color3.fromRGB(70, 70, 70)
+	local success = pcall(function()
+		if Optimizer.HiddenCosmeticParts[part] == nil then
+			Optimizer.HiddenCosmeticParts[part] = part.LocalTransparencyModifier
+		end
+
+		part.LocalTransparencyModifier = 1
+		part.CastShadow = false
+		part.Material = Enum.Material.SmoothPlastic
+		part.Reflectance = 0
+		part.Color = Color3.fromRGB(70, 70, 70)
+	end)
+
+	if not success then
+		return 0
+	end
 
 	return 1
 end
@@ -1445,8 +1457,6 @@ function Optimizer:MonitorPlayerCharacter(playerRef, character)
 	}
 
 	return disabledEffects
-
-	self:RestoreHiddenCosmeticParts()
 end
 
 function Optimizer:StartCharacterMonitoring()
