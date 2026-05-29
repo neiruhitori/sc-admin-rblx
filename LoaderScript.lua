@@ -980,9 +980,33 @@ local function isKnownRodWorldAsset(instance)
 		or instancePath:find("/carbon rod", 1, true)
 end
 
+local function isKnownCosmeticRespawnAsset(instance)
+	if not instance then
+		return false
+	end
+
+	local instancePath = getInstanceDebugPath(instance):lower()
+
+	return instancePath:find("workspace/cosmeticfolder/", 1, true)
+		or instancePath:find("workspace/characters/", 1, true)
+		or instancePath:find("!!equipped tool!!", 1, true)
+		or instancePath:find("/manifest/", 1, true)
+		or instancePath:find("fishingtiercolor", 1, true)
+		or instancePath:find("workspace/lighting/", 1, true)
+		or instancePath:find("lighting vfx", 1, true)
+		or instancePath:find("pulse ripple", 1, true)
+		or instancePath:find("outline", 1, true)
+		or instancePath:find("smoketrail", 1, true)
+		or instancePath:find("wind lines", 1, true)
+end
+
 local function isLikelyRodEffectInstance(instance)
 	if not instance then
 		return false
+	end
+
+	if isKnownCosmeticRespawnAsset(instance) then
+		return true
 	end
 
 	local current = instance
@@ -1139,18 +1163,18 @@ local function suppressMapVisual(instance)
 			end
 			instance.TextureId = ""
 		elseif instance:IsA("MeshPart") then
-			if instance.TextureID ~= "" or ((isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance)) and instance.Transparency < 1) then
+			if instance.TextureID ~= "" or ((isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance)) and instance.Transparency < 1) then
 				removedCount = 1
 			end
 			instance.TextureID = ""
-			if isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance) then
+			if isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance) then
 				instance.LocalTransparencyModifier = 1
 				instance.Transparency = 1
 				instance.CastShadow = false
 				instance.Material = Enum.Material.SmoothPlastic
 				instance.Reflectance = 0
 			end
-		elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
+		elseif (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance)) and instance:IsA("BasePart") then
 			removedCount = 1
 			instance.LocalTransparencyModifier = 1
 			instance.Transparency = 1
@@ -1230,12 +1254,12 @@ function Optimizer:WatchMapVisual(instance)
 	elseif instance:IsA("SpecialMesh") then
 		propertyName = "TextureId"
 	elseif instance:IsA("MeshPart") then
-		if isKnownRodWorldAsset(instance) or isLikelyRodEffectInstance(instance) then
+		if isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance) or isLikelyRodEffectInstance(instance) then
 			propertyName = "Transparency"
 		else
 			propertyName = "TextureID"
 		end
-	elseif isKnownRodWorldAsset(instance) and instance:IsA("BasePart") then
+	elseif (isKnownRodWorldAsset(instance) or isKnownCosmeticRespawnAsset(instance)) and instance:IsA("BasePart") then
 		propertyName = "Transparency"
 	elseif isLikelyRodEffectInstance(instance) and instance:IsA("BasePart") then
 		propertyName = "Transparency"
