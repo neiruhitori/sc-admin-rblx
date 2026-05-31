@@ -567,6 +567,83 @@ function InfiniteJump:SetSpeed(speed)
 end
 
 -- ============================================
+-- NOCLIP CONTROLLER MODULE
+-- ============================================
+local NoClip = {}
+NoClip.Enabled = false
+NoClip.SteppedConnection = nil
+NoClip.OriginalCollision = {}
+
+function NoClip:Enable()
+	if self.Enabled then return end
+
+	local character = player.Character
+	if not character then return end
+
+	self.Enabled = true
+	self.OriginalCollision = {}
+
+	-- Store original CanCollide values for clean restoration
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			self.OriginalCollision[part] = part.CanCollide
+		end
+	end
+
+	-- Stepped runs every frame before physics; continuously disabling collision
+	-- lets the character pass through walls while the Humanoid's internal
+	-- floor-raycast keeps the character standing on surfaces.
+	self.SteppedConnection = RunService.Stepped:Connect(function()
+		if not self.Enabled then return end
+		local char = player.Character
+		if not char then return end
+
+		for _, part in ipairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end)
+
+	print("👻 NoClip enabled! Walk through walls (R6/R15 compatible)")
+end
+
+function NoClip:Disable()
+	if not self.Enabled then return end
+
+	self.Enabled = false
+
+	if self.SteppedConnection then
+		self.SteppedConnection:Disconnect()
+		self.SteppedConnection = nil
+	end
+
+	-- Restore original collision values
+	local character = player.Character
+	if character then
+		for _, part in ipairs(character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				local original = self.OriginalCollision[part]
+				part.CanCollide = (original ~= nil) and original or true
+			end
+		end
+	end
+
+	self.OriginalCollision = {}
+	print("🧱 NoClip disabled! Collision restored.")
+end
+
+function NoClip:Toggle()
+	if self.Enabled then
+		self:Disable()
+		return false
+	else
+		self:Enable()
+		return true
+	end
+end
+
+-- ============================================
 -- CLIENT-SIDE COMMAND EXECUTOR
 -- ============================================
 CommandExecutor = {}
@@ -575,6 +652,7 @@ CommandExecutor.PlayerStatuses = {
 	infinitejump = false,
 	god = false,
 	antiafk = false,
+	noclip = false,
 	potato = false,
 	potatodebug = false
 }
@@ -851,6 +929,15 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 			return true, "Anti-AFK enabled"
 		else
 			return true, "Anti-AFK disabled"
+		end
+
+	elseif command == "noclip" then
+		local status = NoClip:Toggle()
+		self.PlayerStatuses.noclip = status
+		if status then
+			return true, "👻 NoClip ON - walk through walls!"
+		else
+			return true, "🧱 NoClip OFF - collision restored"
 		end
 	
 	elseif command == "infinitejump" or command == "infjump" or command == "ijump" then
@@ -2459,6 +2546,7 @@ createCommandButton(characterStats, "Jump Power", "🦘", "jp", 2, false)
 local characterAbilities = createSection(characterPage, "🛡️ Abilities", 2)
 createCommandButton(characterAbilities, "Infinite Jump", "🚀", "infinitejump", 1, true)
 createCommandButton(characterAbilities, "God Mode", "🛡️", "god", 2, true)
+createCommandButton(characterAbilities, "NoClip Mode", "👻", "noclip", 3, true)
 
 -- MOVEMENT TAB
 local flyingSection = createSection(movementPage, "✈️ Flying Controls", 1)
@@ -3109,6 +3197,7 @@ connectCommandButton("speed", "speed", true)
 connectCommandButton("jp", "jp", true)
 connectCommandButton("infinitejump", "infinitejump", false)
 connectCommandButton("god", "god", false)
+connectCommandButton("noclip", "noclip", false)
 connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("respawn", "respawn", false)
@@ -3235,6 +3324,11 @@ player.CharacterAdded:Connect(function(character)
 		CommandExecutor:EnableGodMode()
 		AdminGUI:ShowNotification("God mode reapplied after respawn!", "success")
 	end
+	if CommandExecutor.PlayerStatuses.noclip then
+		NoClip.Enabled = false -- reset so Enable() runs fresh
+		NoClip:Enable()
+		AdminGUI:ShowNotification("👻 NoClip reapplied after respawn!", "success")
+	end
 end)
 
 -- ============================================
@@ -3291,6 +3385,7 @@ print("   ;jp [number] - Set jump power")
 print("   ;infinitejump - Toggle infinite jump (Hold SPACE to fly up!)")
 print("   ;ijumpspeed [number] - Set infinite jump speed (50-300)")
 print("   ;god - Toggle god mode (true invincibility)")
+print("   ;noclip - Toggle NoClip mode (walk through walls)")
 print("   ;goto - Teleport to selected player")
 print("   ;reset - Reset character to normal")
 print("   ;respawn - Respawn character")
