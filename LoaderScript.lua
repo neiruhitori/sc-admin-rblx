@@ -2693,7 +2693,7 @@ huntTeleportBtn.Name = "HuntTeleport"
 huntTeleportBtn.Size = UDim2.new(1, 0, 0, 44)
 huntTeleportBtn.BackgroundColor3 = AdminConfig.Theme.Success
 huntTeleportBtn.BorderSizePixel = 0
-huntTeleportBtn.Text = "🚀 Teleport ke Treasure"
+huntTeleportBtn.Text = "↩️ Kembali ke Posisi Sebelumnya"
 huntTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 huntTeleportBtn.TextSize = 13
 huntTeleportBtn.Font = Enum.Font.GothamBold
@@ -2703,23 +2703,6 @@ huntTeleportBtn.Parent = huntPage
 local huntTeleportCorner = Instance.new("UICorner")
 huntTeleportCorner.CornerRadius = UDim.new(0, 8)
 huntTeleportCorner.Parent = huntTeleportBtn
-
--- Tombol Auto-Track (teleport berulang setiap 2 detik)
-local huntAutoBtn = Instance.new("TextButton")
-huntAutoBtn.Name = "HuntAuto"
-huntAutoBtn.Size = UDim2.new(1, 0, 0, 44)
-huntAutoBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
-huntAutoBtn.BorderSizePixel = 0
-huntAutoBtn.Text = "🔄 Auto Track: OFF"
-huntAutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-huntAutoBtn.TextSize = 13
-huntAutoBtn.Font = Enum.Font.GothamBold
-huntAutoBtn.Visible = false
-huntAutoBtn.LayoutOrder = 6
-huntAutoBtn.Parent = huntPage
-local huntAutoCorner = Instance.new("UICorner")
-huntAutoCorner.CornerRadius = UDim.new(0, 8)
-huntAutoCorner.Parent = huntAutoBtn
 
 -- UTILITY TAB
 local systemSection = createSection(utilityPage, "🔧 System", 1)
@@ -3284,9 +3267,7 @@ end
 -- ============================================
 -- HUNT TAB HANDLERS
 -- ============================================
-local _huntAutoActive = false
-local _huntAutoConnection = nil
-local _huntFoundPos = nil  -- Vector3 lokasi terakhir ditemukan
+local _huntPrevPos = nil    -- posisi sebelum klik list button
 local _huntAllResults = {}  -- cache semua hasil scan untuk filter search
 
 local function _huntDoTeleport(pos)
@@ -3335,13 +3316,19 @@ local function _huntAddResultBtn(entry, index)
 	label.Parent = btn
 
 	btn.MouseButton1Click:Connect(function()
-		_huntFoundPos = entry.pos
+		-- Simpan posisi saat ini sebelum teleport
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		if hrp then
+			_huntPrevPos = hrp.CFrame
+		end
 		local ok = _huntDoTeleport(entry.pos)
 		huntStatusLabel.Text = ok
-			and ("✅ Teleport ke: " .. entry.name .. " (" .. entry.class .. ")")
+			and ("✅ Teleport ke: " .. entry.name .. " — klik ↩️ untuk balik")
 			or "❌ Karakter tidak ditemukan"
-		huntTeleportBtn.Visible = true
-		huntAutoBtn.Visible = true
+		if ok and _huntPrevPos then
+			huntTeleportBtn.Visible = true
+		end
 	end)
 
 	btn.MouseEnter:Connect(function()
@@ -3399,10 +3386,7 @@ huntScanBtn.MouseButton1Click:Connect(function()
 	huntStatusLabel.Text = "✅ Ditemukan " .. #results .. " lokasi — klik untuk teleport:"
 	_huntRenderResults("")
 
-	-- Auto-pilih yang pertama
-	_huntFoundPos = results[1].pos
-	huntTeleportBtn.Visible = true
-	huntAutoBtn.Visible = true
+	huntTeleportBtn.Visible = false  -- muncul hanya setelah klik list button
 end)
 
 -- Search box filter realtime
@@ -3410,46 +3394,21 @@ huntSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
 	_huntRenderResults(huntSearchBox.Text)
 end)
 
--- Teleport button (ke hasil pertama / yang dipilih)
+-- Tombol kembali ke posisi sebelumnya (sebelum klik list button)
 huntTeleportBtn.MouseButton1Click:Connect(function()
-	if not _huntFoundPos then
-		huntStatusLabel.Text = "❌ Scan dulu untuk cari lokasi"
+	if not _huntPrevPos then
+		huntStatusLabel.Text = "❌ Belum ada posisi tersimpan"
 		return
 	end
-	local ok = _huntDoTeleport(_huntFoundPos)
-	huntStatusLabel.Text = ok and "✅ Teleported!" or "❌ Karakter tidak ditemukan"
-end)
-
--- Auto-Track button
-huntAutoBtn.MouseButton1Click:Connect(function()
-	_huntAutoActive = not _huntAutoActive
-
-	if _huntAutoActive then
-		huntAutoBtn.Text = "🔄 Auto Track: ON"
-		huntAutoBtn.BackgroundColor3 = AdminConfig.Theme.Success
-		huntStatusLabel.Text = "🔄 Auto Track aktif — scan & teleport tiap 3s"
-
-		_huntAutoConnection = task.spawn(function()
-			while _huntAutoActive do
-				-- Re-scan untuk posisi terbaru (treasure bisa bergerak)
-				local results = TreasureHunt:FindInWorkspace()
-				if #results > 0 then
-					local pos = results[1].pos
-					_huntFoundPos = pos
-					_huntDoTeleport(pos)
-					huntStatusLabel.Text = "🔄 Auto Track: " .. results[1].name
-						.. " (" .. math.floor(pos.X) .. ", " .. math.floor(pos.Y) .. ", " .. math.floor(pos.Z) .. ")"
-				else
-					huntStatusLabel.Text = "🔄 Auto Track: objek hilang — menunggu event..."
-				end
-				task.wait(3)
-			end
-		end)
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if hrp then
+		hrp.CFrame = _huntPrevPos
+		huntStatusLabel.Text = "↩️ Kembali ke posisi sebelumnya"
+		_huntPrevPos = nil
+		huntTeleportBtn.Visible = false
 	else
-		_huntAutoActive = false
-		huntAutoBtn.Text = "🔄 Auto Track: OFF"
-		huntAutoBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
-		huntStatusLabel.Text = "⏹️ Auto Track dihentikan"
+		huntStatusLabel.Text = "❌ Karakter tidak ditemukan"
 	end
 end)
 
