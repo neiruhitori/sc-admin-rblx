@@ -2651,13 +2651,36 @@ local huntScanCorner = Instance.new("UICorner")
 huntScanCorner.CornerRadius = UDim.new(0, 8)
 huntScanCorner.Parent = huntScanBtn
 
+-- Search box (muncul setelah ada hasil scan)
+local huntSearchBox = Instance.new("TextBox")
+huntSearchBox.Name = "HuntSearch"
+huntSearchBox.Size = UDim2.new(1, 0, 0, 36)
+huntSearchBox.BackgroundColor3 = AdminConfig.Theme.Secondary
+huntSearchBox.BorderSizePixel = 0
+huntSearchBox.PlaceholderText = "🔎 Cari nama lokasi..."
+huntSearchBox.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)
+huntSearchBox.Text = ""
+huntSearchBox.TextColor3 = AdminConfig.Theme.Text
+huntSearchBox.TextSize = 12
+huntSearchBox.Font = Enum.Font.Gotham
+huntSearchBox.ClearTextOnFocus = false
+huntSearchBox.Visible = false
+huntSearchBox.LayoutOrder = 3
+huntSearchBox.Parent = huntPage
+local huntSearchCorner = Instance.new("UICorner")
+huntSearchCorner.CornerRadius = UDim.new(0, 8)
+huntSearchCorner.Parent = huntSearchBox
+local huntSearchPad = Instance.new("UIPadding")
+huntSearchPad.PaddingLeft = UDim.new(0, 10)
+huntSearchPad.Parent = huntSearchBox
+
 -- Container hasil scan (list tombol teleport)
 local huntResultsContainer = Instance.new("Frame")
 huntResultsContainer.Name = "HuntResults"
 huntResultsContainer.Size = UDim2.new(1, 0, 0, 0)
 huntResultsContainer.AutomaticSize = Enum.AutomaticSize.Y
 huntResultsContainer.BackgroundTransparency = 1
-huntResultsContainer.LayoutOrder = 3
+huntResultsContainer.LayoutOrder = 4
 huntResultsContainer.Parent = huntPage
 local huntResultsLayout = Instance.new("UIListLayout")
 huntResultsLayout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -2675,7 +2698,7 @@ huntTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 huntTeleportBtn.TextSize = 13
 huntTeleportBtn.Font = Enum.Font.GothamBold
 huntTeleportBtn.Visible = false
-huntTeleportBtn.LayoutOrder = 4
+huntTeleportBtn.LayoutOrder = 5
 huntTeleportBtn.Parent = huntPage
 local huntTeleportCorner = Instance.new("UICorner")
 huntTeleportCorner.CornerRadius = UDim.new(0, 8)
@@ -2692,7 +2715,7 @@ huntAutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 huntAutoBtn.TextSize = 13
 huntAutoBtn.Font = Enum.Font.GothamBold
 huntAutoBtn.Visible = false
-huntAutoBtn.LayoutOrder = 5
+huntAutoBtn.LayoutOrder = 6
 huntAutoBtn.Parent = huntPage
 local huntAutoCorner = Instance.new("UICorner")
 huntAutoCorner.CornerRadius = UDim.new(0, 8)
@@ -3264,6 +3287,7 @@ end
 local _huntAutoActive = false
 local _huntAutoConnection = nil
 local _huntFoundPos = nil  -- Vector3 lokasi terakhir ditemukan
+local _huntAllResults = {}  -- cache semua hasil scan untuk filter search
 
 local function _huntDoTeleport(pos)
 	local char = player.Character
@@ -3278,6 +3302,30 @@ end
 local function _huntClearResults()
 	for _, c in ipairs(huntResultsContainer:GetChildren()) do
 		if not c:IsA("UIListLayout") then c:Destroy() end
+	end
+end
+
+-- Render daftar hasil (bisa difilter lewat query string)
+local function _huntRenderResults(query)
+	_huntClearResults()
+	local q = (query or ""):lower()
+	local shown = 0
+	for i, entry in ipairs(_huntAllResults) do
+		if q == "" or entry.name:lower():find(q, 1, true) then
+			_huntAddResultBtn(entry, shown + 1)
+			shown += 1
+		end
+	end
+	if shown == 0 and q ~= "" then
+		local noResult = Instance.new("TextLabel")
+		noResult.Size = UDim2.new(1, 0, 0, 36)
+		noResult.BackgroundTransparency = 1
+		noResult.Text = "Tidak ada hasil untuk \"" .. query .. "\""
+		noResult.TextColor3 = Color3.fromRGB(150, 150, 150)
+		noResult.TextSize = 12
+		noResult.Font = Enum.Font.Gotham
+		noResult.LayoutOrder = 1
+		noResult.Parent = huntResultsContainer
 	end
 end
 
@@ -3341,18 +3389,25 @@ huntScanBtn.MouseButton1Click:Connect(function()
 
 	if #results == 0 then
 		huntStatusLabel.Text = "❌ Tidak ditemukan objek Treasure Hunt\nCoba saat event aktif"
+		huntSearchBox.Visible = false
 		return
 	end
 
+	_huntAllResults = results
+	huntSearchBox.Visible = true
+	huntSearchBox.Text = ""
 	huntStatusLabel.Text = "✅ Ditemukan " .. #results .. " lokasi — klik untuk teleport:"
-	for i, entry in ipairs(results) do
-		_huntAddResultBtn(entry, i)
-	end
+	_huntRenderResults("")
 
 	-- Auto-pilih yang pertama
 	_huntFoundPos = results[1].pos
 	huntTeleportBtn.Visible = true
 	huntAutoBtn.Visible = true
+end)
+
+-- Search box filter realtime
+huntSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	_huntRenderResults(huntSearchBox.Text)
 end)
 
 -- Teleport button (ke hasil pertama / yang dipilih)
