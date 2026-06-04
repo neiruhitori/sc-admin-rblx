@@ -3305,30 +3305,6 @@ local function _huntClearResults()
 	end
 end
 
--- Render daftar hasil (bisa difilter lewat query string)
-local function _huntRenderResults(query)
-	_huntClearResults()
-	local q = (query or ""):lower()
-	local shown = 0
-	for i, entry in ipairs(_huntAllResults) do
-		if q == "" or entry.name:lower():find(q, 1, true) then
-			_huntAddResultBtn(entry, shown + 1)
-			shown += 1
-		end
-	end
-	if shown == 0 and q ~= "" then
-		local noResult = Instance.new("TextLabel")
-		noResult.Size = UDim2.new(1, 0, 0, 36)
-		noResult.BackgroundTransparency = 1
-		noResult.Text = "Tidak ada hasil untuk \"" .. query .. "\""
-		noResult.TextColor3 = Color3.fromRGB(150, 150, 150)
-		noResult.TextSize = 12
-		noResult.Font = Enum.Font.Gotham
-		noResult.LayoutOrder = 1
-		noResult.Parent = huntResultsContainer
-	end
-end
-
 local function _huntAddResultBtn(entry, index)
 	local btn = Instance.new("TextButton")
 	btn.Name = "Result_" .. index
@@ -3374,6 +3350,30 @@ local function _huntAddResultBtn(entry, index)
 	btn.MouseLeave:Connect(function()
 		btn.BackgroundColor3 = AdminConfig.Theme.Primary
 	end)
+end
+
+-- Render daftar hasil (bisa difilter lewat query string)
+local function _huntRenderResults(query)
+	_huntClearResults()
+	local q = (query or ""):lower()
+	local shown = 0
+	for i, entry in ipairs(_huntAllResults) do
+		if q == "" or entry.name:lower():find(q, 1, true) then
+			_huntAddResultBtn(entry, shown + 1)
+			shown += 1
+		end
+	end
+	if shown == 0 and q ~= "" then
+		local noResult = Instance.new("TextLabel")
+		noResult.Size = UDim2.new(1, 0, 0, 36)
+		noResult.BackgroundTransparency = 1
+		noResult.Text = "Tidak ada hasil untuk \"" .. query .. "\""
+		noResult.TextColor3 = Color3.fromRGB(150, 150, 150)
+		noResult.TextSize = 12
+		noResult.Font = Enum.Font.Gotham
+		noResult.LayoutOrder = 1
+		noResult.Parent = huntResultsContainer
+	end
 end
 
 -- Scan button
