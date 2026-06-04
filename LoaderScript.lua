@@ -2285,12 +2285,14 @@ createTabButton("Character", "⚡", 1, true)
 createTabButton("Movement", "✈️", 2, false)
 createTabButton("Teleport", "🌐", 3, false)
 createTabButton("Utility", "🔧", 4, false)
+createTabButton("Hunt", "🗺️", 5, false)
 
 -- Create Content Pages
 local characterPage = createContentPage("Character")
 local movementPage = createContentPage("Movement")
 local teleportPage = createContentPage("Teleport")
 local utilityPage = createContentPage("Utility")
+local huntPage = createContentPage("Hunt")
 
 -- Set default tab
 characterPage.Visible = true
@@ -2571,6 +2573,130 @@ teleportInfo.Parent = teleportPage
 local teleportInfoCorner = Instance.new("UICorner")
 teleportInfoCorner.CornerRadius = UDim.new(0, 8)
 teleportInfoCorner.Parent = teleportInfo
+
+-- ============================================
+-- HUNT TAB
+-- ============================================
+-- Module: Treasure Hunt Teleport
+local TreasureHunt = {}
+TreasureHunt.LastFound = nil  -- simpan objek terakhir yang ditemukan
+-- Keyword untuk cari treasure hunt di workspace
+TreasureHunt.Keywords = {
+	"treasure","hunt","chest","bounty","event","rare","special","beacon",
+	"marker","location","spot","find","loot","prize"
+}
+function TreasureHunt:FindInWorkspace()
+	local function matchKw(name)
+		local low = name:lower()
+		for _, kw in ipairs(self.Keywords) do
+			if low:find(kw, 1, true) then return true end
+		end
+		return false
+	end
+	local results = {}
+	local function scan(obj, depth)
+		if depth > 8 then return end
+		if matchKw(obj.Name) then
+			local pos = nil
+			if obj:IsA("BasePart") then
+				pos = obj.Position
+			elseif obj:IsA("Model") then
+				local ok, cf = pcall(function() return obj:GetPivot() end)
+				if ok then pos = cf.Position end
+			end
+			if pos then
+				table.insert(results, {obj = obj, pos = pos, name = obj.Name, class = obj.ClassName})
+			end
+		end
+		local ok, ch = pcall(function() return obj:GetChildren() end)
+		if ok and ch then
+			for _, c in ipairs(ch) do scan(c, depth + 1) end
+		end
+	end
+	pcall(function() scan(workspace, 0) end)
+	return results
+end
+
+-- Status label dan result list di UI Hunt page
+local huntStatusLabel = Instance.new("TextLabel")
+huntStatusLabel.Name = "HuntStatus"
+huntStatusLabel.Size = UDim2.new(1, 0, 0, 40)
+huntStatusLabel.BackgroundColor3 = AdminConfig.Theme.Secondary
+huntStatusLabel.BorderSizePixel = 0
+huntStatusLabel.Text = "🗺️ Klik Scan untuk cari lokasi Treasure Hunt"
+huntStatusLabel.TextColor3 = AdminConfig.Theme.Text
+huntStatusLabel.TextSize = 12
+huntStatusLabel.Font = Enum.Font.Gotham
+huntStatusLabel.TextWrapped = true
+huntStatusLabel.TextYAlignment = Enum.TextYAlignment.Center
+huntStatusLabel.LayoutOrder = 1
+huntStatusLabel.Parent = huntPage
+local huntStatusCorner = Instance.new("UICorner")
+huntStatusCorner.CornerRadius = UDim.new(0, 8)
+huntStatusCorner.Parent = huntStatusLabel
+
+-- Tombol Scan
+local huntScanBtn = Instance.new("TextButton")
+huntScanBtn.Name = "HuntScan"
+huntScanBtn.Size = UDim2.new(1, 0, 0, 40)
+huntScanBtn.BackgroundColor3 = AdminConfig.Theme.Accent
+huntScanBtn.BorderSizePixel = 0
+huntScanBtn.Text = "🔍 Scan Treasure Hunt"
+huntScanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+huntScanBtn.TextSize = 13
+huntScanBtn.Font = Enum.Font.GothamBold
+huntScanBtn.LayoutOrder = 2
+huntScanBtn.Parent = huntPage
+local huntScanCorner = Instance.new("UICorner")
+huntScanCorner.CornerRadius = UDim.new(0, 8)
+huntScanCorner.Parent = huntScanBtn
+
+-- Container hasil scan (list tombol teleport)
+local huntResultsContainer = Instance.new("Frame")
+huntResultsContainer.Name = "HuntResults"
+huntResultsContainer.Size = UDim2.new(1, 0, 0, 0)
+huntResultsContainer.AutomaticSize = Enum.AutomaticSize.Y
+huntResultsContainer.BackgroundTransparency = 1
+huntResultsContainer.LayoutOrder = 3
+huntResultsContainer.Parent = huntPage
+local huntResultsLayout = Instance.new("UIListLayout")
+huntResultsLayout.SortOrder = Enum.SortOrder.LayoutOrder
+huntResultsLayout.Padding = UDim.new(0, 6)
+huntResultsLayout.Parent = huntResultsContainer
+
+-- Tombol Teleport ke Found (visible setelah scan berhasil)
+local huntTeleportBtn = Instance.new("TextButton")
+huntTeleportBtn.Name = "HuntTeleport"
+huntTeleportBtn.Size = UDim2.new(1, 0, 0, 44)
+huntTeleportBtn.BackgroundColor3 = AdminConfig.Theme.Success
+huntTeleportBtn.BorderSizePixel = 0
+huntTeleportBtn.Text = "🚀 Teleport ke Treasure"
+huntTeleportBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+huntTeleportBtn.TextSize = 13
+huntTeleportBtn.Font = Enum.Font.GothamBold
+huntTeleportBtn.Visible = false
+huntTeleportBtn.LayoutOrder = 4
+huntTeleportBtn.Parent = huntPage
+local huntTeleportCorner = Instance.new("UICorner")
+huntTeleportCorner.CornerRadius = UDim.new(0, 8)
+huntTeleportCorner.Parent = huntTeleportBtn
+
+-- Tombol Auto-Track (teleport berulang setiap 2 detik)
+local huntAutoBtn = Instance.new("TextButton")
+huntAutoBtn.Name = "HuntAuto"
+huntAutoBtn.Size = UDim2.new(1, 0, 0, 44)
+huntAutoBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+huntAutoBtn.BorderSizePixel = 0
+huntAutoBtn.Text = "🔄 Auto Track: OFF"
+huntAutoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+huntAutoBtn.TextSize = 13
+huntAutoBtn.Font = Enum.Font.GothamBold
+huntAutoBtn.Visible = false
+huntAutoBtn.LayoutOrder = 5
+huntAutoBtn.Parent = huntPage
+local huntAutoCorner = Instance.new("UICorner")
+huntAutoCorner.CornerRadius = UDim.new(0, 8)
+huntAutoCorner.Parent = huntAutoBtn
 
 -- UTILITY TAB
 local systemSection = createSection(utilityPage, "🔧 System", 1)
@@ -3131,6 +3257,146 @@ local function connectCommandButton(buttonName, command, requiresInput)
 		end
 	end
 end
+
+-- ============================================
+-- HUNT TAB HANDLERS
+-- ============================================
+local _huntAutoActive = false
+local _huntAutoConnection = nil
+local _huntFoundPos = nil  -- Vector3 lokasi terakhir ditemukan
+
+local function _huntDoTeleport(pos)
+	local char = player.Character
+	local hrp = char and char:FindFirstChild("HumanoidRootPart")
+	if hrp and pos then
+		hrp.CFrame = CFrame.new(pos + Vector3.new(0, 5, 0))
+		return true
+	end
+	return false
+end
+
+local function _huntClearResults()
+	for _, c in ipairs(huntResultsContainer:GetChildren()) do
+		if not c:IsA("UIListLayout") then c:Destroy() end
+	end
+end
+
+local function _huntAddResultBtn(entry, index)
+	local btn = Instance.new("TextButton")
+	btn.Name = "Result_" .. index
+	btn.Size = UDim2.new(1, 0, 0, 44)
+	btn.BackgroundColor3 = AdminConfig.Theme.Primary
+	btn.BorderSizePixel = 0
+	btn.AutoButtonColor = false
+	btn.LayoutOrder = index
+	btn.Parent = huntResultsContainer
+
+	local bc = Instance.new("UICorner")
+	bc.CornerRadius = UDim.new(0, 8)
+	bc.Parent = btn
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.new(1, -8, 1, 0)
+	label.Position = UDim2.new(0, 8, 0, 0)
+	label.BackgroundTransparency = 1
+	label.Text = string.format("📍 %s\n[%s] (%.0f, %.0f, %.0f)",
+		entry.name, entry.class,
+		entry.pos.X, entry.pos.Y, entry.pos.Z)
+	label.TextColor3 = AdminConfig.Theme.Text
+	label.TextSize = 11
+	label.Font = Enum.Font.Gotham
+	label.TextWrapped = true
+	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextYAlignment = Enum.TextYAlignment.Center
+	label.Parent = btn
+
+	btn.MouseButton1Click:Connect(function()
+		_huntFoundPos = entry.pos
+		local ok = _huntDoTeleport(entry.pos)
+		huntStatusLabel.Text = ok
+			and ("✅ Teleport ke: " .. entry.name .. " (" .. entry.class .. ")")
+			or "❌ Karakter tidak ditemukan"
+		huntTeleportBtn.Visible = true
+		huntAutoBtn.Visible = true
+	end)
+
+	btn.MouseEnter:Connect(function()
+		btn.BackgroundColor3 = AdminConfig.Theme.Accent
+	end)
+	btn.MouseLeave:Connect(function()
+		btn.BackgroundColor3 = AdminConfig.Theme.Primary
+	end)
+end
+
+-- Scan button
+huntScanBtn.MouseButton1Click:Connect(function()
+	huntStatusLabel.Text = "🔍 Scanning workspace..."
+	_huntClearResults()
+	huntTeleportBtn.Visible = false
+	huntAutoBtn.Visible = false
+	_huntFoundPos = nil
+	task.wait(0.05)
+
+	local results = TreasureHunt:FindInWorkspace()
+
+	if #results == 0 then
+		huntStatusLabel.Text = "❌ Tidak ditemukan objek Treasure Hunt\nCoba saat event aktif"
+		return
+	end
+
+	huntStatusLabel.Text = "✅ Ditemukan " .. #results .. " lokasi — klik untuk teleport:"
+	for i, entry in ipairs(results) do
+		_huntAddResultBtn(entry, i)
+	end
+
+	-- Auto-pilih yang pertama
+	_huntFoundPos = results[1].pos
+	huntTeleportBtn.Visible = true
+	huntAutoBtn.Visible = true
+end)
+
+-- Teleport button (ke hasil pertama / yang dipilih)
+huntTeleportBtn.MouseButton1Click:Connect(function()
+	if not _huntFoundPos then
+		huntStatusLabel.Text = "❌ Scan dulu untuk cari lokasi"
+		return
+	end
+	local ok = _huntDoTeleport(_huntFoundPos)
+	huntStatusLabel.Text = ok and "✅ Teleported!" or "❌ Karakter tidak ditemukan"
+end)
+
+-- Auto-Track button
+huntAutoBtn.MouseButton1Click:Connect(function()
+	_huntAutoActive = not _huntAutoActive
+
+	if _huntAutoActive then
+		huntAutoBtn.Text = "🔄 Auto Track: ON"
+		huntAutoBtn.BackgroundColor3 = AdminConfig.Theme.Success
+		huntStatusLabel.Text = "🔄 Auto Track aktif — scan & teleport tiap 3s"
+
+		_huntAutoConnection = task.spawn(function()
+			while _huntAutoActive do
+				-- Re-scan untuk posisi terbaru (treasure bisa bergerak)
+				local results = TreasureHunt:FindInWorkspace()
+				if #results > 0 then
+					local pos = results[1].pos
+					_huntFoundPos = pos
+					_huntDoTeleport(pos)
+					huntStatusLabel.Text = "🔄 Auto Track: " .. results[1].name
+						.. " (" .. math.floor(pos.X) .. ", " .. math.floor(pos.Y) .. ", " .. math.floor(pos.Z) .. ")"
+				else
+					huntStatusLabel.Text = "🔄 Auto Track: objek hilang — menunggu event..."
+				end
+				task.wait(3)
+			end
+		end)
+	else
+		_huntAutoActive = false
+		huntAutoBtn.Text = "🔄 Auto Track: OFF"
+		huntAutoBtn.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+		huntStatusLabel.Text = "⏹️ Auto Track dihentikan"
+	end
+end)
 
 -- ============================================
 -- TAB SWITCHING LOGIC
