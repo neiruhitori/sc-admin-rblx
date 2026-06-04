@@ -2429,6 +2429,28 @@ listLayout.VerticalAlignment = Enum.VerticalAlignment.Top
 listLayout.Parent = playerListContainer
 print("✅ PlayerListContainer created as ScrollingFrame with UIListLayout!")
 
+-- Search box inside player dropdown
+local playerSearchBox = Instance.new("TextBox")
+playerSearchBox.Name = "PlayerSearchBox"
+playerSearchBox.Size = UDim2.new(0, 200, 0, 35)
+playerSearchBox.BackgroundColor3 = AdminConfig.Theme.Secondary
+playerSearchBox.BorderSizePixel = 1
+playerSearchBox.BorderColor3 = AdminConfig.Theme.Accent
+playerSearchBox.PlaceholderText = "🔎 Cari nama player..."
+playerSearchBox.Text = ""
+playerSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerSearchBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+playerSearchBox.TextSize = 12
+playerSearchBox.Font = Enum.Font.Gotham
+playerSearchBox.ZIndex = 102
+playerSearchBox.LayoutOrder = -1
+playerSearchBox.ClearTextOnFocus = false
+playerSearchBox.Parent = playerListContainer
+
+local playerSearchCorner = Instance.new("UICorner")
+playerSearchCorner.CornerRadius = UDim.new(0, 6)
+playerSearchCorner.Parent = playerSearchBox
+
 -- ============================================
 -- CONTENT SECTIONS (FOR EACH TAB)
 -- ============================================
@@ -2894,7 +2916,10 @@ function AdminGUI:TogglePanel()
 	end
 end
 
-function AdminGUI:UpdatePlayerList()
+function AdminGUI:UpdatePlayerList(query)
+	query = query or ""
+	local queryLower = query:lower()
+
 	-- Clear existing buttons
 	for _, child in ipairs(playerListContainer:GetChildren()) do
 		if child:IsA("TextButton") then
@@ -2940,50 +2965,52 @@ function AdminGUI:UpdatePlayerList()
 	
 	local buttonIndex = 1
 	for _, plr in ipairs(allPlayers) do
-		local playerButton = Instance.new("TextButton")
-		playerButton.Name = plr.Name
-		playerButton.Size = UDim2.new(0, 200, 0, 50)
-		playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Steel blue
-		playerButton.BackgroundTransparency = 0
-		playerButton.BorderSizePixel = 2
-		playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
-		playerButton.AutoButtonColor = false
-		playerButton.ZIndex = 101
-		playerButton.LayoutOrder = buttonIndex
-		
-		-- Multi-line text
-		local buttonText = plr.DisplayName .. "\n@" .. plr.Name
-		playerButton.Text = buttonText
-		playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-		playerButton.TextSize = 13
-		playerButton.Font = Enum.Font.Gotham
-		playerButton.TextXAlignment = Enum.TextXAlignment.Center
-		playerButton.TextYAlignment = Enum.TextYAlignment.Center
-		playerButton.TextWrapped = true
-		playerButton.Parent = playerListContainer
-		
-		buttonIndex = buttonIndex + 1
-		
-		playerButton.MouseButton1Click:Connect(function()
-			AdminGUI.SelectedPlayer = plr.Name
-			-- Flash green on successful click
-			playerButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-			task.wait(0.1)
-			-- Show display name in dropdown if different
-			if plr.DisplayName ~= plr.Name then
-				playerDropdown.Text = "    ▼ " .. plr.DisplayName .. " (@" .. plr.Name .. ")"
-			else
-				playerDropdown.Text = "    ▼ " .. plr.Name
-			end
-			playerListContainer.Visible = false
-		end)
-		
-		playerButton.MouseEnter:Connect(function()
-			playerButton.BackgroundColor3 = Color3.fromRGB(100, 180, 255) -- Lighter blue
-		end)
-		playerButton.MouseLeave:Connect(function()
-			playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Back to steel blue
-		end)
+		if queryLower == "" or plr.Name:lower():find(queryLower, 1, true) or plr.DisplayName:lower():find(queryLower, 1, true) then
+			local playerButton = Instance.new("TextButton")
+			playerButton.Name = plr.Name
+			playerButton.Size = UDim2.new(0, 200, 0, 50)
+			playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Steel blue
+			playerButton.BackgroundTransparency = 0
+			playerButton.BorderSizePixel = 2
+			playerButton.BorderColor3 = Color3.fromRGB(255, 255, 255)
+			playerButton.AutoButtonColor = false
+			playerButton.ZIndex = 101
+			playerButton.LayoutOrder = buttonIndex
+			
+			-- Multi-line text
+			local buttonText = plr.DisplayName .. "\n@" .. plr.Name
+			playerButton.Text = buttonText
+			playerButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+			playerButton.TextSize = 13
+			playerButton.Font = Enum.Font.Gotham
+			playerButton.TextXAlignment = Enum.TextXAlignment.Center
+			playerButton.TextYAlignment = Enum.TextYAlignment.Center
+			playerButton.TextWrapped = true
+			playerButton.Parent = playerListContainer
+			
+			buttonIndex = buttonIndex + 1
+			
+			playerButton.MouseButton1Click:Connect(function()
+				AdminGUI.SelectedPlayer = plr.Name
+				-- Flash green on successful click
+				playerButton.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+				task.wait(0.1)
+				-- Show display name in dropdown if different
+				if plr.DisplayName ~= plr.Name then
+					playerDropdown.Text = "    ▼ " .. plr.DisplayName .. " (@" .. plr.Name .. ")"
+				else
+					playerDropdown.Text = "    ▼ " .. plr.Name
+				end
+				playerListContainer.Visible = false
+			end)
+			
+			playerButton.MouseEnter:Connect(function()
+				playerButton.BackgroundColor3 = Color3.fromRGB(100, 180, 255) -- Lighter blue
+			end)
+			playerButton.MouseLeave:Connect(function()
+				playerButton.BackgroundColor3 = Color3.fromRGB(70, 130, 180) -- Back to steel blue
+			end)
+		end
 	end
 end
 
@@ -3151,10 +3178,11 @@ playerDropdown.MouseButton1Click:Connect(function()
 	playerListContainer.Visible = not playerListContainer.Visible
 	
 	if playerListContainer.Visible then
-		AdminGUI:UpdatePlayerList()
+		playerSearchBox.Text = ""
+		AdminGUI:UpdatePlayerList("")
 		
 		local playerCount = #Players:GetPlayers() + 1
-		local targetHeight = math.min(playerCount * 53 + 20, 300) -- Reduced max height
+		local targetHeight = math.min(playerCount * 53 + 60, 350) -- +60 for search box
 		
 		-- Position below dropdown button
 		local dropdownAbsPos = playerDropdown.AbsolutePosition
@@ -3167,8 +3195,14 @@ playerDropdown.MouseButton1Click:Connect(function()
 	end
 end)
 
+-- Realtime search filter for player list
+playerSearchBox:GetPropertyChangedSignal("Text"):Connect(function()
+	AdminGUI:UpdatePlayerList(playerSearchBox.Text)
+end)
+
 refreshButton.MouseButton1Click:Connect(function()
-	AdminGUI:UpdatePlayerList()
+	playerSearchBox.Text = ""
+	AdminGUI:UpdatePlayerList("")
 	AdminGUI:RefreshAllToggles() -- Refresh toggle statuses too
 	AdminGUI:ShowNotification("Player list refreshed!", "success")
 end)
