@@ -3368,8 +3368,7 @@ huntScanBtn.MouseButton1Click:Connect(function()
 	huntStatusLabel.Text = "🔍 Scanning workspace..."
 	_huntClearResults()
 	huntTeleportBtn.Visible = false
-	huntAutoBtn.Visible = false
-	_huntFoundPos = nil
+	_huntPrevPos = nil
 	task.wait(0.05)
 
 	local results = TreasureHunt:FindInWorkspace()
