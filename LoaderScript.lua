@@ -627,6 +627,15 @@ function NoClip:Disable()
 				part.CanCollide = (original ~= nil) and original or true
 			end
 		end
+		-- Reset humanoid animation state to fix walk animation after noclip
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			task.defer(function()
+				if humanoid and humanoid.Parent then
+					humanoid:ChangeState(Enum.HumanoidStateType.Running)
+				end
+			end)
+		end
 	end
 
 	self.OriginalCollision = {}
@@ -634,6 +643,244 @@ function NoClip:Disable()
 end
 
 function NoClip:Toggle()
+	if self.Enabled then
+		self:Disable()
+		return false
+	else
+		self:Enable()
+		return true
+	end
+end
+
+-- ============================================
+-- ESP + PROXIMITY AURA MODULE
+-- ============================================
+local ESPModule = {}
+ESPModule.Enabled = false
+ESPModule.PlayerHighlights = {}
+ESPModule.PlayerNameTags = {}
+ESPModule.ProxHighlights = {}
+ESPModule.ProxMarkers = {}
+ESPModule.PlayerAddedConn = nil
+ESPModule.CharacterAddedConns = {}
+ESPModule.ProxWatchConn = nil
+
+function ESPModule:CreatePlayerESP(targetPlayer)
+	if targetPlayer == player then return end
+	local char = targetPlayer.Character
+	if not char then return end
+	local head = char:FindFirstChild("Head")
+	if not head then return end
+
+	-- Remove existing
+	if self.PlayerHighlights[targetPlayer] then
+		pcall(function() self.PlayerHighlights[targetPlayer]:Destroy() end)
+	end
+	if self.PlayerNameTags[targetPlayer] then
+		pcall(function() self.PlayerNameTags[targetPlayer]:Destroy() end)
+	end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ESP_Highlight"
+	highlight.Adornee = char
+	highlight.FillColor = Color3.fromRGB(255, 50, 50)
+	highlight.FillTransparency = 0.5
+	highlight.OutlineColor = Color3.fromRGB(255, 220, 0)
+	highlight.OutlineTransparency = 0
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = char
+	self.PlayerHighlights[targetPlayer] = highlight
+
+	local nameTag = Instance.new("BillboardGui")
+	nameTag.Name = "ESP_NameTag"
+	nameTag.Adornee = head
+	nameTag.Size = UDim2.new(0, 220, 0, 44)
+	nameTag.StudsOffset = Vector3.new(0, 3, 0)
+	nameTag.AlwaysOnTop = true
+	nameTag.MaxDistance = 2000
+	nameTag.Parent = char
+
+	local nameLabel = Instance.new("TextLabel")
+	nameLabel.Size = UDim2.new(1, 0, 1, 0)
+	nameLabel.BackgroundTransparency = 1
+	nameLabel.Text = string.format("%s\n@%s", targetPlayer.DisplayName, targetPlayer.Name)
+	nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+	nameLabel.TextStrokeTransparency = 0.2
+	nameLabel.TextScaled = true
+	nameLabel.Font = Enum.Font.GothamBold
+	nameLabel.Parent = nameTag
+	self.PlayerNameTags[targetPlayer] = nameTag
+end
+
+function ESPModule:RemovePlayerESP(targetPlayer)
+	if self.PlayerHighlights[targetPlayer] then
+		pcall(function() self.PlayerHighlights[targetPlayer]:Destroy() end)
+		self.PlayerHighlights[targetPlayer] = nil
+	end
+	if self.PlayerNameTags[targetPlayer] then
+		pcall(function() self.PlayerNameTags[targetPlayer]:Destroy() end)
+		self.PlayerNameTags[targetPlayer] = nil
+	end
+end
+
+function ESPModule:AddProxESP(instance)
+	if not instance or not instance:IsA("ProximityPrompt") then return end
+	local adornee = nil
+	local parent = instance.Parent
+	if parent then
+		if parent:IsA("BasePart") or parent:IsA("Model") then
+			adornee = parent
+		else
+			adornee = parent:FindFirstAncestorOfClass("Model")
+				or parent:FindFirstAncestorOfClass("BasePart")
+		end
+	end
+	if not adornee then return end
+	if self.ProxHighlights[adornee] then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ProxESP_Highlight"
+	highlight.Adornee = adornee
+	highlight.FillColor = Color3.fromRGB(0, 200, 255)
+	highlight.FillTransparency = 0.6
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.OutlineTransparency = 0.1
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = workspace
+	self.ProxHighlights[adornee] = highlight
+
+	local basePart = adornee:IsA("BasePart") and adornee
+		or (adornee.PrimaryPart or adornee:FindFirstChildWhichIsA("BasePart", true))
+	if basePart then
+		local bill = Instance.new("BillboardGui")
+		bill.Name = "ProxESP_Marker"
+		bill.Adornee = basePart
+		bill.Size = UDim2.new(0, 80, 0, 24)
+		bill.StudsOffset = Vector3.new(0, 2.5, 0)
+		bill.AlwaysOnTop = true
+		bill.MaxDistance = 300
+		bill.Parent = basePart
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		local keyText = "E"
+		pcall(function()
+			local kc = instance.KeyboardKeyCode
+			if kc == Enum.KeyCode.Space then
+				keyText = "SPACE"
+			elseif instance.ClickablePrompt then
+				keyText = "LMB"
+			elseif kc ~= Enum.KeyCode.Unknown then
+				keyText = kc.Name
+			end
+		end)
+		label.Text = "[" .. keyText .. "]"
+		label.TextColor3 = Color3.fromRGB(255, 220, 0)
+		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		label.TextScaled = true
+		label.Font = Enum.Font.GothamBlack
+		label.Parent = bill
+		self.ProxMarkers[adornee] = bill
+	end
+end
+
+function ESPModule:ClearProxESP()
+	for _, h in pairs(self.ProxHighlights) do
+		pcall(function() if h and h.Parent then h:Destroy() end end)
+	end
+	for _, m in pairs(self.ProxMarkers) do
+		pcall(function() if m and m.Parent then m:Destroy() end end)
+	end
+	table.clear(self.ProxHighlights)
+	table.clear(self.ProxMarkers)
+	if self.ProxWatchConn then
+		self.ProxWatchConn:Disconnect()
+		self.ProxWatchConn = nil
+	end
+end
+
+function ESPModule:EnableProxESP()
+	self:ClearProxESP()
+	task.spawn(function()
+		for _, inst in ipairs(workspace:GetDescendants()) do
+			if not self.Enabled then break end
+			if inst:IsA("ProximityPrompt") then
+				self:AddProxESP(inst)
+			end
+		end
+	end)
+	self.ProxWatchConn = workspace.DescendantAdded:Connect(function(inst)
+		if not self.Enabled then return end
+		if inst:IsA("ProximityPrompt") then
+			task.wait(0.05)
+			self:AddProxESP(inst)
+		end
+	end)
+end
+
+function ESPModule:Enable()
+	if self.Enabled then return end
+	self.Enabled = true
+
+	-- Player ESP
+	for _, plr in ipairs(Players:GetPlayers()) do
+		if plr.Character then
+			self:CreatePlayerESP(plr)
+		end
+		self.CharacterAddedConns[plr] = plr.CharacterAdded:Connect(function()
+			if self.Enabled then
+				task.wait(0.5)
+				self:CreatePlayerESP(plr)
+			end
+		end)
+	end
+	self.PlayerAddedConn = Players.PlayerAdded:Connect(function(plr)
+		self.CharacterAddedConns[plr] = plr.CharacterAdded:Connect(function()
+			if self.Enabled then
+				task.wait(0.5)
+				self:CreatePlayerESP(plr)
+			end
+		end)
+		if plr.Character then
+			self:CreatePlayerESP(plr)
+		end
+	end)
+
+	-- Proximity Prompt Aura ESP
+	self:EnableProxESP()
+	print("👁️ ESP + Proximity Aura enabled")
+end
+
+function ESPModule:Disable()
+	if not self.Enabled then return end
+	self.Enabled = false
+
+	-- Remove player ESP
+	for plr, _ in pairs(self.PlayerHighlights) do
+		self:RemovePlayerESP(plr)
+	end
+	for plr, _ in pairs(self.PlayerNameTags) do
+		self:RemovePlayerESP(plr)
+	end
+
+	if self.PlayerAddedConn then
+		self.PlayerAddedConn:Disconnect()
+		self.PlayerAddedConn = nil
+	end
+	for _, conn in pairs(self.CharacterAddedConns) do
+		pcall(function() conn:Disconnect() end)
+	end
+	self.CharacterAddedConns = {}
+
+	-- Remove proximity ESP
+	self:ClearProxESP()
+	print("👁️ ESP + Proximity Aura disabled")
+end
+
+function ESPModule:Toggle()
 	if self.Enabled then
 		self:Disable()
 		return false
@@ -654,7 +901,8 @@ CommandExecutor.PlayerStatuses = {
 	antiafk = false,
 	noclip = false,
 	potato = false,
-	potatodebug = false
+	potatodebug = false,
+	espprox = false
 }
 CommandExecutor.GodModeConnections = {}
 
@@ -2572,6 +2820,9 @@ createCommandButton(characterAbilities, "Infinite Jump", "🚀", "infinitejump",
 createCommandButton(characterAbilities, "God Mode", "🛡️", "god", 2, true)
 createCommandButton(characterAbilities, "NoClip Mode", "👻", "noclip", 3, true)
 
+local visionSection = createSection(characterPage, "👁️ Vision", 3)
+createCommandButton(visionSection, "ESP + Prox Aura", "👁️", "espprox", 1, true)
+
 -- MOVEMENT TAB
 local flyingSection = createSection(movementPage, "✈️ Flying Controls", 1)
 createCommandButton(flyingSection, "Fly Mode", "🚀", "fly", 1, true)
@@ -2731,7 +2982,7 @@ local systemSection = createSection(utilityPage, "🔧 System", 1)
 createCommandButton(systemSection, "Respawn", "🔄", "respawn", 1, false)
 createCommandButton(systemSection, "Anti-AFK", "⏰", "antiafk", 2, true)
 createCommandButton(systemSection, "Potato Mode", "🥔", "potato", 3, true)
-createCommandButton(systemSection, "Potato Debug", "🧪", "potatodebug", 4, true)
+-- createCommandButton(systemSection, "Potato Debug", "🧪", "potatodebug", 4, true)
 
 -- Notification Frame
 local notificationFrame = Instance.new("Frame")
@@ -3515,7 +3766,7 @@ connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
-connectCommandButton("potatodebug", "potatodebug", false)
+-- connectCommandButton("potatodebug", "potatodebug", false)
 
 -- Potato Mode button - Custom handler (not a chat command)
 local potatoButton = nil
@@ -3589,6 +3840,54 @@ if potatoButton then
 				TweenInfo.new(0.2),
 				{BackgroundColor3 = AdminConfig.Theme.Primary}
 			):Play()
+		end
+	end)
+end
+
+-- ESP + Proximity Aura Button Handler
+local espProxButton = nil
+for _, page in pairs(AdminGUI.TabPages) do
+	for _, section in ipairs(page:GetChildren()) do
+		if section:IsA("Frame") then
+			local buttonsContainer = section:FindFirstChild("ButtonsContainer")
+			if buttonsContainer then
+				local btn = buttonsContainer:FindFirstChild("espprox")
+				if btn and btn:IsA("TextButton") then
+					espProxButton = btn
+					break
+				end
+			end
+		end
+	end
+	if espProxButton then break end
+end
+
+if espProxButton then
+	espProxButton.MouseButton1Click:Connect(function()
+		local enabled = ESPModule:Toggle()
+		CommandExecutor.PlayerStatuses.espprox = enabled
+
+		local statusLabel = espProxButton:FindFirstChild("Status")
+		if statusLabel then
+			statusLabel.Text = enabled and "ON" or "OFF"
+			statusLabel.TextColor3 = enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(150, 150, 150)
+		end
+		espProxButton.BackgroundColor3 = enabled and Color3.fromRGB(25, 60, 25) or AdminConfig.Theme.Primary
+
+		AdminGUI:ShowNotification(
+			enabled and "👁️ ESP + Prox Aura ON" or "👁️ ESP + Prox Aura OFF",
+			enabled and "success" or "info"
+		)
+	end)
+
+	espProxButton.MouseEnter:Connect(function()
+		if not CommandExecutor.PlayerStatuses.espprox then
+			TweenService:Create(espProxButton, TweenInfo.new(0.2), {BackgroundColor3 = AdminConfig.Theme.Accent}):Play()
+		end
+	end)
+	espProxButton.MouseLeave:Connect(function()
+		if not CommandExecutor.PlayerStatuses.espprox then
+			TweenService:Create(espProxButton, TweenInfo.new(0.2), {BackgroundColor3 = AdminConfig.Theme.Primary}):Play()
 		end
 	end)
 end
