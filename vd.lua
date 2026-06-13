@@ -60,9 +60,15 @@ UtilityGUI.FastVaultPromptHoldConnection = nil
 UtilityGUI.FastVaultVisiblePrompts = {}
 UtilityGUI.ESPHighlights = {}
 UtilityGUI.ESPNameTags = {}
+UtilityGUI.ProxHighlights = {}
+UtilityGUI.ProxMarkers = {}
+UtilityGUI.ProxWatchConn = nil
 UtilityGUI.VaultESPHighlights = {}
 UtilityGUI.VaultESPMarkers = {}
 UtilityGUI.VaultESPConnection = nil
+UtilityGUI.NoClipEnabled = false
+UtilityGUI.NoClipSteppedConnection = nil
+UtilityGUI.NoClipOriginalCollision = {}
 UtilityGUI.FastGeneratorPromptConnection = nil
 UtilityGUI.FastGeneratorPromptStates = {}
 UtilityGUI.CrosshairFrame = nil
@@ -1296,6 +1302,104 @@ end
 
 -- ==================== FEATURE 2: ESP WALLHACK ====================
 
+-- Proximity Prompt aura ESP helpers (all interactable objects)
+function UtilityGUI:AddProxESP(instance)
+	if not instance or not instance:IsA("ProximityPrompt") then return end
+	local adornee = nil
+	local parent = instance.Parent
+	if parent then
+		if parent:IsA("BasePart") or parent:IsA("Model") then
+			adornee = parent
+		else
+			adornee = parent:FindFirstAncestorOfClass("Model")
+				or parent:FindFirstAncestorOfClass("BasePart")
+		end
+	end
+	if not adornee then return end
+	if self.ProxHighlights[adornee] then return end
+
+	local highlight = Instance.new("Highlight")
+	highlight.Name = "ProxESP_Highlight"
+	highlight.Adornee = adornee
+	highlight.FillColor = Color3.fromRGB(0, 200, 255)
+	highlight.FillTransparency = 0.6
+	highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+	highlight.OutlineTransparency = 0.1
+	highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+	highlight.Parent = workspace
+	self.ProxHighlights[adornee] = highlight
+
+	local basePart = adornee:IsA("BasePart") and adornee
+		or (adornee.PrimaryPart or adornee:FindFirstChildWhichIsA("BasePart", true))
+	if basePart then
+		local bill = Instance.new("BillboardGui")
+		bill.Name = "ProxESP_Marker"
+		bill.Adornee = basePart
+		bill.Size = UDim2.new(0, 80, 0, 24)
+		bill.StudsOffset = Vector3.new(0, 2.5, 0)
+		bill.AlwaysOnTop = true
+		bill.MaxDistance = 300
+		bill.Parent = basePart
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		local keyText = "E"
+		pcall(function()
+			local kc = instance.KeyboardKeyCode
+			if kc == Enum.KeyCode.Space then
+				keyText = "SPACE"
+			elseif instance.ClickablePrompt then
+				keyText = "LMB"
+			elseif kc ~= Enum.KeyCode.Unknown then
+				keyText = kc.Name
+			end
+		end)
+		label.Text = "[" .. keyText .. "]"
+		label.TextColor3 = Color3.fromRGB(255, 220, 0)
+		label.TextStrokeTransparency = 0
+		label.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+		label.TextScaled = true
+		label.Font = Enum.Font.GothamBlack
+		label.Parent = bill
+		self.ProxMarkers[adornee] = bill
+	end
+end
+
+function UtilityGUI:ClearProxESP()
+	for _, h in pairs(self.ProxHighlights) do
+		pcall(function() if h and h.Parent then h:Destroy() end end)
+	end
+	for _, m in pairs(self.ProxMarkers) do
+		pcall(function() if m and m.Parent then m:Destroy() end end)
+	end
+	table.clear(self.ProxHighlights)
+	table.clear(self.ProxMarkers)
+	if self.ProxWatchConn then
+		self.ProxWatchConn:Disconnect()
+		self.ProxWatchConn = nil
+	end
+end
+
+function UtilityGUI:EnableProxESP()
+	self:ClearProxESP()
+	task.spawn(function()
+		for _, inst in ipairs(workspace:GetDescendants()) do
+			if not self.ESPEnabled then break end
+			if inst:IsA("ProximityPrompt") then
+				self:AddProxESP(inst)
+			end
+		end
+	end)
+	self.ProxWatchConn = workspace.DescendantAdded:Connect(function(inst)
+		if not self.ESPEnabled then return end
+		if inst:IsA("ProximityPrompt") then
+			task.wait(0.05)
+			self:AddProxESP(inst)
+		end
+	end)
+end
+
 function UtilityGUI:CreateESP(targetPlayer)
 	if targetPlayer == player then return end
 	
@@ -1393,10 +1497,13 @@ function UtilityGUI:ToggleESP()
 				end
 			end)
 		end
+
+		-- Enable aura on all interactable objects (ProximityPrompt)
+		self:EnableProxESP()
 		
-		print("✓ ESP Enabled - Players visible through walls")
+		print("✓ ESP Enabled - Players + Interactable objects visible through walls")
 	else
-		-- Remove all ESP
+		-- Remove all player ESP
 		for plr, _ in pairs(self.ESPHighlights) do
 			self:RemoveESP(plr)
 		end
@@ -1413,6 +1520,9 @@ function UtilityGUI:ToggleESP()
 			connection:Disconnect()
 		end
 		self.CharacterAddedConnections = {}
+
+		-- Remove proximity prompt aura
+		self:ClearProxESP()
 		
 		print("✗ ESP Disabled")
 	end
@@ -1704,6 +1814,65 @@ function UtilityGUI:ToggleCrosshair()
 	return self.CrosshairEnabled
 end
 
+-- ==================== FEATURE: NOCLIP ====================
+
+function UtilityGUI:ToggleNoClip()
+	self.NoClipEnabled = not self.NoClipEnabled
+
+	if self.NoClipEnabled then
+		local character = player.Character
+		if character then
+			self.NoClipOriginalCollision = {}
+			for _, part in ipairs(character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					self.NoClipOriginalCollision[part] = part.CanCollide
+				end
+			end
+		end
+
+		self.NoClipSteppedConnection = RunService.Stepped:Connect(function()
+			if not self.NoClipEnabled then return end
+			local char = player.Character
+			if not char then return end
+			for _, part in ipairs(char:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.CanCollide = false
+				end
+			end
+		end)
+
+		print("👻 NoClip enabled! Walk through walls")
+	else
+		if self.NoClipSteppedConnection then
+			self.NoClipSteppedConnection:Disconnect()
+			self.NoClipSteppedConnection = nil
+		end
+
+		local character = player.Character
+		if character then
+			for _, part in ipairs(character:GetDescendants()) do
+				if part:IsA("BasePart") then
+					local original = self.NoClipOriginalCollision[part]
+					part.CanCollide = (original ~= nil) and original or true
+				end
+			end
+			local humanoid = character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				task.defer(function()
+					if humanoid and humanoid.Parent then
+						humanoid:ChangeState(Enum.HumanoidStateType.Running)
+					end
+				end)
+			end
+		end
+		self.NoClipOriginalCollision = {}
+		print("🧱 NoClip disabled! Collision restored.")
+	end
+
+	self:NotifyToggle("NoClip", self.NoClipEnabled)
+	return self.NoClipEnabled
+end
+
 -- ==================== FEATURE 4: SPEED BOOST ====================
 
 UtilityGUI.ShiftConnection = nil
@@ -1847,6 +2016,13 @@ local speedButton = createUtilityCard(
 	function() return UtilityGUI:ToggleSpeed() end
 )
 
+local noClipButton = createUtilityCard(
+	"👻 NoClip",
+	"Tembus semua objek / dinding (Press C)",
+	"C",
+	function() return UtilityGUI:ToggleNoClip() end
+)
+
 
 -- ==================== GUI TOGGLE ====================
 
@@ -1928,6 +2104,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		speedButton.Text = UtilityGUI.SpeedEnabled and "ON" or "OFF"
 		speedButton.BackgroundColor3 = UtilityGUI.SpeedEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
+
+	-- C = NoClip Toggle
+	if input.KeyCode == Enum.KeyCode.C then
+		UtilityGUI:ToggleNoClip()
+		noClipButton.Text = UtilityGUI.NoClipEnabled and "ON" or "OFF"
+		noClipButton.BackgroundColor3 = UtilityGUI.NoClipEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+	end
         
         -- N = Potato Mode Toggle
         if input.KeyCode == Enum.KeyCode.N then
@@ -2002,7 +2185,7 @@ end)
 -- Export to global for access from main script
 _G.ViolenceDistrict = UtilityGUI
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP+E/SPACE/LMB Interactables), H (Crosshair), G (Camera Zoom), L (Speed+Shift)")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+Interactables Aura), H (Crosshair), G (Camera Zoom), L (Speed+Shift), C (NoClip)")
 
 -- Show success notification
 print("[VD DEBUG] About to call ShowNotification...")
