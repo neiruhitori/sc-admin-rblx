@@ -1902,16 +1902,14 @@ function UtilityGUI:ToggleNoClip()
             end
 
             for _, part in ipairs(char:GetDescendants()) do
-    if part:IsA("BasePart")
-        and part.Name ~= "HumanoidRootPart" then
+    			if part:IsA("BasePart")
+        			and part.Name ~= "HumanoidRootPart" then
 
-        part.CanCollide = false
-    end
-end
+        			part.CanCollide = false
+    			end
+			end
         end)
-
         print("👻 NoClip enabled!")
-
     else
 
         -- Hentikan loop noclip
