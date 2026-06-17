@@ -575,81 +575,100 @@ NoClip.SteppedConnection = nil
 NoClip.OriginalCollision = {}
 
 function NoClip:Enable()
-	if self.Enabled then return end
+    if self.Enabled then return end
 
-	local character = player.Character
-	if not character then return end
+    local character = player.Character
+    if not character then return end
 
-	self.Enabled = true
-	self.OriginalCollision = {}
+    self.Enabled = true
+    self.OriginalCollision = {}
 
-	-- Store original CanCollide values for clean restoration
-	for _, part in ipairs(character:GetDescendants()) do
-		if part:IsA("BasePart") then
-			self.OriginalCollision[part] = part.CanCollide
-		end
-	end
+    -- Simpan collision asli
+    for _, part in ipairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            self.OriginalCollision[part] = part.CanCollide
+        end
+    end
 
-	-- Stepped runs every frame before physics; continuously disabling collision
-	-- lets the character pass through walls while the Humanoid's internal
-	-- floor-raycast keeps the character standing on surfaces.
-	self.SteppedConnection = RunService.Stepped:Connect(function()
-		if not self.Enabled then return end
-		local char = player.Character
-		if not char then return end
+    -- Jalankan noclip
+    self.SteppedConnection = RunService.Stepped:Connect(function()
+        if not self.Enabled then
+            return
+        end
 
-		for _, part in ipairs(char:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.CanCollide = false
-			end
-		end
-	end)
+        local char = player.Character
+        if not char then
+            return
+        end
 
-	print("👻 NoClip enabled! Walk through walls (R6/R15 compatible)")
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart")
+                and part.Name ~= "HumanoidRootPart" then
+
+                part.CanCollide = false
+            end
+        end
+    end)
+
+    print("👻 NoClip enabled! Walk through walls")
 end
+
 
 function NoClip:Disable()
-	if not self.Enabled then return end
+    if not self.Enabled then return end
 
-	self.Enabled = false
+    self.Enabled = false
 
-	if self.SteppedConnection then
-		self.SteppedConnection:Disconnect()
-		self.SteppedConnection = nil
-	end
+    -- Stop loop
+    if self.SteppedConnection then
+        self.SteppedConnection:Disconnect()
+        self.SteppedConnection = nil
+    end
 
-	-- Restore original collision values
-	local character = player.Character
-	if character then
-		for _, part in ipairs(character:GetDescendants()) do
-			if part:IsA("BasePart") then
-				local original = self.OriginalCollision[part]
-				part.CanCollide = (original ~= nil) and original or true
-			end
-		end
-		-- Reset humanoid animation state to fix walk animation after noclip
-		local humanoid = character:FindFirstChildOfClass("Humanoid")
-		if humanoid then
-			task.defer(function()
-				if humanoid and humanoid.Parent then
-					humanoid:ChangeState(Enum.HumanoidStateType.Running)
-				end
-			end)
-		end
-	end
+    local character = player.Character
+    if character then
 
-	self.OriginalCollision = {}
-	print("🧱 NoClip disabled! Collision restored.")
+        -- Restore collision seperti semula
+        for part, originalCollision in pairs(self.OriginalCollision) do
+            if part and part.Parent then
+                part.CanCollide = originalCollision
+            end
+        end
+
+        -- Refresh humanoid
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+
+            task.delay(0.1, function()
+                if humanoid and humanoid.Parent then
+                    humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                end
+            end)
+        end
+
+        -- Refresh physics
+        local rootPart = character:FindFirstChild("HumanoidRootPart")
+        if rootPart then
+            rootPart.AssemblyLinearVelocity = Vector3.zero
+            rootPart.AssemblyAngularVelocity = Vector3.zero
+        end
+    end
+
+    self.OriginalCollision = {}
+
+    print("🧱 NoClip disabled! Collision restored.")
 end
 
+
 function NoClip:Toggle()
-	if self.Enabled then
-		self:Disable()
-		return false
-	else
-		self:Enable()
-		return true
-	end
+    if self.Enabled then
+        self:Disable()
+        return false
+    else
+        self:Enable()
+        return true
+    end
 end
 
 -- ============================================
