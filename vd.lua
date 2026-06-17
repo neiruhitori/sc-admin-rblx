@@ -1816,61 +1816,147 @@ end
 
 -- ==================== FEATURE: NOCLIP ====================
 
+-- function UtilityGUI:ToggleNoClip()
+-- 	self.NoClipEnabled = not self.NoClipEnabled
+
+-- 	if self.NoClipEnabled then
+-- 		local character = player.Character
+-- 		if character then
+-- 			self.NoClipOriginalCollision = {}
+-- 			for _, part in ipairs(character:GetDescendants()) do
+-- 				if part:IsA("BasePart") then
+-- 					self.NoClipOriginalCollision[part] = part.CanCollide
+-- 				end
+-- 			end
+-- 		end
+
+-- 		self.NoClipSteppedConnection = RunService.Stepped:Connect(function()
+-- 			if not self.NoClipEnabled then return end
+-- 			local char = player.Character
+-- 			if not char then return end
+-- 			for _, part in ipairs(char:GetDescendants()) do
+-- 				if part:IsA("BasePart") then
+-- 					part.CanCollide = false
+-- 				end
+-- 			end
+-- 		end)
+
+-- 		print("👻 NoClip enabled! Walk through walls")
+-- 	else
+-- 		if self.NoClipSteppedConnection then
+-- 			self.NoClipSteppedConnection:Disconnect()
+-- 			self.NoClipSteppedConnection = nil
+-- 		end
+
+-- 		local character = player.Character
+-- 		if character then
+-- 			for _, part in ipairs(character:GetDescendants()) do
+-- 				if part:IsA("BasePart") then
+-- 					local original = self.NoClipOriginalCollision[part]
+-- 					part.CanCollide = (original ~= nil) and original or true
+-- 				end
+-- 			end
+-- 			local humanoid = character:FindFirstChildOfClass("Humanoid")
+-- 			if humanoid then
+-- 				task.defer(function()
+-- 					if humanoid and humanoid.Parent then
+-- 						humanoid:ChangeState(Enum.HumanoidStateType.Running)
+-- 					end
+-- 				end)
+-- 			end
+-- 		end
+-- 		self.NoClipOriginalCollision = {}
+-- 		print("🧱 NoClip disabled! Collision restored.")
+-- 	end
+
+-- 	self:NotifyToggle("NoClip", self.NoClipEnabled)
+-- 	return self.NoClipEnabled
+-- end
+
 function UtilityGUI:ToggleNoClip()
-	self.NoClipEnabled = not self.NoClipEnabled
+    self.NoClipEnabled = not self.NoClipEnabled
 
-	if self.NoClipEnabled then
-		local character = player.Character
-		if character then
-			self.NoClipOriginalCollision = {}
-			for _, part in ipairs(character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					self.NoClipOriginalCollision[part] = part.CanCollide
-				end
-			end
-		end
+    if self.NoClipEnabled then
 
-		self.NoClipSteppedConnection = RunService.Stepped:Connect(function()
-			if not self.NoClipEnabled then return end
-			local char = player.Character
-			if not char then return end
-			for _, part in ipairs(char:GetDescendants()) do
-				if part:IsA("BasePart") then
-					part.CanCollide = false
-				end
-			end
-		end)
+        -- Simpan collision asli hanya sekali
+        self.NoClipOriginalCollision = {}
 
-		print("👻 NoClip enabled! Walk through walls")
-	else
-		if self.NoClipSteppedConnection then
-			self.NoClipSteppedConnection:Disconnect()
-			self.NoClipSteppedConnection = nil
-		end
+        local character = player.Character
+        if character then
+            for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    self.NoClipOriginalCollision[part] = part.CanCollide
+                end
+            end
+        end
 
-		local character = player.Character
-		if character then
-			for _, part in ipairs(character:GetDescendants()) do
-				if part:IsA("BasePart") then
-					local original = self.NoClipOriginalCollision[part]
-					part.CanCollide = (original ~= nil) and original or true
-				end
-			end
-			local humanoid = character:FindFirstChildOfClass("Humanoid")
-			if humanoid then
-				task.defer(function()
-					if humanoid and humanoid.Parent then
-						humanoid:ChangeState(Enum.HumanoidStateType.Running)
-					end
-				end)
-			end
-		end
-		self.NoClipOriginalCollision = {}
-		print("🧱 NoClip disabled! Collision restored.")
-	end
+        -- Jalankan noclip
+        self.NoClipSteppedConnection = RunService.Stepped:Connect(function()
+            if not self.NoClipEnabled then
+                return
+            end
 
-	self:NotifyToggle("NoClip", self.NoClipEnabled)
-	return self.NoClipEnabled
+            local char = player.Character
+            if not char then
+                return
+            end
+
+            for _, part in ipairs(char:GetDescendants()) do
+    if part:IsA("BasePart")
+        and part.Name ~= "HumanoidRootPart" then
+
+        part.CanCollide = false
+    end
+end
+        end)
+
+        print("👻 NoClip enabled!")
+
+    else
+
+        -- Hentikan loop noclip
+        if self.NoClipSteppedConnection then
+            self.NoClipSteppedConnection:Disconnect()
+            self.NoClipSteppedConnection = nil
+        end
+
+        local character = player.Character
+        if character then
+
+            -- Kembalikan collision seperti semula
+            for part, originalCollision in pairs(self.NoClipOriginalCollision) do
+                if part and part.Parent then
+                    part.CanCollide = originalCollision
+                end
+            end
+
+            -- Refresh humanoid
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+
+                task.delay(0.1, function()
+                    if humanoid and humanoid.Parent then
+                        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+                    end
+                end)
+            end
+
+            -- Refresh physics HRP
+            local rootPart = character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.AssemblyLinearVelocity = Vector3.zero
+                rootPart.AssemblyAngularVelocity = Vector3.zero
+            end
+        end
+
+        self.NoClipOriginalCollision = {}
+
+        print("🧱 NoClip disabled!")
+    end
+
+    self:NotifyToggle("NoClip", self.NoClipEnabled)
+    return self.NoClipEnabled
 end
 
 -- ==================== FEATURE 4: SPEED BOOST ====================
