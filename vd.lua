@@ -2160,10 +2160,20 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	
 	-- J = ESP Toggle (Players only)
 	if input.KeyCode == Enum.KeyCode.J then
+		-- Toggle ESP (players + interactables aura)
 		UtilityGUI:ToggleESP()
-		-- Update button visuals
+		-- Update ESP button visuals
 		espButton.Text = UtilityGUI.ESPEnabled and "ON" or "OFF"
 		espButton.BackgroundColor3 = UtilityGUI.ESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
+
+		-- Sync Pallet ESP with ESP state when pressing J
+		if UtilityGUI.PalletESPEnabled ~= UtilityGUI.ESPEnabled then
+			UtilityGUI:TogglePalletESP()
+		end
+
+		-- Update Pallet ESP button visuals
+		palletESPButton.Text = UtilityGUI.PalletESPEnabled and "ON" or "OFF"
+		palletESPButton.BackgroundColor3 = UtilityGUI.PalletESPEnabled and Color3.fromRGB(46, 204, 113) or Color3.fromRGB(100, 100, 110)
 	end
 	
 	-- H = Crosshair Toggle
