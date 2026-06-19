@@ -41,7 +41,8 @@ UtilityGUI.CrosshairEnabled = false
 UtilityGUI.CameraZoomEnabled = false
 UtilityGUI.FastVaultEnabled = false
 UtilityGUI.DefaultSpeed = 16
-UtilityGUI.BoostSpeed = 20
+UtilityGUI.BoostSpeed = 21
+-- UtilityGUI.BoostSpeed = 20
 UtilityGUI.CameraMinZoom = 0.5
 UtilityGUI.CameraMaxZoom = 20
 UtilityGUI.FastVaultJumpMultiplier = 1.8
@@ -1965,7 +1966,7 @@ function UtilityGUI:ToggleSpeed()
 	self.SpeedEnabled = not self.SpeedEnabled
 	
 	if self.SpeedEnabled then
-		-- Set speed to 20
+		-- Set speed to boost speed
 		local char = player.Character
 		if char then
 			local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1974,14 +1975,9 @@ function UtilityGUI:ToggleSpeed()
 			end
 		end
 		
-		-- Simulate holding Shift key continuously
+		-- Maintain speed boost - no VirtualInputManager needed (doesn't interfere with mouse)
 		self.ShiftConnection = RunService.RenderStepped:Connect(function()
 			if self.SpeedEnabled then
-				-- Continuously press shift
-				local VirtualInputManager = game:GetService("VirtualInputManager")
-				VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
-				
-				-- Also maintain speed at 20
 				local char = player.Character
 				if char then
 					local hum = char:FindFirstChildOfClass("Humanoid")
@@ -1992,16 +1988,12 @@ function UtilityGUI:ToggleSpeed()
 			end
 		end)
 		
-		print("✓ Speed Boost Enabled: " .. self.BoostSpeed .. " + Auto Shift")
+		print("✓ Speed Boost Enabled: " .. self.BoostSpeed)
 	else
-		-- Stop simulating shift
+		-- Stop speed boost
 		if self.ShiftConnection then
 			self.ShiftConnection:Disconnect()
 			self.ShiftConnection = nil
-			
-			-- Send shift key release
-			local VirtualInputManager = game:GetService("VirtualInputManager")
-			VirtualInputManager:SendKeyEvent(false, Enum.KeyCode.LeftShift, false, game)
 		end
 		
 		-- Reset speed
@@ -2032,13 +2024,10 @@ local utilityRespawnConnection = player.CharacterAdded:Connect(function(char)
 			hum.WalkSpeed = UtilityGUI.BoostSpeed
 		end
 		
-		-- Restart shift simulation if needed
+		-- Restart speed boost maintenance if needed (no VirtualInputManager)
 		if not UtilityGUI.ShiftConnection then
 			UtilityGUI.ShiftConnection = RunService.RenderStepped:Connect(function()
 				if UtilityGUI.SpeedEnabled then
-					local VirtualInputManager = game:GetService("VirtualInputManager")
-					VirtualInputManager:SendKeyEvent(true, Enum.KeyCode.LeftShift, false, game)
-					
 					local char = player.Character
 					if char then
 						local hum = char:FindFirstChildOfClass("Humanoid")
