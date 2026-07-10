@@ -25,7 +25,10 @@ local function safeExecute(func, description)
 end
 
 print("🚀 Loading Admin Script...")
-print("📌 VERSION: v4.7 - Potato Mode UI Button!")
+print("📌 VERSION: v4.8 - Icon Toggle with ESC!")
+print("     ✅ Icon tersembunyi saat script start")
+print("     ✅ Tekan ESC untuk toggle icon visibility")
+print("     ✅ Notifikasi sukses ketika script loaded")
 print("     ✅ UI button for Potato Mode (no keyboard shortcut)")
 print("     ✅ Click ON/OFF in Utility tab")
 print("     ✅ Status indicator & visual feedback")

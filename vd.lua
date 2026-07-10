@@ -180,6 +180,7 @@ utilityIcon.Position = UDim2.new(1, -80, 0.5, 60)  -- Below admin icon
 utilityIcon.BackgroundColor3 = Color3.fromRGB(100, 149, 237) -- Cornflower blue
 utilityIcon.BorderSizePixel = 0
 utilityIcon.AutoButtonColor = false
+utilityIcon.Visible = false -- Icon tersembunyi saat start
 utilityIcon.Parent = utilityScreenGui
 
 local utilityIconCorner = Instance.new("UICorner")
@@ -2139,6 +2140,14 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	
+	-- Esc = Toggle Icon Visibility
+	if input.KeyCode == Enum.KeyCode.Escape then
+		utilityIcon.Visible = not utilityIcon.Visible
+		local statusText = utilityIcon.Visible and "Icon Ditampilkan" or "Icon Disembunyikan"
+		UtilityGUI:ShowNotification(statusText, "info")
+		return
+	end
+	
 	-- K = Cursor Toggle
 	if input.KeyCode == Enum.KeyCode.K then
 		UtilityGUI:ToggleCursor()
@@ -2268,11 +2277,11 @@ end)
 -- Export to global for access from main script
 _G.ViolenceDistrict = UtilityGUI
 
-print("⚡ Violence District loaded - K (Cursor), J (ESP+Interactables Aura), H (Crosshair), G (Camera Zoom), L (Speed+Shift), C (NoClip)")
+print("⚡ Violence District loaded - K (Cursor), J (ESP+Interactables Aura), H (Crosshair), G (Camera Zoom), L (Speed+Shift), C (NoClip), ESC (Toggle Icon)")
 
 -- Show success notification
 print("[VD DEBUG] About to call ShowNotification...")
 print("[VD DEBUG] UtilityGUI type:", type(UtilityGUI))
 print("[VD DEBUG] ShowNotification type:", type(UtilityGUI.ShowNotification))
 
-UtilityGUI:ShowNotification("Violence District Module Loaded! All VD features unlocked!", "success")
+UtilityGUI:ShowNotification("✅ Violence District Loaded! Press ESC to show/hide icon", "success")
