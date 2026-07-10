@@ -2307,6 +2307,7 @@ floatingIcon.Position = UDim2.new(1, -80, 0.5, -30)
 floatingIcon.BackgroundColor3 = AdminConfig.Theme.Accent
 floatingIcon.BorderSizePixel = 0
 floatingIcon.AutoButtonColor = false
+floatingIcon.Visible = false -- Icon tersembunyi saat start
 floatingIcon.Parent = screenGui
 
 local iconCorner = Instance.new("UICorner")
@@ -3519,8 +3520,16 @@ resetButton.MouseLeave:Connect(function()
 	resetButton.BackgroundColor3 = Color3.fromRGB(255, 100, 100) -- Back to bright red
 end)
 
--- ESC key to close dropdown
+-- ESC key handler
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	-- ESC = Toggle Icon Visibility
+	if input.KeyCode == Enum.KeyCode.Escape then
+		floatingIcon.Visible = not floatingIcon.Visible
+		local statusText = floatingIcon.Visible and "Admin Icon Ditampilkan" or "Admin Icon Disembunyikan"
+		print("[AdminGUI] " .. statusText)
+	end
+	
+	-- Close player list dropdown if open
 	if input.KeyCode == Enum.KeyCode.Escape and playerListContainer.Visible then
 		playerListContainer.Visible = false
 		playerListContainer.Size = UDim2.new(0, 0, 0, 0)

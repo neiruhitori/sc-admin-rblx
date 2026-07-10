@@ -2143,9 +2143,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- Esc = Toggle Icon Visibility
 	if input.KeyCode == Enum.KeyCode.Escape then
 		utilityIcon.Visible = not utilityIcon.Visible
-		local statusText = utilityIcon.Visible and "Icon Ditampilkan" or "Icon Disembunyikan"
+		local statusText = utilityIcon.Visible and "VD Icon Ditampilkan" or "VD Icon Disembunyikan"
 		UtilityGUI:ShowNotification(statusText, "info")
-		return
 	end
 	
 	-- K = Cursor Toggle
