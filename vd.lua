@@ -2138,14 +2138,15 @@ end)
 -- ==================== KEYBOARD SHORTCUTS ====================
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	
-	-- Esc = Toggle Icon Visibility
+	-- Esc = Toggle Icon Visibility (always check, regardless of gameProcessed)
 	if input.KeyCode == Enum.KeyCode.Escape then
 		utilityIcon.Visible = not utilityIcon.Visible
 		local statusText = utilityIcon.Visible and "VD Icon Ditampilkan" or "VD Icon Disembunyikan"
 		UtilityGUI:ShowNotification(statusText, "info")
+		return
 	end
+	
+	if gameProcessed then return end
 	
 	-- K = Cursor Toggle
 	if input.KeyCode == Enum.KeyCode.K then
