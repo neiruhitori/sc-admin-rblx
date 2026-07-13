@@ -572,80 +572,105 @@ end
 -- ============================================
 -- INFINITY ZOOM MODULE
 -- ============================================
-local Players = game:GetService("Players")
-local UIS = game:GetService("UserInputService")
-
-local player = Players.LocalPlayer
-
 local InfinityZoom = {}
 
 InfinityZoom.Enabled = false
+InfinityZoom.MinZoom = 0.5
+InfinityZoom.MaxZoom = 1000
 
-InfinityZoom.Min = 0.5
-InfinityZoom.Max = 100000
+InfinityZoom.OldMin = nil
+InfinityZoom.OldMax = nil
 
-InfinityZoom.Connection = nil
+InfinityZoom.InputConnection = nil
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
 
 function InfinityZoom:Enable()
 
-    if self.Enabled then
-        return
-    end
+	if self.Enabled then
+		return
+	end
 
-    self.Enabled = true
+	self.Enabled = true
 
-    player.CameraMode = Enum.CameraMode.Classic
-    player.CameraMinZoomDistance = self.Min
-    player.CameraMaxZoomDistance = self.Max
+	self.OldMin = LocalPlayer.CameraMinZoomDistance
+	self.OldMax = LocalPlayer.CameraMaxZoomDistance
 
-    self.Connection = UIS.InputChanged:Connect(function(input)
+	-- Infinity Zoom
+	LocalPlayer.CameraMinZoomDistance = self.MinZoom
+	LocalPlayer.CameraMaxZoomDistance = self.MaxZoom
 
-        if input.UserInputType == Enum.UserInputType.MouseWheel then
+	self.InputConnection = UserInputService.InputChanged:Connect(function(input, gameProcessed)
 
-            local amount = input.Position.Z
+		if gameProcessed then
+			return
+		end
 
-            local current = player.CameraMaxZoomDistance
+		if not self.Enabled then
+			return
+		end
 
-            current -= amount * 10
+		if input.UserInputType ~= Enum.UserInputType.MouseWheel then
+			return
+		end
 
-            current = math.clamp(current, self.Min, self.Max)
+		local current = LocalPlayer.CameraMaxZoomDistance
 
-            player.CameraMaxZoomDistance = current
+		if input.Position.Z > 0 then
+			current -= 10
+		else
+			current += 10
+		end
 
-        end
+		current = math.clamp(current, self.MinZoom, self.MaxZoom)
 
-    end)
+		LocalPlayer.CameraMaxZoomDistance = current
+
+	end)
+
+	print("🔍 Infinity Zoom enabled!")
 
 end
 
 function InfinityZoom:Disable()
 
-    self.Enabled = false
+	if not self.Enabled then
+		return
+	end
 
-    player.CameraMaxZoomDistance = 128
+	self.Enabled = false
 
-    player.CameraMinZoomDistance = 0.5
+	if self.InputConnection then
+		self.InputConnection:Disconnect()
+		self.InputConnection = nil
+	end
 
-    if self.Connection then
-        self.Connection:Disconnect()
-        self.Connection = nil
-    end
+	if self.OldMin then
+		LocalPlayer.CameraMinZoomDistance = self.OldMin
+	end
+
+	if self.OldMax then
+		LocalPlayer.CameraMaxZoomDistance = self.OldMax
+	end
+
+	print("👁️ Infinity Zoom disabled")
 
 end
 
 function InfinityZoom:Toggle()
 
-    if self.Enabled then
-        self:Disable()
-    else
-        self:Enable()
-    end
-
-    return self.Enabled
+	if self.Enabled then
+		self:Disable()
+		return false
+	else
+		self:Enable()
+		return true
+	end
 
 end
-
-return InfinityZoom
 
 -- ============================================
 -- NOCLIP CONTROLLER MODULE
