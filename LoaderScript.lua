@@ -570,6 +570,83 @@ function InfiniteJump:SetSpeed(speed)
 end
 
 -- ============================================
+-- INFINITY ZOOM MODULE
+-- ============================================
+local InfinityZoom = {}
+InfinityZoom.Enabled = false
+InfinityZoom.MinZoom = 0.1  -- Minimum zoom distance
+InfinityZoom.MaxZoom = 500  -- Maximum zoom distance
+InfinityZoom.CurrentZoom = 15  -- Default zoom distance
+InfinityZoom.ZoomSpeed = 2  -- How much to zoom per scroll
+InfinityZoom.InputConnection = nil
+InfinityZoom.Camera = workspace.CurrentCamera
+
+function InfinityZoom:Enable()
+	if self.Enabled then return end
+	
+	self.Enabled = true
+	self.CurrentZoom = (self.Camera.CFrame.Position - self.Camera.Focus.Position).Magnitude
+	
+	-- Monitor mouse wheel scroll untuk zoom
+	local mouse = player:GetMouse()
+	
+	self.InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
+		if gameProcessed or not self.Enabled then return end
+		if UserInputService:GetFocusedTextBox() then return end
+		
+		-- Scroll up (zoom in - kurangi distance)
+		if input.KeyCode == Enum.KeyCode.MouseWheelUp then
+			self.CurrentZoom = math.max(self.MinZoom, self.CurrentZoom - self.ZoomSpeed)
+			self:ApplyZoom()
+		end
+		
+		-- Scroll down (zoom out - tambah distance)
+		if input.KeyCode == Enum.KeyCode.MouseWheelDown then
+			self.CurrentZoom = math.min(self.MaxZoom, self.CurrentZoom + self.ZoomSpeed)
+			self:ApplyZoom()
+		end
+	end)
+	
+	print("🔍 Infinity Zoom enabled! Scroll untuk zoom in/out")
+end
+
+function InfinityZoom:ApplyZoom()
+	if not self.Enabled then return end
+	
+	local camera = self.Camera
+	if not camera then return end
+	
+	-- Get direction dari camera ke focus
+	local direction = (camera.Focus.Position - camera.CFrame.Position).Unit
+	
+	-- Apply zoom dengan tetap maintain direction
+	camera.CFrame = camera.Focus - (direction * self.CurrentZoom)
+end
+
+function InfinityZoom:Disable()
+	if not self.Enabled then return end
+	
+	self.Enabled = false
+	
+	if self.InputConnection then
+		self.InputConnection:Disconnect()
+		self.InputConnection = nil
+	end
+	
+	print("👁️ Infinity Zoom disabled")
+end
+
+function InfinityZoom:Toggle()
+	if self.Enabled then
+		self:Disable()
+		return false
+	else
+		self:Enable()
+		return true
+	end
+end
+
+-- ============================================
 -- NOCLIP CONTROLLER MODULE
 -- ============================================
 local NoClip = {}
@@ -924,7 +1001,8 @@ CommandExecutor.PlayerStatuses = {
 	noclip = false,
 	potato = false,
 	potatodebug = false,
-	espprox = false
+	espprox = false,
+	infinityzoom = false
 }
 CommandExecutor.GodModeConnections = {}
 
@@ -1223,6 +1301,15 @@ function CommandExecutor:Execute(commandText, targetPlayer)
 		local speed = tonumber(args[1]) or 100
 		InfiniteJump:SetSpeed(speed)
 		return true, "Infinite Jump speed set to " .. speed
+
+	elseif command == "infinityzoom" or command == "zoom" then
+		local status = InfinityZoom:Toggle()
+		self.PlayerStatuses.infinityzoom = status
+		if status then
+			return true, "🔍 Infinity Zoom ON - Scroll untuk zoom!"
+		else
+			return true, "🔍 Infinity Zoom OFF"
+		end
 
 	elseif command == "potatodebug" or command == "pdebug" then
 		local optimizerRef = Optimizer or _G.AdminOptimizer
@@ -3005,6 +3092,7 @@ local systemSection = createSection(utilityPage, "🔧 System", 1)
 createCommandButton(systemSection, "Respawn", "🔄", "respawn", 1, false)
 createCommandButton(systemSection, "Anti-AFK", "⏰", "antiafk", 2, true)
 createCommandButton(systemSection, "Potato Mode", "🥔", "potato", 3, true)
+createCommandButton(systemSection, "Infinity Zoom", "🔍", "infinityzoom", 4, true)
 -- createCommandButton(systemSection, "Potato Debug", "🧪", "potatodebug", 4, true)
 
 -- Notification Frame
@@ -3797,6 +3885,7 @@ connectCommandButton("fly", "fly", false)
 connectCommandButton("flyspeed", "flyspeed", true)
 connectCommandButton("respawn", "respawn", false)
 connectCommandButton("antiafk", "antiafk", false)
+connectCommandButton("infinityzoom", "infinityzoom", false)
 -- connectCommandButton("potatodebug", "potatodebug", false)
 
 -- Potato Mode button - Custom handler (not a chat command)
