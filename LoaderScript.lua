@@ -588,22 +588,23 @@ function InfinityZoom:Enable()
 	self.CurrentZoom = (self.Camera.CFrame.Position - self.Camera.Focus.Position).Magnitude
 	
 	-- Monitor mouse wheel scroll untuk zoom
-	local mouse = player:GetMouse()
-	
 	self.InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if gameProcessed or not self.Enabled then return end
 		if UserInputService:GetFocusedTextBox() then return end
 		
-		-- Scroll up (zoom in - kurangi distance)
-		if input.KeyCode == Enum.KeyCode.MouseWheelUp then
-			self.CurrentZoom = math.max(self.MinZoom, self.CurrentZoom - self.ZoomSpeed)
-			self:ApplyZoom()
-		end
-		
-		-- Scroll down (zoom out - tambah distance)
-		if input.KeyCode == Enum.KeyCode.MouseWheelDown then
-			self.CurrentZoom = math.min(self.MaxZoom, self.CurrentZoom + self.ZoomSpeed)
-			self:ApplyZoom()
+		-- Detect mouse wheel scroll
+		if input.UserInputType == Enum.UserInputType.MouseWheel then
+			-- input.Position.Z > 0 = scroll up (zoom in)
+			-- input.Position.Z < 0 = scroll down (zoom out)
+			if input.Position.Z > 0 then
+				-- Scroll up - zoom in (kurangi distance)
+				self.CurrentZoom = math.max(self.MinZoom, self.CurrentZoom - self.ZoomSpeed)
+				self:ApplyZoom()
+			elseif input.Position.Z < 0 then
+				-- Scroll down - zoom out (tambah distance)
+				self.CurrentZoom = math.min(self.MaxZoom, self.CurrentZoom + self.ZoomSpeed)
+				self:ApplyZoom()
+			end
 		end
 	end)
 	
