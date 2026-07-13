@@ -572,80 +572,80 @@ end
 -- ============================================
 -- INFINITY ZOOM MODULE
 -- ============================================
+local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
 local InfinityZoom = {}
+
 InfinityZoom.Enabled = false
-InfinityZoom.MinZoom = 0.1  -- Minimum zoom distance
-InfinityZoom.MaxZoom = 500  -- Maximum zoom distance
-InfinityZoom.CurrentZoom = 15  -- Default zoom distance
-InfinityZoom.ZoomSpeed = 2  -- How much to zoom per scroll
-InfinityZoom.InputConnection = nil
-InfinityZoom.Camera = workspace.CurrentCamera
+
+InfinityZoom.Min = 0.5
+InfinityZoom.Max = 100000
+
+InfinityZoom.Connection = nil
 
 function InfinityZoom:Enable()
-	if self.Enabled then return end
-	
-	self.Enabled = true
-	self.CurrentZoom = (self.Camera.CFrame.Position - self.Camera.Focus.Position).Magnitude
-	
-	-- Monitor mouse wheel scroll untuk zoom
-	self.InputConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if gameProcessed or not self.Enabled then return end
-		if UserInputService:GetFocusedTextBox() then return end
-		
-		-- Detect mouse wheel scroll
-		if input.UserInputType == Enum.UserInputType.MouseWheel then
-			-- input.Position.Z > 0 = scroll up (zoom in)
-			-- input.Position.Z < 0 = scroll down (zoom out)
-			if input.Position.Z > 0 then
-				-- Scroll up - zoom in (kurangi distance)
-				self.CurrentZoom = math.max(self.MinZoom, self.CurrentZoom - self.ZoomSpeed)
-				self:ApplyZoom()
-			elseif input.Position.Z < 0 then
-				-- Scroll down - zoom out (tambah distance)
-				self.CurrentZoom = math.min(self.MaxZoom, self.CurrentZoom + self.ZoomSpeed)
-				self:ApplyZoom()
-			end
-		end
-	end)
-	
-	print("🔍 Infinity Zoom enabled! Scroll untuk zoom in/out")
-end
 
-function InfinityZoom:ApplyZoom()
-	if not self.Enabled then return end
-	
-	local camera = self.Camera
-	if not camera then return end
-	
-	-- Get direction dari camera ke focus
-	local direction = (camera.Focus.Position - camera.CFrame.Position).Unit
-	
-	-- Apply zoom dengan tetap maintain direction
-	camera.CFrame = camera.Focus - (direction * self.CurrentZoom)
+    if self.Enabled then
+        return
+    end
+
+    self.Enabled = true
+
+    player.CameraMode = Enum.CameraMode.Classic
+    player.CameraMinZoomDistance = self.Min
+    player.CameraMaxZoomDistance = self.Max
+
+    self.Connection = UIS.InputChanged:Connect(function(input)
+
+        if input.UserInputType == Enum.UserInputType.MouseWheel then
+
+            local amount = input.Position.Z
+
+            local current = player.CameraMaxZoomDistance
+
+            current -= amount * 10
+
+            current = math.clamp(current, self.Min, self.Max)
+
+            player.CameraMaxZoomDistance = current
+
+        end
+
+    end)
+
 end
 
 function InfinityZoom:Disable()
-	if not self.Enabled then return end
-	
-	self.Enabled = false
-	
-	if self.InputConnection then
-		self.InputConnection:Disconnect()
-		self.InputConnection = nil
-	end
-	
-	print("👁️ Infinity Zoom disabled")
+
+    self.Enabled = false
+
+    player.CameraMaxZoomDistance = 128
+
+    player.CameraMinZoomDistance = 0.5
+
+    if self.Connection then
+        self.Connection:Disconnect()
+        self.Connection = nil
+    end
+
 end
 
 function InfinityZoom:Toggle()
-	if self.Enabled then
-		self:Disable()
-		return false
-	else
-		self:Enable()
-		return true
-	end
+
+    if self.Enabled then
+        self:Disable()
+    else
+        self:Enable()
+    end
+
+    return self.Enabled
+
 end
+
+return InfinityZoom
 
 -- ============================================
 -- NOCLIP CONTROLLER MODULE
